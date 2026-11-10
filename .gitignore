@@ -1,0 +1,33 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Local dev database (scripts/dev_db.py)
+.devdb/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / web
+node_modules/
+web/dist/
+
+# Load test artifacts
+loadtest/tokens.json
+loadtest/results/
+
+# Third-party design skills (installed locally, see CLAUDE.md) and their working files
+.claude/skills/
+.taste-skill/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
