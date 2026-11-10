@@ -1,8 +1,8 @@
 """Local PostgreSQL 16 without Docker, using the pgserver package.
 
 Usage:
-  python scripts/dev_db.py start [--name dev]   start (or reuse) and print DATABASE_URL
-  python scripts/dev_db.py stop  [--name dev]   stop the server
+  python database/dev_db.py start [--name dev]   start (or reuse) and print DATABASE_URL
+  python database/dev_db.py stop  [--name dev]   stop the server
 Data lives in .devdb/<name>/ (git-ignored).
 """
 

@@ -17,13 +17,13 @@ Template. Fill with measured numbers only. Scenario definitions are in [verifica
 Commands:
 
 ```
-uv run --project api python scripts/seed.py --users 10000 --teams 2000 --tokens loadtest/tokens.json
+uv run --project backend python database/seed.py --users 10000 --teams 2000 --tokens loadtest/tokens.json
 k6 run loadtest/board.js                 # L-A1
 k6 run -e THINK=1 loadtest/board.js      # L-A2
 k6 run loadtest/mixed.js                 # L-B
 k6 run loadtest/soak.js                  # L-C
 k6 run -e BASE_URL=https://<live-url> -e DURATION=30s loadtest/board.js   # L-LIVE
-uv run --project api python scripts/invariants.py
+uv run --project backend python database/invariants.py
 ```
 
 ## Results

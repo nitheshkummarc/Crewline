@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     rate_mutations_per_min: int = 60
     idempotency_ttl_h: int = 24
     log_level: str = "INFO"
-    web_dist_dir: str = "web/dist"
+    web_dist_dir: str = "frontend/dist"
 
     @property
     def listen_url(self) -> str:

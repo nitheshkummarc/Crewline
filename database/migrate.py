@@ -1,6 +1,6 @@
 """Apply SQL migrations in order.
 
-Usage: python scripts/migrate.py [--url URL]   (default: $DATABASE_URL)
+Usage: python database/migrate.py [--url URL]   (default: $DATABASE_URL)
 """
 
 import argparse
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import asyncpg
 
-MIGRATIONS = Path(__file__).resolve().parents[1] / "db" / "migrations"
+MIGRATIONS = Path(__file__).resolve().parent / "migrations"
 
 
 async def apply_migrations(url: str) -> list[str]:

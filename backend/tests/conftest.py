@@ -6,34 +6,23 @@ import socket
 import subprocess
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 import asyncpg
 import httpx
 import pytest
+from helpers import SERVER_ENV, Users
 from invariants import run_checks
 from migrate import apply_migrations
 
 ROOT = Path(__file__).resolve().parents[2]
-API_DIR = ROOT / "api"
+API_DIR = ROOT / "backend"
 TEST_DB = "crewline_test"
 TABLES = ("audit_events, idempotency_keys, join_requests, memberships, teams, "
           "participants, users, hackathons")
 
-SERVER_ENV = {
-    "JWT_SECRET": "test-secret-0123456789abcdef0123456789abcdef",
-    "COOKIE_SECURE": "false",
-    "WRITE_POOL_MAX": "60",
-    "READ_POOL_MAX": "10",
-    "WRITE_INFLIGHT_MAX": "200",
-    "RATE_SIGNUP_PER_HOUR": "1000000",
-    "RATE_LOGIN_PER_MIN": "1000000",
-    "RATE_MUTATIONS_PER_MIN": "1000000",
-    "SSE_HEARTBEAT_S": "1",
-    "LOG_LEVEL": "WARNING",
-}
 
 
 def _admin_url() -> str:
@@ -118,6 +107,14 @@ def server(db_url: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[st
     proc, base = start_server(db_url, log_path)
     yield base
     stop_server(proc)
+
+
+@pytest.fixture
+async def users(server: str) -> AsyncIterator[Users]:
+    """Factory for signed-up users; closes their clients after the test."""
+    factory = Users(server)
+    yield factory
+    await factory.close()
 
 
 async def truncate(db_url: str) -> None:

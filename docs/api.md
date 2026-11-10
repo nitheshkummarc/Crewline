@@ -7,7 +7,7 @@ Transactions behind each write are in [architecture.md](architecture.md) section
 
 | Item | Rule |
 |---|---|
-| Auth | Cookie `h4h_session` (httpOnly JWT). Endpoints marked "auth" return 401 `unauthenticated` without it |
+| Auth | Cookie `crewline_session` (httpOnly JWT). Endpoints marked "auth" return 401 `unauthenticated` without it |
 | Idempotency | Every `POST`, `PATCH`, `DELETE` requires `Idempotency-Key` (16 to 64 chars, `[A-Za-z0-9_-]`) except signup, login, logout |
 | Request ID | `X-Request-ID` accepted or generated; echoed in the response header and error body |
 | Pagination | `?limit=` (default 20, max 50) and `?cursor=` (opaque). Responses: `{"items": [...], "next_cursor": "..." | null}` |

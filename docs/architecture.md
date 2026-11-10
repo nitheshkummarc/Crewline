@@ -32,17 +32,21 @@ Reasons for each choice are in [decisions.md](decisions.md); endpoint contracts 
 ## 2. Repository layout
 
 ```
-Hack4Hack/
+Crewline/
   CLAUDE.md                       project guide and rules
   README.md                       quick start, reviewer accounts, links
   Makefile                        task shortcuts (raw commands in CLAUDE.md)
-  docker-compose.yml              postgres:16 + api (serves web build)
-  Dockerfile                      multi-stage: build web, install api, run uvicorn
+  docker-compose.yml              postgres:16 + api service (backend serving the frontend build)
+  Dockerfile                      multi-stage: build frontend, install backend, run uvicorn
   .github/workflows/ci.yml        lint, tests, race tests, invariants, compose smoke, k6 smoke
   .claude/rules/                  path-scoped rules
-  db/
+  database/                       everything that owns the schema and data
     migrations/0001_init.sql      full schema below
-  api/
+    migrate.py                    apply migrations
+    dev_db.py                     local PostgreSQL 16 without Docker (pgserver)
+    invariants.py, invariants.sql invariant checker
+    seed.py                       10k users, 2k teams, tokens file for k6
+  backend/                        FastAPI service
     pyproject.toml                dependencies (uv)
     app/
       main.py                     app factory, lifespan, middleware, routers, static web
@@ -64,17 +68,14 @@ Hack4Hack/
       api/                        endpoint behavior tests
       concurrency/                race tests, negative control (naive.py), barrier helper
       unit/                       scoring, invite codes, cursor, request hash
-  scripts/
-    migrate.py                    apply migrations
-    seed.py                       10k users, 2k teams, tokens file for k6
-    invariants.py, invariants.sql invariant checker
-    chaos.py                      kill the API mid-join and verify
+    scripts/
+      chaos.py                    kill the API mid-join and verify
   loadtest/
     lib.js                        shared helpers (tokens, tags)
     board.js                      scenario A (spec)
     mixed.js                      scenario B (board + stampedes + churn)
     soak.js                       scenario C (10 minutes)
-  web/
+  frontend/                       React + TypeScript app (Vite)
     src/api, hooks, pages, components, lib
   docs/                           this folder
 ```
@@ -98,11 +99,11 @@ The full file and function list is in [CODEMAP.md](CODEMAP.md).
 | Last member leaves | Team row is deleted, its join requests cascade, audit events remain. |
 | Audit | Every team change writes one event per action in the same transaction. Append-only. |
 
-## 4. Database schema (db/migrations/0001_init.sql)
+## 4. Database schema (database/migrations/0001_init.sql)
 
 ```sql
 -- Initial schema: hackathons, users, participants, teams, memberships, requests, idempotency, audit.
--- schema_migrations is created by scripts/migrate.py before any migration runs.
+-- schema_migrations is created by database/migrate.py before any migration runs.
 
 CREATE TABLE hackathons (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -695,7 +696,7 @@ Three event kinds, built by `public_projection` (no emails, no invite codes):
 | Area | Design |
 |---|---|
 | Passwords | argon2id (`argon2-cffi` defaults), hashed in a threadpool, only at signup and login |
-| Session | JWT HS256, claims `sub`, `iat`, `exp` (2 h), in an httpOnly, Secure, SameSite=Lax cookie named `h4h_session`. Verified locally |
+| Session | JWT HS256, claims `sub`, `iat`, `exp` (2 h), in an httpOnly, Secure, SameSite=Lax cookie named `crewline_session`. Verified locally |
 | CSRF | SameSite=Lax blocks cross-site POST with the cookie; every mutation also requires the custom `Idempotency-Key` header, which a cross-site form cannot send without a CORS preflight that the API does not allow |
 | Authorization | Leader checks inside the SQL predicate or under the team row lock |
 | Invite codes | 50 bits from `secrets.choice`; expiry in SQL with the database clock; same 404 for unknown and expired |
@@ -714,7 +715,7 @@ Known gaps (stated in the design doc): no CAPTCHA at signup, logout does not rev
 
 **The group.** If the caller is in a team, the group is that team's members. If not, the group is the caller alone (a one-person team): `T` is the caller's skills and the time zone term compares against the caller only (review finding P1). The response `context.team_id` is null in that case.
 
-Skill taxonomy (12, in `api/app/core/skills.py`, also served by `GET /api/meta`):
+Skill taxonomy (12, in `backend/app/core/skills.py`, also served by `GET /api/meta`):
 `frontend, backend, mobile, ml, data, devops, cloud, design, product, security, blockchain, pitch`.
 Core roles a balanced team wants: `frontend, backend, design, ml, devops, pitch`.
 
@@ -744,7 +745,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 
 - Vite + React 18 + TypeScript strict + React Router v6 + TanStack Query v5 + Tailwind CSS. No component library.
 - Routes: `/login`, `/signup`, `/` (hackathon list), `/h/:hid` (board with Teams and People tabs), `/h/:hid/teams/new`, `/h/:hid/join` (enter code, also accepts `?code=`), `/teams/:tid` (members, requests, invite code, leave, finalize, audit), `/me` (profile: name, skills, time zone).
-- `api/client.ts`: same-origin fetch with credentials, adds `Idempotency-Key` to mutations, parses the error envelope, retries network errors and 503 with the same key (max 3, `Retry-After` plus jitter).
+- `backend/client.ts`: same-origin fetch with credentials, adds `Idempotency-Key` to mutations, parses the error envelope, retries network errors and 503 with the same key (max 3, `Retry-After` plus jitter).
 - `hooks/useEventStream.ts`: one EventSource per hackathon, refetch on open, merge `team` events by version, keep tombstones, refetch People board on `people` events, refresh request lists on `request` events, handle `resync`.
 - `lib/merge.ts`: `mergeTeam`, `mergeBoardPage` and the tombstone map, shared by event and refetch paths.
 - Time zone: signup and profile default to the browser's `Intl.DateTimeFormat().resolvedOptions().timeZone`; shown as the current offset.
@@ -768,9 +769,10 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 | `SSE_HEARTBEAT_S` | `15` | Heartbeat interval |
 | `SSE_MAX_STREAMS_PER_USER` | `3` | Stream cap |
 | `RATE_CODE_PER_USER_MIN` / `RATE_CODE_PER_IP_MIN` | `5` / `20` | Invite brute-force limits |
+| `RATE_LOGIN_PER_MIN` / `RATE_SIGNUP_PER_HOUR` / `RATE_MUTATIONS_PER_MIN` | `5` / `10` / `60` | Login per IP+email, signup per IP, mutations per user |
 | `IDEMPOTENCY_TTL_H` | `24` | Key retention |
 | `LOG_LEVEL` | `INFO` | Logging |
-| `WEB_DIST_DIR` | `web/dist` | Built SPA served at `/` |
+| `WEB_DIST_DIR` | `frontend/dist` | Built SPA served at `/` |
 
 ## 15. Deployment
 
@@ -778,7 +780,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 |---|---|
 | API + web | Render free web service, region Singapore, Docker image from the repo `Dockerfile`, 1 uvicorn worker |
 | Database | Neon free Postgres 16, region AWS ap-southeast-1 (Singapore), direct connection string |
-| Migrations | `scripts/migrate.py` runs at container start before uvicorn |
+| Migrations | `database/migrate.py` runs at container start before uvicorn |
 | Demo data | Small seed on the live DB: 1 hackathon, about 300 users, about 40 teams, 2 reviewer accounts (in README) |
 | Keep warm | External ping to `/healthz` every 10 minutes (Render free sleeps after 15 minutes idle) through 30 Nov |
 | Secrets | Render environment variables only |
@@ -791,7 +793,7 @@ Verify on Friday: SSE is not buffered by the Render proxy, heartbeat keeps strea
 
 Two options, same schema and tests:
 
-- **Without Docker (dev machine default):** `scripts/dev_db.py start` runs PostgreSQL 16 from the `pgserver` package (bundled binaries, data in `.devdb/`, git-ignored) and prints its `DATABASE_URL`. `scripts/dev_db.py stop` stops it.
+- **Without Docker (dev machine default):** `database/dev_db.py start` runs PostgreSQL 16 from the `pgserver` package (bundled binaries, data in `.devdb/`, git-ignored) and prints its `DATABASE_URL`. `database/dev_db.py stop` stops it.
 - **Docker Compose (CI and machines with Docker):**
 
 - `postgres:16` with a health check, `max_connections=200`, data on a named volume.

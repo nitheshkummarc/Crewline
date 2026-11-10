@@ -10,12 +10,14 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, ORJSONResponse
 
 from app.config import Settings, get_settings
-from app.core import idempotency
+from app.core import idempotency, ratelimit
 from app.core.errors import Busy, NotFound, install_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.db import pools as db_pools
 from app.db import tx
+from app.modules.auth.router import router as auth_router
+from app.modules.hackathons.router import router as hackathons_router
 
 
 @asynccontextmanager
@@ -59,8 +61,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(settings.log_level)
     app = FastAPI(title="Crewline API", default_response_class=ORJSONResponse, lifespan=lifespan)
     app.state.settings = settings
+    ratelimit.configure(settings)
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
+    for router in (auth_router, hackathons_router):
+        app.include_router(router)
 
     @app.get("/healthz", include_in_schema=False)
     async def healthz() -> dict:

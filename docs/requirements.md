@@ -45,7 +45,7 @@ Source: Hack4Hack Crew Hiring Challenge 2026, Problem Statement 1, "Race-proof t
 | R13 | Audit log: who changed what and when, every team change | arch 4, 6, 6.11; ADR-019, 034 | T-API-06, 34, 37, 40; I7 | planned |
 | R14 | Suggestions endpoint ranking by complementary skills and time zone, scoring explained | arch 11; ADR-023, 033 | T-API-33, 44; T-UNIT-01 | planned |
 | R15 | At least 20 API tests including the race test, in GitHub Actions | verification.md; ci.yml | CI badge | planned |
-| R16 | Seed script: 10,000 users, 2,000 teams | scripts/seed.py | T-OPS-01; I1 to I9 on seed | planned |
+| R16 | Seed script: 10,000 users, 2,000 teams | database/seed.py | T-OPS-01; I1 to I9 on seed | planned |
 | R17 | Load test (k6 or autocannon): board p95 under 200 ms at 100 concurrent users | arch 8; ADR-021 | L-A | planned |
 | R18 | React UI for the full flow, usable on phone and keyboard only | arch 13; frontend rules | M-01 to M-06; T-WEB-* | planned |
 | R19 | Live URL on a free tier | arch 15; ADR-026 | M-07 | planned |

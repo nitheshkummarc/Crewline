@@ -1,6 +1,6 @@
 """Invariant checker: runs every query in invariants.sql; each must return zero rows.
 
-Usage: python scripts/invariants.py [--url URL]   (default: $DATABASE_URL); exits 1 on any violation.
+Usage: python database/invariants.py [--url URL]   (default: $DATABASE_URL); exits 1 on any violation.
 """
 
 import argparse

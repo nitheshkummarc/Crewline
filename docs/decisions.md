@@ -199,12 +199,12 @@ Index:
 
 ## ADR-028 Chaos test by hard-killing the API process {#adr-028}
 
-**Decision.** `scripts/chaos.py` starts uvicorn as a subprocess, runs a join workload, kills it with `Popen.kill()` (SIGKILL on Linux, TerminateProcess on Windows) three times, restarts it, lets clients retry with the same keys, then runs the invariant checker.
+**Decision.** `backend/scripts/chaos.py` starts uvicorn as a subprocess, runs a join workload, kills it with `Popen.kill()` (SIGKILL on Linux, TerminateProcess on Windows) three times, restarts it, lets clients retry with the same keys, then runs the invariant checker.
 **Why.** Portable and deterministic; container restart policies and PID 1 signal handling make in-container kills unreliable.
 
 ## ADR-029 No organizer UI; hackathons come from seed or CLI {#adr-029}
 
-**Decision.** Hackathons are created by `scripts/seed.py`. No organizer role or dashboard.
+**Decision.** Hackathons are created by `database/seed.py`. No organizer role or dashboard.
 **Why.** Not required by PS1. Time goes to the team-formation core.
 **Stated as a gap** in the design doc.
 

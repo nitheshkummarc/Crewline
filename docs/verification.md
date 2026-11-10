@@ -5,7 +5,7 @@ Status values: `planned`, `written`, `passing`. Update this file in the same com
 
 ## 1. Invariants
 
-`scripts/invariants.sql` holds one query per invariant; each must return zero rows. `scripts/invariants.py` runs them, prints violations, and exits non-zero if any exist.
+`database/invariants.sql` holds one query per invariant; each must return zero rows. `database/invariants.py` runs them, prints violations, and exits non-zero if any exist.
 
 | ID | Invariant | Enforced by | Query (must return no rows) |
 |---|---|---|---|
@@ -23,17 +23,17 @@ I9 note: the response columns are nullable because the claim inserts the row bef
 
 When the invariant checker runs: after every concurrency test module, after the API test suite, on seeded data, after every load scenario, after the chaos test, and in CI as its own step.
 
-Seed caveat for I7: `scripts/seed.py` writes `team_created` and `member_joined_via_code` audit rows for seeded members so I7 holds on seeded data.
+Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_via_code` audit rows for seeded members so I7 holds on seeded data.
 
 ## 2. API tests (pytest, real PostgreSQL)
 
 | ID | Test | Expected | Status |
 |---|---|---|---|
-| T-API-01 | Signup validates input and creates a user | 201, cookie set; 400 on short password, bad email, unknown skill | planned |
-| T-API-02 | Signup with an existing email | 409 `email_taken` (case-insensitive) | planned |
-| T-API-03 | Login with a wrong password | 401 `invalid_credentials` | planned |
-| T-API-04 | Protected route without or with an expired cookie | 401 `unauthenticated` | planned |
-| T-API-05 | Register for a hackathon twice | 200 both times, one participant row | planned |
+| T-API-01 | Signup validates input and creates a user | 201, cookie set; 400 on short password, bad email, unknown skill | passing |
+| T-API-02 | Signup with an existing email | 409 `email_taken` (case-insensitive) | passing |
+| T-API-03 | Login with a wrong password | 401 `invalid_credentials` | passing |
+| T-API-04 | Protected route without or with an expired cookie | 401 `unauthenticated` | passing |
+| T-API-05 | Register for a hackathon twice | 200 both times, one participant row | passing |
 | T-API-06 | Create team | 201, leader is the only member, count 1, status forming, audit `team_created` with user_id | planned |
 | T-API-07 | Create a second team in the same hackathon | 409 `already_in_team`, no team row created | planned |
 | T-API-08 | Join with a valid code | 200, count +1, audit `member_joined_via_code` | planned |
@@ -54,10 +54,10 @@ Seed caveat for I7: `scripts/seed.py` writes `team_created` and `member_joined_v
 | T-API-23 | Finalize below min size; at min size | 409 `below_min_size`; 200, status finalized | planned |
 | T-API-24 | Member leaves a finalized team | Status back to forming, audit `team_reopened` | planned |
 | T-API-25 | Regenerate invite code | Old code 404, new code works, audit has no code in payload | planned |
-| T-API-26 | Same key, same body, sent twice in sequence | Second response identical to the first, one effect | planned |
-| T-API-27 | Same key, different body | 422 `idempotency_key_mismatch` | planned |
-| T-API-28 | Mutation without `Idempotency-Key` | 400 `idempotency_key_required` | planned |
-| T-API-29 | Validation: bad UUID, name too long, limit 500, message 281 chars, unknown IANA time zone | 400 `validation_error` each (never FastAPI's default 422) | planned |
+| T-API-26 | Same key, same body, sent twice in sequence | Second response identical to the first, one effect | passing |
+| T-API-27 | Same key, different body | 422 `idempotency_key_mismatch` | passing |
+| T-API-28 | Mutation without `Idempotency-Key` | 400 `idempotency_key_required` | passing |
+| T-API-29 | Validation: bad UUID, name too long, limit 500, message 281 chars, unknown IANA time zone | 400 `validation_error` each (never FastAPI's default 422) | partial (signup cases pass; team/request cases in later modules) |
 | T-API-30 | 6 wrong codes in a minute from one user | 6th gets 429 `rate_limited` with `Retry-After` | planned |
 | T-API-31 | Board pagination | Pages do not overlap, full and finalized teams excluded, `next_cursor` null at end | planned |
 | T-API-32 | Board ETag | Second request with `If-None-Match` gets 304 | planned |
@@ -68,7 +68,7 @@ Seed caveat for I7: `scripts/seed.py` writes `team_created` and `member_joined_v
 | T-API-37 | Team audit endpoint | Members get events newest first; non-member gets 403 `members_only` | planned |
 | T-API-38 | `/metrics` | Exposes pool gauges and route histograms | planned |
 | T-API-39 | Invite code visibility | Board and events never contain `invite_code`; `/invite` returns it to members only | planned |
-| T-API-40 | Participant registers, then toggles `looking` | Each publishes a `people` event; the People board reflects it on the next fetch (cache cleared); audit rows `participant_registered`, `participant_updated` | planned |
+| T-API-40 | Participant registers, then toggles `looking` | Each publishes a `people` event; the People board reflects it on the next fetch (cache cleared); audit rows `participant_registered`, `participant_updated` | partial (audit rows pass; SSE delivery in the realtime module) |
 | T-API-41 | Team member changes skills | Team `version` increases; a `team` event carries the new skills; board shows them | planned |
 | T-API-42 | Request event privacy | A non-member subscriber receives no `request` events; the leader and the requester do | planned |
 | T-API-43 | Create a request for a full team | 409 `team_full`, no request row | planned |
@@ -117,7 +117,7 @@ Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real
 | ID | Test | Status |
 |---|---|---|
 | T-WEB-01 | Optimistic join rolls back on 409 and shows the conflict message | planned |
-| T-WEB-02 | `api/client` retries 503 with the same `Idempotency-Key` and stops on 409 | planned |
+| T-WEB-02 | `backend/client` retries 503 with the same `Idempotency-Key` and stops on 409 | planned |
 | T-WEB-03 | `mergeTeam` keeps the higher version; null removes; older snapshot does not overwrite newer event | planned |
 | T-WEB-04 | Tombstone: after a `team_deleted` event, a board fetch that still contains the team (lower version) does not restore it | planned |
 
@@ -125,7 +125,7 @@ Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real
 
 | ID | Check | Status |
 |---|---|---|
-| T-OPS-01 | `scripts/seed.py --users 10000 --teams 2000` finishes in under 60 s and invariants pass | planned |
+| T-OPS-01 | `database/seed.py --users 10000 --teams 2000` finishes in under 60 s and invariants pass | planned |
 | T-OPS-02 | `docker compose up` from a clean clone serves `/readyz` | planned |
 | T-OPS-03 | `EXPLAIN (ANALYZE, BUFFERS)` of both board queries on seeded data shows index scans on `teams_board` / `participants_board`; output saved in `docs/explain/` | planned |
 | T-OPS-04 | CI fails when a race test fails (verify once by breaking the predicate on a branch) | planned |
@@ -133,7 +133,7 @@ Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real
 
 ## 7. Chaos test (T-CHAOS-01)
 
-`scripts/chaos.py`:
+`backend/scripts/chaos.py`:
 1. Start uvicorn as a subprocess against Compose Postgres; seed 20 teams with 1 open seat and 200 users.
 2. Start a client workload: users join random teams with per-action idempotency keys, retrying network errors and 503 with the same key.
 3. Every 20 s, hard-kill the API process (`Popen.kill()`), wait 2 s, restart it. Three kills total.
@@ -191,8 +191,8 @@ Real bugs found during the build go to [bug-diary.md](bug-diary.md).
 | Job | Steps | Fails when |
 |---|---|---|
 | `lint` | ruff, mypy, `tsc --noEmit`, eslint | Any error |
-| `api-tests` | Postgres 16 service, migrate, pytest `api/tests/api api/tests/unit`, invariants | Any failure or violation |
-| `race-tests` | Postgres 16 service, migrate, pytest `api/tests/concurrency` with `RACE_ITERATIONS=20`, invariants, deadlock check | Any failure, violation or deadlock |
+| `api-tests` | Postgres 16 service, migrate, pytest `backend/tests/api backend/tests/unit`, invariants | Any failure or violation |
+| `race-tests` | Postgres 16 service, migrate, pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20`, invariants, deadlock check | Any failure, violation or deadlock |
 | `web-tests` | `npm ci`, vitest | Any failure |
 | `compose-smoke` | `docker compose up -d`, wait for `/readyz`, one signup and create team | Non-200 |
 | `k6-smoke` | Seed small data, `k6 run` L-A1 for 20 s with thresholds | Threshold breach |
