@@ -62,7 +62,7 @@ Seed caveat for I7: `scripts/seed.py` writes `team_created` and `member_joined_v
 | T-API-31 | Board pagination | Pages do not overlap, full and finalized teams excluded, `next_cursor` null at end | planned |
 | T-API-32 | Board ETag | Second request with `If-None-Match` gets 304 | planned |
 | T-API-33 | Suggestions | Candidate covering missing roles ranks above a duplicate-skill candidate; breakdown and reasons present; deterministic order | planned |
-| T-API-34 | Audit append-only | Direct `UPDATE audit_events` and `DELETE` raise | planned |
+| T-API-34 | Audit append-only | Direct `UPDATE audit_events` and `DELETE` raise | passing |
 | T-API-35 | SSE event after commit | Subscriber receives `team` event with new version within 1 s of a join | planned |
 | T-API-36 | No SSE event after rollback | A rejected join (409) produces no event | planned |
 | T-API-37 | Team audit endpoint | Members get events newest first; non-member gets 403 `members_only` | planned |
@@ -109,8 +109,8 @@ Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real
 | T-UNIT-06 | Time zone validation: valid IANA names pass, offsets like `+05:30` and unknown names fail | planned |
 | T-UNIT-02 | Invite codes: alphabet, length, normalization (`o`→`0`, `l`→`1`, dashes), format regex matches the DB CHECK | planned |
 | T-UNIT-03 | Cursor encode and decode round trip; tampered cursor → 400 | planned |
-| T-UNIT-04 | Request hash: key order and whitespace do not change the hash; body change does | planned |
-| T-UNIT-05 | Error mapping: each constraint name maps to the right error code | planned |
+| T-UNIT-04 | Request hash: key order and whitespace do not change the hash; body change does | passing |
+| T-UNIT-05 | Error mapping: each constraint name maps to the right error code | passing |
 
 ## 5. Web tests (Vitest)
 
@@ -129,6 +129,7 @@ Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real
 | T-OPS-02 | `docker compose up` from a clean clone serves `/readyz` | planned |
 | T-OPS-03 | `EXPLAIN (ANALYZE, BUFFERS)` of both board queries on seeded data shows index scans on `teams_board` / `participants_board`; output saved in `docs/explain/` | planned |
 | T-OPS-04 | CI fails when a race test fails (verify once by breaking the predicate on a branch) | planned |
+| T-OPS-05 | Schema: migrations re-run applies nothing; `teams_cap` rejects an over-capacity raw UPDATE; health, readiness, request id and 404 envelope | passing |
 
 ## 7. Chaos test (T-CHAOS-01)
 

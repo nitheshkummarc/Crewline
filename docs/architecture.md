@@ -102,12 +102,7 @@ The full file and function list is in [CODEMAP.md](CODEMAP.md).
 
 ```sql
 -- Initial schema: hackathons, users, participants, teams, memberships, requests, idempotency, audit.
-CREATE EXTENSION IF NOT EXISTS citext;
-
-CREATE TABLE schema_migrations (
-  version     text PRIMARY KEY,
-  applied_at  timestamptz NOT NULL DEFAULT now()
-);
+-- schema_migrations is created by scripts/migrate.py before any migration runs.
 
 CREATE TABLE hackathons (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -121,12 +116,13 @@ CREATE TABLE hackathons (
 
 CREATE TABLE users (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email           citext NOT NULL CHECK (char_length(email) <= 254),
+  email           text NOT NULL CHECK (char_length(email) <= 254),   -- stored lowercased by the API
   password_hash   text NOT NULL,
   display_name    text NOT NULL CHECK (char_length(display_name) BETWEEN 1 AND 60),
   skills          text[] NOT NULL DEFAULT '{}' CHECK (cardinality(skills) <= 12),
   timezone        text NOT NULL DEFAULT 'UTC' CHECK (char_length(timezone) BETWEEN 1 AND 64),  -- IANA name, validated by the API
   created_at      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT users_email_lower CHECK (email = lower(email)),       -- case-insensitive uniqueness without citext
   CONSTRAINT users_email_unique UNIQUE (email)
 );
 CREATE INDEX users_skills_gin ON users USING gin (skills);
@@ -599,9 +595,9 @@ Withdraw is the only path that takes a request row without the team row first. I
 
 | Pool | Max per worker | Server settings | Used by |
 |---|---|---|---|
-| write | 10 | `lock_timeout=1000`, `statement_timeout=3000`, `idle_in_transaction_session_timeout=5000`, `application_name=h4h-write` | `run_write` |
-| read | 10 | `statement_timeout=2000`, `application_name=h4h-read` | replay fast path, explanation reads, board, suggestions, gets |
-| listen | 1 dedicated connection | `application_name=h4h-listen` | `LISTEN team_events` |
+| write | 10 | `lock_timeout=1000`, `statement_timeout=3000`, `idle_in_transaction_session_timeout=5000`, `application_name=crewline-write` | `run_write` |
+| read | 10 | `statement_timeout=2000`, `application_name=crewline-read` | replay fast path, explanation reads, board, suggestions, gets |
+| listen | 1 dedicated connection | `application_name=crewline-listen` | `LISTEN team_events` |
 
 - Connection budget: `workers × (read + write + 1) + reserve`. Local: 2 workers × 21 + 5 = 47. Render free: 1 worker × 21 + 5 = 26. Must stay below the provider limit (check the Neon compute's `max_connections` and record it in the load report).
 - Direct connections everywhere (no PgBouncer). LISTEN does not work through a transaction pooler, and the budget fits without one. If it ever does not fit: point the pools at the pooled endpoint with `statement_cache_size=0` and keep the listener on the direct URL.

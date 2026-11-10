@@ -19,36 +19,36 @@ File purpose.
 Initial schema: tables, constraints, indexes, `team_snapshot()`, audit triggers.
 | Name | Purpose | Status |
 |---|---|---|
-| `team_snapshot(uuid)` | Return a team summary as jsonb, including aggregated member skills | planned |
-| `audit_events_block_change()` | Trigger function that rejects UPDATE and DELETE on audit_events | planned |
-| `audit_events_publish()` | Trigger function that sends pg_notify for each new audit event | planned |
+| `team_snapshot(uuid)` | Return a team summary as jsonb, including aggregated member skills | done |
+| `audit_events_block_change()` | Trigger function that rejects UPDATE and DELETE on audit_events | done |
+| `audit_events_publish()` | Trigger function that sends pg_notify for each new audit event | done |
 
 ## API core
 
 ### api/app/main.py
-App factory: lifespan, middleware, routers, static web files.
+App factory: lifespan, middleware, routers, static web files. Run with `uvicorn --factory app.main:create_app`.
 | Name | Purpose | Status |
 |---|---|---|
-| `create_app(settings)` | Build the FastAPI app with middleware, routers and the SPA mount | planned |
-| `lifespan(app)` | Open pools, start the listener and purge task; close them on shutdown | planned |
+| `create_app(settings)` | Build the FastAPI app with middleware, routers and the SPA mount | done |
+| `lifespan(app)` | Open pools and start background tasks; close them on shutdown | done |
+| `mount_web(app, dist_dir)` | Serve the built SPA at / with index.html as the fallback for client routes | done |
 
 ### api/app/config.py
 Settings loaded from environment variables.
 | Name | Purpose | Status |
 |---|---|---|
-| `Settings` | Typed settings with defaults from architecture.md section 14 | planned |
-| `get_settings()` | Return the cached Settings instance | planned |
+| `Settings` | Typed settings with defaults from architecture.md section 14 | done |
+| `Settings.listen_url` | Return the connection string used for LISTEN | done |
+| `get_settings()` | Return the cached Settings instance | done |
 
 ### api/app/core/errors.py
 Domain error types and the HTTP error envelope.
 | Name | Purpose | Status |
 |---|---|---|
-| `DomainError` | Base error with `status`, `code`, `message` | planned |
-| `NotFound`, `InviteInvalid`, `NotLeader`, `MembersOnly`, `TeamFull`, `AlreadyInTeam`, `TeamFinalized`, `NotFinalized`, `BelowMinSize`, `RequestNotPending`, `NotAMember`, `CannotRemoveSelf`, `NotRegistered`, `TooManyPendingRequests`, `EmailTaken`, `InvalidCredentials`, `IdempotencyKeyMismatch`, `RateLimited`, `Busy` | One subclass per error code in api.md | planned |
-| `ReplayResponse` | Carries a stored idempotent response out of a rolled-back transaction | planned |
-| `AlreadyMember` | Rolls back a transaction whose outcome is "already a member"; returns 200 with current state, not stored | planned |
-| `StateChanged` | Raised when the explanation read finds no reason for a 0-row guard; run_write retries | planned |
-| `install_error_handlers(app)` | Register handlers that render DomainError as the envelope and validation errors as 400 `validation_error` | planned |
+| `DomainError` | Base error with `status`, `code`, `message`, optional `retry_after` | done |
+| `ValidationFailed`, `IdempotencyKeyRequired`, `Unauthenticated`, `InvalidCredentials`, `NotLeader`, `MembersOnly`, `NotFound`, `InviteInvalid`, `EmailTaken`, `NotRegistered`, `AlreadyInTeam`, `TeamFull`, `TeamFinalized`, `NotFinalized`, `BelowMinSize`, `RequestNotPending`, `NotAMember`, `CannotRemoveSelf`, `TooManyPendingRequests`, `IdempotencyKeyMismatch`, `RateLimited`, `Busy` | One subclass per error code in api.md | done |
+| `error_response(request, status, code, message, retry_after)` | Build the error envelope response with the request id | done |
+| `install_error_handlers(app)` | Register handlers that render DomainError as the envelope and validation errors as 400 `validation_error` | done |
 
 ### api/app/core/security.py
 Password hashing and JWT session tokens.
@@ -73,13 +73,12 @@ FastAPI dependencies shared by routers.
 Idempotency key hashing, lookup, claim and store.
 | Name | Purpose | Status |
 |---|---|---|
-| `request_hash(method, route, params, body)` | Return sha256 of the canonical request | planned |
-| `lookup(conn, user_id, key)` | Return the stored row for a key, or None | planned |
-| `claim(conn, user_id, key, req_hash)` | Insert the key row; return False if it already exists | planned |
-| `store(conn, user_id, key, status, body)` | Save the success response on the claimed row | planned |
-| `replay_or_mismatch(row, req_hash)` | Return the stored response, or raise 422 if the hash differs | planned |
-| `purge_expired(pool, ttl_hours)` | Delete keys older than the TTL | planned |
-| `purge_loop(pool, ttl_hours)` | Run purge_expired every hour | planned |
+| `request_hash(method, route, params, body)` | Return sha256 of the canonical request | done |
+| `lookup(conn, user_id, key)` | Return the stored row for a key, or None | done |
+| `claim(conn, user_id, key, req_hash)` | Insert the key row; return False if it already exists (waits for an in-flight owner) | done |
+| `store(conn, user_id, key, status, body)` | Save the success response on the claimed row | done |
+| `purge_expired(pool, ttl_hours)` | Delete keys older than the TTL; return the number deleted | done |
+| `purge_loop(pool, ttl_hours)` | Run purge_expired every hour | done |
 
 ### api/app/core/invite_codes.py
 Invite code generation and normalization.
@@ -136,16 +135,15 @@ Prometheus metrics definitions and helpers.
 JSON logging setup.
 | Name | Purpose | Status |
 |---|---|---|
-| `JsonFormatter` | Format log records as one JSON line | planned |
-| `configure_logging(level)` | Install the JSON formatter on the root logger | planned |
+| `JsonFormatter` | Format log records as one JSON line | done |
+| `JsonFormatter.format(record)` | Return the record as a JSON string with extra fields included | done |
+| `configure_logging(level)` | Install the JSON formatter on the root logger | done |
 
 ### api/app/core/middleware.py
-Request id and write in-flight cap middleware.
+Request id and access log middleware (pure ASGI, safe for streaming responses). The write in-flight cap lives in `db/tx.py`.
 | Name | Purpose | Status |
 |---|---|---|
-| `RequestIdMiddleware` | Accept or create X-Request-ID and attach it to the request and response | planned |
-| `WriteInflightLimiter` | Return 503 busy when in-flight writes exceed the cap | planned |
-| `AccessLogMiddleware` | Log one JSON line per request with duration | planned |
+| `RequestIdMiddleware` | Accept or create X-Request-ID, attach it to the request and response, log one line per request | done |
 
 ### api/app/core/skills.py
 Fixed skill taxonomy and core roles.
@@ -161,28 +159,38 @@ Fixed skill taxonomy and core roles.
 Read and write asyncpg pools.
 | Name | Purpose | Status |
 |---|---|---|
-| `Pools` | Holds the read and write pools | planned |
-| `create_pools(settings)` | Open both pools with their server settings and application names | planned |
-| `close_pools(pools)` | Close both pools | planned |
-| `read_conn()` | Async context manager that acquires a read connection with the acquire timeout | planned |
+| `init_connection(conn)` | Register json and jsonb codecs that use orjson | done |
+| `Pools` | Holds the read and write pools and the acquire timeout | done |
+| `create_pools(settings)` | Open both pools with their server settings and application names (`crewline-read`, `crewline-write`) | done |
+| `close_pools()` | Close both pools | done |
+| `pools()` | Return the open pools | done |
+| `read_conn()` | Acquire a read connection with the acquire timeout; 503 busy on timeout | done |
+| `write_conn()` | Acquire a write connection with the acquire timeout; 503 busy on timeout | done |
 
 ### api/app/db/tx.py
-Write-transaction wrapper: idempotency claim, timeouts, retries, rollback.
+Write-transaction wrapper: idempotency claim, timeouts, retries, rollback on any error, in-flight cap.
 | Name | Purpose | Status |
 |---|---|---|
-| `WriteContext` | User id, idempotency key, request hash, request id, route name | planned |
-| `run_write(ctx, body)` | Run body in one transaction after claiming the key; store the response; retry deadlocks and StateChanged | planned |
-| `replay_fast_path(ctx)` | Return a committed stored response for the key, or None; never decides business outcomes | planned |
-| `run_plain_write(body)` | Run a small transaction without an idempotency claim (stale marking, register) | planned |
+| `WriteContext` | User id, idempotency key, request hash, request id and route name for one write | done |
+| `Outcome` | Status and JSON body of a write; `store=False` means nothing changed and nothing is stored | done |
+| `GuardFailed` | A guarded statement matched 0 rows; the transaction rolls back and the explanation runs | done |
+| `StateChanged` | The explanation found no reason for a failed guard; run_write retries the transaction | done |
+| `_Rollback` | Carries an outcome (replay or nothing-changed) out of a transaction that must not commit | done |
+| `configure(inflight_max)` | Set the per-worker in-flight write cap | done |
+| `replay_fast_path(ctx)` | Return a committed stored response for the key, or None; never decides business outcomes | done |
+| `run_write(ctx, body, explain)` | Run body in one transaction after claiming the key; store the response; retry deadlocks and StateChanged | done |
+| `run_plain_write(body)` | Run a small transaction without an idempotency claim (stale marking) | done |
+| `stats` | Counters for deadlock retries, state retries and busy responses | done |
 
 ### api/app/db/errors.py
 Map PostgreSQL errors to domain errors by constraint name and SQLSTATE.
 | Name | Purpose | Status |
 |---|---|---|
-| `CONSTRAINT_ERRORS` | Constraint name to DomainError class | planned |
-| `to_domain_error(exc)` | Convert an asyncpg exception to a DomainError, or return None | planned |
-| `is_retryable(exc)` | True for 40P01 and 40001 | planned |
-| `is_busy(exc)` | True for 55P03, 57014 and pool timeouts | planned |
+| `CONSTRAINT_ERRORS` | Constraint name to DomainError class | done |
+| `constraint_of(exc)` | Return the constraint name carried by an integrity error, if any | done |
+| `to_domain_error(exc)` | Convert an asyncpg integrity error to a DomainError, or return None | done |
+| `is_retryable(exc)` | True for 40P01 and 40001 | done |
+| `is_busy(exc)` | True for lock timeouts, statement timeouts and connection exhaustion | done |
 
 ### api/app/db/listener.py
 Dedicated LISTEN connection with reconnect.
@@ -444,16 +452,23 @@ SSE endpoint.
 ## Tests
 
 ### api/tests/conftest.py
-Fixtures for database, server and clients.
+Fixtures for the test database, a real API server and per-test cleanup.
 | Name | Purpose | Status |
 |---|---|---|
-| `db_url` | Test database URL from env | planned |
-| `migrated_db` | Apply migrations once per session | planned |
-| `clean_db` | Truncate tables between tests | planned |
-| `server` | Start uvicorn as a subprocess with race-test pool sizes | planned |
-| `make_user(...)` | Sign up a user and return an authenticated client | planned |
-| `make_team(...)` | Create a team with N members and return ids | planned |
-| `invariants_clean()` | Assert the invariant checker returns no violations | planned |
+| `_admin_url()` | Return a server URL from TEST_DATABASE_URL, or start the local pgserver test instance | done |
+| `_database_url(admin_url, name)` | Return the admin URL pointed at another database | done |
+| `_free_port()` | Return a free local TCP port | done |
+| `db_url` | Create a fresh test database with all migrations applied | done |
+| `start_server(db_url, log_path, extra_env)` | Start uvicorn as a subprocess and wait until /readyz answers | done |
+| `stop_server(proc)` | Stop a server subprocess | done |
+| `server` | Run one real API server for the whole session and return its base URL | done |
+| `truncate(db_url)` | Remove all rows from every application table | done |
+| `clean_db` | Empty the database before a test and assert the invariants after it | done |
+
+### api/tests/api/conftest.py
+| Name | Purpose | Status |
+|---|---|---|
+| `_clean` | Apply clean_db to every API test | done |
 
 ### api/tests/concurrency/barrier.py
 Helpers to release many requests at once.
@@ -474,11 +489,20 @@ Test modules (`api/tests/api/test_*.py`, `api/tests/concurrency/test_*.py`, `api
 ## Scripts
 
 ### scripts/migrate.py
-Apply SQL migrations in order.
+Apply SQL migrations in order (creates `schema_migrations`, holds an advisory lock).
 | Name | Purpose | Status |
 |---|---|---|
-| `apply_migrations(url)` | Apply files not yet in schema_migrations | planned |
-| `main()` | CLI entry point | planned |
+| `apply_migrations(url)` | Apply files not yet in schema_migrations; return the versions applied | done |
+| `main()` | CLI entry point | done |
+
+### scripts/dev_db.py
+Local PostgreSQL 16 without Docker, using the pgserver package.
+| Name | Purpose | Status |
+|---|---|---|
+| `data_dir(name)` | Return the data directory for a named dev database | done |
+| `start(name)` | Start or reuse the server and return its connection URL | done |
+| `stop(name)` | Stop the server with pg_ctl | done |
+| `main()` | CLI entry point | done |
 
 ### scripts/seed.py
 Bulk seed data and k6 tokens.
@@ -492,8 +516,9 @@ Bulk seed data and k6 tokens.
 Invariant checker.
 | Name | Purpose | Status |
 |---|---|---|
-| `run_checks(url)` | Run every invariant query and return violations | planned |
-| `main()` | Print violations and exit non-zero if any | planned |
+| `load_checks()` | Return (id, description, query) for each invariant block | done |
+| `run_checks(url)` | Run every invariant query and return violations keyed by invariant id | done |
+| `main()` | Print violations and exit non-zero if any | done |
 
 ### scripts/chaos.py
 Kill the API mid-join and verify.
