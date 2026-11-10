@@ -5,7 +5,7 @@ import time
 import httpx
 import jwt
 import pytest
-from helpers import TEST_JWT_SECRET, Users, key, make_hackathon, query
+from helpers import SHARED_TLS, TEST_JWT_SECRET, Users, key, make_hackathon, query
 
 
 async def test_api_01_signup_creates_user_and_session(users: Users) -> None:
@@ -29,7 +29,7 @@ async def test_api_01_signup_creates_user_and_session(users: Users) -> None:
 async def test_api_01_signup_validation(server: str, patch: dict) -> None:
     """T-API-01 / T-API-29: invalid signup bodies return 400 validation_error, never 422."""
     body = {"email": "v@example.com", "password": "long-enough-1", "display_name": "V", **patch}
-    async with httpx.AsyncClient(base_url=server) as client:
+    async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
         response = await client.post("/api/auth/signup", json=body)
     assert response.status_code == 400, response.text
     assert response.json()["error"]["code"] == "validation_error"
@@ -37,7 +37,7 @@ async def test_api_01_signup_validation(server: str, patch: dict) -> None:
 
 async def test_api_02_duplicate_email_is_case_insensitive(server: str) -> None:
     """T-API-02: the same email in another case returns 409 email_taken."""
-    async with httpx.AsyncClient(base_url=server) as client:
+    async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
         first = await client.post("/api/auth/signup", json={
             "email": "Bob@Example.com", "password": "long-enough-1", "display_name": "Bob"})
         second = await client.post("/api/auth/signup", json={
@@ -50,7 +50,7 @@ async def test_api_02_duplicate_email_is_case_insensitive(server: str) -> None:
 async def test_api_03_login(users: Users, server: str) -> None:
     """T-API-03: wrong password and unknown email both return 401 invalid_credentials; right one logs in."""
     user = await users.new("carol")
-    async with httpx.AsyncClient(base_url=server) as client:
+    async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
         wrong = await client.post("/api/auth/login", json={"email": user.email, "password": "nope-nope-1"})
         unknown = await client.post("/api/auth/login", json={"email": "ghost@example.com", "password": "x" * 10})
         right = await client.post("/api/auth/login", json={"email": user.email.upper(), "password": "correct-horse-1"})
@@ -63,7 +63,7 @@ async def test_api_03_login(users: Users, server: str) -> None:
 
 async def test_api_04_unauthenticated(users: Users, server: str) -> None:
     """T-API-04: missing, expired or logged-out sessions return 401 unauthenticated."""
-    async with httpx.AsyncClient(base_url=server) as client:
+    async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
         missing = await client.get("/api/auth/me")
         claims = {"sub": "00000000-0000-0000-0000-000000000001", "iat": 1, "exp": int(time.time()) - 5}
         expired_token = jwt.encode(claims, TEST_JWT_SECRET, algorithm="HS256")

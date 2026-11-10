@@ -3,9 +3,9 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import ORJSONResponse
 
 from app.core.deps import current_user_id, idempotency_key, write_context
+from app.core.responses import JsonResponse
 from app.core.skills import CORE_ROLES, SKILLS
 from app.modules.hackathons import service
 from app.modules.hackathons.schemas import SetLookingIn
@@ -33,11 +33,11 @@ async def get_hackathon(hid: UUID, user_id: UUID = Depends(current_user_id)) -> 
 
 @router.post("/hackathons/{hid}/register")
 async def register(hid: UUID, request: Request, user_id: UUID = Depends(current_user_id),
-                   key: str = Depends(idempotency_key)) -> ORJSONResponse:
+                   key: str = Depends(idempotency_key)) -> JsonResponse:
     """POST /api/hackathons/{hid}/register."""
     ctx = write_context(request, user_id, key, "register", {"hid": hid})
     outcome = await service.register(ctx, hid)
-    return ORJSONResponse(outcome.body, status_code=outcome.status)
+    return JsonResponse(outcome.body, status_code=outcome.status)
 
 
 @router.get("/hackathons/{hid}/me")
@@ -48,8 +48,8 @@ async def my_status(hid: UUID, user_id: UUID = Depends(current_user_id)) -> dict
 
 @router.patch("/hackathons/{hid}/me")
 async def set_looking(hid: UUID, body: SetLookingIn, request: Request, user_id: UUID = Depends(current_user_id),
-                      key: str = Depends(idempotency_key)) -> ORJSONResponse:
+                      key: str = Depends(idempotency_key)) -> JsonResponse:
     """PATCH /api/hackathons/{hid}/me."""
     ctx = write_context(request, user_id, key, "set_looking", {"hid": hid}, body.model_dump())
     outcome = await service.set_looking(ctx, hid, body.looking)
-    return ORJSONResponse(outcome.body, status_code=outcome.status)
+    return JsonResponse(outcome.body, status_code=outcome.status)

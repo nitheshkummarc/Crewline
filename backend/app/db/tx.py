@@ -86,7 +86,7 @@ def _replay(row: asyncpg.Record | None, ctx: WriteContext) -> Outcome:
         raise StateChanged()
     if row["request_hash"] != ctx.request_hash:
         raise IdempotencyKeyMismatch()
-    return Outcome(row["response_status"], row["response_body"], store=False)
+    return Outcome(row["response_status"], orjson.loads(row["response_body"]), store=False)
 
 
 async def replay_fast_path(ctx: WriteContext) -> Outcome | None:

@@ -5,15 +5,26 @@ When 50 people race for the last seat, exactly one gets it, and retries, crashes
 
 Status: in development. CI badge and live URL are added once available.
 
+## Project layout
+
+| Folder | Contents |
+|---|---|
+| `backend/` | FastAPI service (`app/`), tests (`tests/api`, `tests/concurrency`, `tests/unit`) |
+| `database/` | SQL migrations, migration runner, invariant checker, local dev PostgreSQL |
+| `frontend/` | React + TypeScript app (in progress) |
+| `docs/` | Architecture, decisions, API, verification, plan, bug diary |
+
 ## Run it
 
+Without Docker (uses PostgreSQL 16 binaries bundled in the `pgserver` package):
+
 ```
-docker compose up -d --build          # Postgres 16 + API serving the web app on http://localhost:8000
-make race                             # 50-way last-seat race test and the negative control
-make invariants                       # database invariant checker
+uv sync --project backend
+uv run --project backend pytest backend/tests -q        # starts the test database, runs all tests including the races
+uv run --project backend python database/dev_db.py start  # local dev database, prints DATABASE_URL
 ```
 
-Without make (Windows): see the command table in [CLAUDE.md](CLAUDE.md).
+With Docker (planned): `docker compose up -d --build`. All commands are in [CLAUDE.md](CLAUDE.md).
 
 ## What to look at
 

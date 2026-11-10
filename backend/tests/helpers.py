@@ -1,13 +1,22 @@
 """Test helpers: users with their own HTTP client, hackathons, keys and raw queries."""
 
+import ssl
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
 import asyncpg
 import httpx
+import jwt
+
+from app.db.pools import init_connection
 
 TEST_JWT_SECRET = "test-secret-0123456789abcdef0123456789abcdef"
+
+# One TLS context for every test client: httpx builds a new one per client by default, which loads the
+# CA bundle and costs about 235 ms on Windows (50 clients per race round = 12 s).
+SHARED_TLS = ssl.create_default_context()
 
 SERVER_ENV = {
     "JWT_SECRET": TEST_JWT_SECRET,
@@ -18,6 +27,7 @@ SERVER_ENV = {
     "RATE_SIGNUP_PER_HOUR": "1000000",
     "RATE_LOGIN_PER_MIN": "1000000",
     "RATE_MUTATIONS_PER_MIN": "1000000",
+    "RATE_CODE_PER_IP_MIN": "1000000",
     "SSE_HEARTBEAT_S": "1",
     "LOG_LEVEL": "WARNING",
 }
@@ -68,7 +78,7 @@ class Users:
 
     def client(self) -> httpx.AsyncClient:
         """Return a new tracked client for the server."""
-        client = httpx.AsyncClient(base_url=self.base, timeout=30)
+        client = httpx.AsyncClient(base_url=self.base, timeout=30, verify=SHARED_TLS)
         self.clients.append(client)
         return client
 
@@ -88,10 +98,51 @@ class Users:
             assert registered.status_code == 200, registered.text
         return user
 
+    async def bulk(self, db_url: str, count: int, hackathon: str, base: str | None = None) -> list[User]:
+        """Insert registered users directly and return them with minted session cookies (fast, for races)."""
+        conn = await asyncpg.connect(db_url)
+        try:
+            ids = await conn.fetch(
+                "INSERT INTO users (email, password_hash, display_name) "
+                "SELECT 'bulk-' || gen_random_uuid() || '@example.com', 'x', 'racer ' || g "
+                "FROM generate_series(1, $1) g RETURNING id, email", count)
+            await conn.execute(
+                "INSERT INTO participants (hackathon_id, user_id) SELECT $1, unnest($2::uuid[])",
+                uuid.UUID(hackathon), [row["id"] for row in ids])
+        finally:
+            await conn.close()
+        result = []
+        for row in ids:
+            client = httpx.AsyncClient(base_url=base or self.base, timeout=60, verify=SHARED_TLS,
+                                       cookies={"crewline_session": session_token(str(row["id"]))})
+            self.clients.append(client)
+            result.append(User(client=client, id=str(row["id"]), email=row["email"], name="racer"))
+        return result
+
     async def close(self) -> None:
         """Close every client."""
         for client in self.clients:
             await client.aclose()
+
+
+def session_token(user_id: str) -> str:
+    """Mint a session JWT for a user with the test secret."""
+    now = int(time.time())
+    return jwt.encode({"sub": user_id, "iat": now, "exp": now + 3600}, TEST_JWT_SECRET, algorithm="HS256")
+
+
+async def create_team(user: User, hackathon: str, name: str = "Team") -> tuple[str, str]:
+    """Create a team as the user and return (team id, invite code)."""
+    created = await user.post(f"/api/hackathons/{hackathon}/teams", {"name": name})
+    assert created.status_code == 201, created.text
+    team_id = created.json()["id"]
+    invite = await user.get(f"/api/teams/{team_id}/invite")
+    return team_id, invite.json()["code"]
+
+
+async def join(user: User, code: str) -> httpx.Response:
+    """Join a team by invite code."""
+    return await user.post("/api/teams/join", {"code": code})
 
 
 async def make_hackathon(db_url: str, min_size: int = 2, max_size: int = 4, ttl: str = "48 hours",
@@ -108,8 +159,9 @@ async def make_hackathon(db_url: str, min_size: int = 2, max_size: int = 4, ttl:
 
 
 async def query(db_url: str, sql: str, *args: Any) -> list[asyncpg.Record]:
-    """Run a raw query and return its rows."""
+    """Run a raw query (json and jsonb decoded like the app) and return its rows."""
     conn = await asyncpg.connect(db_url)
+    await init_connection(conn)
     try:
         return await conn.fetch(sql, *args)
     finally:

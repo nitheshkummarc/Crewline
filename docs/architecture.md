@@ -201,11 +201,14 @@ CREATE TABLE idempotency_keys (
   key              text NOT NULL CHECK (char_length(key) BETWEEN 16 AND 64),
   request_hash     text NOT NULL,
   response_status  int,
-  response_body    jsonb,
+  response_body    jsonb,   -- changed to text by 0002: exact JSON so replays are byte-identical (B-14)
   created_at       timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, key)
 );
 CREATE INDEX idempotency_keys_created ON idempotency_keys (created_at);
+
+-- database/migrations/0002_idempotency_text_body.sql
+ALTER TABLE idempotency_keys ALTER COLUMN response_body TYPE text USING response_body::text;
 
 CREATE TABLE audit_events (
   seq           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -602,6 +605,8 @@ Withdraw is the only path that takes a request row without the team row first. I
 
 - Connection budget: `workers × (read + write + 1) + reserve`. Local: 2 workers × 21 + 5 = 47. Render free: 1 worker × 21 + 5 = 26. Must stay below the provider limit (check the Neon compute's `max_connections` and record it in the load report).
 - Direct connections everywhere (no PgBouncer). LISTEN does not work through a transaction pooler, and the budget fits without one. If it ever does not fit: point the pools at the pooled endpoint with `statement_cache_size=0` and keep the listener on the direct URL.
+- Pools open every connection at startup and never close idle ones (`min_size = max_size`, `max_inactive_connection_lifetime = 0`): a cold backend costs 60 to 130 ms on first use (bug B-20, ADR-020).
+- Every connection decodes `uuid` to the standard `uuid.UUID` and `json`/`jsonb` with orjson (bug B-15).
 - Acquire timeout 1 s: `asyncpg` `TimeoutError` → 503 `busy` with `Retry-After: 1`.
 - Write in-flight cap: 30 per worker (an `asyncio.Semaphore` checked without waiting). Excess returns 503 immediately, so a stampede queues in clients, not on connections.
 - Race-test configuration overrides `WRITE_POOL_MAX=60` and `WRITE_INFLIGHT_MAX=100` so that 50 requests truly overlap in PostgreSQL.

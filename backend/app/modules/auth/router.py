@@ -3,9 +3,9 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
-from fastapi.responses import ORJSONResponse
 
 from app.core.deps import client_ip, current_user_id, idempotency_key, write_context
+from app.core.responses import JsonResponse
 from app.core.security import clear_session_cookie, issue_token, set_session_cookie
 from app.modules.auth import service
 from app.modules.auth.schemas import LoginIn, SignupIn, UpdateMeIn
@@ -45,8 +45,8 @@ async def me(user_id: UUID = Depends(current_user_id)) -> dict:
 
 @router.patch("/users/me")
 async def update_me(body: UpdateMeIn, request: Request, user_id: UUID = Depends(current_user_id),
-                    key: str = Depends(idempotency_key)) -> ORJSONResponse:
+                    key: str = Depends(idempotency_key)) -> JsonResponse:
     """PATCH /api/users/me."""
     ctx = write_context(request, user_id, key, "update_profile", {}, body.model_dump(exclude_unset=True))
     outcome = await service.update_profile(ctx, body)
-    return ORJSONResponse(outcome.body, status_code=outcome.status)
+    return JsonResponse(outcome.body, status_code=outcome.status)

@@ -39,10 +39,10 @@ async def claim(conn: asyncpg.Connection, user_id: UUID, key: str, req_hash: str
 
 
 async def store(conn: asyncpg.Connection, user_id: UUID, key: str, status: int, body: Any) -> None:
-    """Save the success response on the claimed row."""
+    """Save the success response on the claimed row as exact JSON text (key order preserved)."""
     await conn.execute(
         "UPDATE idempotency_keys SET response_status = $3, response_body = $4 "
-        "WHERE user_id = $1 AND key = $2", user_id, key, status, body)
+        "WHERE user_id = $1 AND key = $2", user_id, key, status, orjson.dumps(body).decode())
 
 
 async def purge_expired(pool: asyncpg.Pool, ttl_hours: int) -> int:

@@ -1,6 +1,7 @@
 """Read and write asyncpg pools."""
 
 import asyncio
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -13,11 +14,12 @@ from app.core.errors import Busy
 
 
 async def init_connection(conn: asyncpg.Connection) -> None:
-    """Register json and jsonb codecs that use orjson."""
+    """Register orjson codecs for json/jsonb and decode uuid to the standard uuid.UUID (orjson-serializable)."""
     for typename in ("json", "jsonb"):
         await conn.set_type_codec(
             typename, schema="pg_catalog",
-            encoder=lambda value: orjson.dumps(value).decode(), decoder=orjson.loads)
+            encoder=lambda value: orjson.dumps(value, default=str).decode(), decoder=orjson.loads)
+    await conn.set_type_codec("uuid", schema="pg_catalog", encoder=str, decoder=uuid.UUID, format="text")
 
 
 @dataclass
@@ -33,10 +35,11 @@ _pools: Pools | None = None
 
 
 async def create_pools(settings: Settings) -> Pools:
-    """Open both pools with their server settings and application names."""
+    """Open both pools fully at startup and never reap idle connections (cold backends cost 20-70 ms on first use)."""
     global _pools
     write = await asyncpg.create_pool(
-        settings.database_url, min_size=1, max_size=settings.write_pool_max, init=init_connection,
+        settings.database_url, min_size=settings.write_pool_max, max_size=settings.write_pool_max,
+        max_inactive_connection_lifetime=0, init=init_connection,
         server_settings={
             "lock_timeout": "1000",
             "statement_timeout": "3000",
@@ -44,7 +47,8 @@ async def create_pools(settings: Settings) -> Pools:
             "application_name": "crewline-write",
         })
     read = await asyncpg.create_pool(
-        settings.database_url, min_size=1, max_size=settings.read_pool_max, init=init_connection,
+        settings.database_url, min_size=settings.read_pool_max, max_size=settings.read_pool_max,
+        max_inactive_connection_lifetime=0, init=init_connection,
         server_settings={"statement_timeout": "2000", "application_name": "crewline-read"})
     _pools = Pools(read=read, write=write, acquire_timeout=settings.pool_acquire_timeout_s)
     return _pools

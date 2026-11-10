@@ -82,12 +82,13 @@ Idempotency key hashing, lookup, claim and store.
 | `purge_loop(pool, ttl_hours)` | Run purge_expired every hour | done |
 
 ### backend/app/core/invite_codes.py
-Invite code generation and normalization.
+Invite code generation and normalization (10 Crockford base32 characters, about 50 bits).
 | Name | Purpose | Status |
 |---|---|---|
-| `generate_code()` | Return 10 random Crockford base32 characters | planned |
-| `normalize_code(raw)` | Uppercase, strip dashes and spaces, map O/I/L; return None if malformed | planned |
-| `format_code(code)` | Return the code as `XXXXX-XXXXX` for display | planned |
+| `ALPHABET`, `LENGTH` | Crockford base32 alphabet and code length | done |
+| `generate_code()` | Return 10 random Crockford base32 characters | done |
+| `normalize_code(raw)` | Uppercase, strip dashes and spaces, map O/I/L; return None if malformed | done |
+| `format_code(code)` | Return the code as XXXXX-XXXXX for display | done |
 
 ### backend/app/core/timezones.py
 IANA time zone validation and current offsets.
@@ -150,6 +151,13 @@ Request id and access log middleware (pure ASGI, safe for streaming responses). 
 |---|---|---|
 | `RequestIdMiddleware` | Accept or create X-Request-ID, attach it to the request and response, log one line per request | done |
 
+### backend/app/core/responses.py
+JSON response rendered with orjson (FastAPI deprecated its ORJSONResponse).
+| Name | Purpose | Status |
+|---|---|---|
+| `JsonResponse` | Render content with orjson; default response class of the app | done |
+| `JsonResponse.render(content)` | Return the JSON bytes for content | done |
+
 ### backend/app/core/skills.py
 Fixed skill taxonomy and core roles.
 | Name | Purpose | Status |
@@ -161,12 +169,12 @@ Fixed skill taxonomy and core roles.
 ## API database layer
 
 ### backend/app/db/pools.py
-Read and write asyncpg pools.
+Read and write asyncpg pools (opened fully at startup, idle connections never reaped).
 | Name | Purpose | Status |
 |---|---|---|
-| `init_connection(conn)` | Register json and jsonb codecs that use orjson | done |
+| `init_connection(conn)` | Register orjson codecs for json/jsonb and decode uuid to the standard uuid.UUID | done |
 | `Pools` | Holds the read and write pools and the acquire timeout | done |
-| `create_pools(settings)` | Open both pools with their server settings and application names (`crewline-read`, `crewline-write`) | done |
+| `create_pools(settings)` | Open both pools fully at startup with their server settings and application names (`crewline-read`, `crewline-write`) | done |
 | `close_pools()` | Close both pools | done |
 | `pools()` | Return the open pools | done |
 | `read_conn()` | Acquire a read connection with the acquire timeout; 503 busy on timeout | done |
@@ -288,63 +296,74 @@ Hackathon and participant SQL.
 | `my_requests(conn, hid, user_id)` | Return the caller's join requests in a hackathon, newest first | done |
 
 ### backend/app/modules/teams/router.py
-Team endpoints.
+Team endpoints, including the team audit log.
 | Name | Purpose | Status |
 |---|---|---|
-| `create_team(hid, body, ...)` | POST /api/hackathons/{hid}/teams | planned |
-| `get_team(tid)` | GET /api/teams/{tid} | planned |
-| `update_team(tid, body, ...)` | PATCH /api/teams/{tid} | planned |
-| `join_by_code(body, ...)` | POST /api/teams/join | planned |
-| `leave(tid, ...)` | POST /api/teams/{tid}/leave | planned |
-| `remove_member(tid, uid, ...)` | DELETE /api/teams/{tid}/members/{uid} | planned |
-| `finalize(tid, ...)` | POST /api/teams/{tid}/finalize | planned |
-| `reopen(tid, ...)` | POST /api/teams/{tid}/reopen | planned |
-| `get_invite(tid, user_id)` | GET /api/teams/{tid}/invite | planned |
-| `regenerate_invite(tid, ...)` | POST /api/teams/{tid}/invite/regenerate | planned |
+| `_respond(outcome)` | Render a write outcome | done |
+| `create_team(hid, body, ...)` | POST /api/hackathons/{hid}/teams | done |
+| `join_by_code(body, ...)` | POST /api/teams/join | done |
+| `get_team(tid)` | GET /api/teams/{tid} | done |
+| `update_team(tid, body, ...)` | PATCH /api/teams/{tid} | done |
+| `leave(tid, ...)` | POST /api/teams/{tid}/leave | done |
+| `remove_member(tid, uid, ...)` | DELETE /api/teams/{tid}/members/{uid} | done |
+| `finalize(tid, ...)` | POST /api/teams/{tid}/finalize | done |
+| `reopen(tid, ...)` | POST /api/teams/{tid}/reopen | done |
+| `get_invite(tid, user_id)` | GET /api/teams/{tid}/invite | done |
+| `regenerate_invite(tid, ...)` | POST /api/teams/{tid}/invite/regenerate | done |
+| `team_audit(tid, user_id, limit, cursor)` | GET /api/teams/{tid}/audit for members | done |
 
 ### backend/app/modules/teams/schemas.py
-Team request and response models.
+Team request models (responses are the `team_snapshot` shape plus `members`).
 | Name | Purpose | Status |
 |---|---|---|
-| `CreateTeamIn`, `UpdateTeamIn`, `JoinIn`, `TeamSummaryOut`, `MemberOut`, `TeamDetailOut`, `InviteOut`, `LeaveOut` | Validated models | planned |
+| `CreateTeamIn` | Body for POST /api/hackathons/{hid}/teams | done |
+| `UpdateTeamIn` | Body for PATCH /api/teams/{tid}; at least one field | done |
+| `JoinIn` | Body for POST /api/teams/join | done |
 
 ### backend/app/modules/teams/service.py
 Team rules and transactions (architecture.md 6.1, 6.2, 6.7 to 6.10).
 | Name | Purpose | Status |
 |---|---|---|
-| `create_team(ctx, hid, name)` | Create a team with the caller as leader | planned |
-| `join_by_code(ctx, raw_code, ip)` | Normalize the code, check rate limits, then in one transaction take a seat and add the membership | planned |
-| `leave(ctx, tid)` | Remove the caller; promote a new leader or delete the team | planned |
-| `remove_member(ctx, tid, target)` | Leader removes a member | planned |
-| `finalize(ctx, tid)` | Leader finalizes a team that meets min size | planned |
-| `reopen(ctx, tid)` | Leader reopens a finalized team | planned |
-| `regenerate_invite(ctx, tid)` | Leader replaces the invite code | planned |
-| `update_team(ctx, tid, fields)` | Leader changes name or looking flag | planned |
-| `get_team(tid)` | Return team detail | planned |
-| `get_invite(tid, user_id)` | Return the invite code to a member | planned |
-| `_explain_join(code, user_id)` | After a rolled-back join: 200 already member, 404, 409 finalized / full / already_in_team / not_registered, or StateChanged | planned |
-| `_explain_leader_failure(conn, tid, user_id)` | Choose 404, 403 or 409 after a 0-row leader update | planned |
+| `_reraise_constraint(exc)` | Raise StateChanged for an invite code collision, the mapped DomainError, or the original error | done |
+| `_explain_leader_failure(tid, user_id)` | Raise 404 or 403 after a 0-row leader update; return the team state for further checks | done |
+| `get_team(tid)` | Return team detail or raise 404 | done |
+| `get_invite(tid, user_id)` | Return the invite code to a member | done |
+| `create_team(ctx, hid, name)` | Create a team with the caller as leader | done |
+| `_record_failed_code(user_id, ip)` | Count a failed invite code attempt against the user and IP limits | done |
+| `join_by_code(ctx, raw_code, ip)` | Normalize the code, check rate limits, then in one transaction take a seat and add the membership | done |
+| `_explain_join(code, user_id, ip)` | After a rolled-back join: 200 already member, 404, 409 finalized / full / already_in_team / not_registered, or StateChanged | done |
+| `_shrink(conn, ctx, team, leaver_id, action)` | Decrement a team after a member left or was removed; audit leader promotion and reopening | done |
+| `leave(ctx, tid)` | Remove the caller; promote a new leader or delete the team (tombstone version) | done |
+| `remove_member(ctx, tid, target)` | Leader removes a member | done |
+| `finalize(ctx, tid)` | Leader finalizes a team that meets min size | done |
+| `reopen(ctx, tid)` | Leader reopens a finalized team | done |
+| `regenerate_invite(ctx, tid)` | Leader replaces the invite code; the old code stops working immediately | done |
+| `update_team(ctx, tid, name, looking)` | Leader changes name or looking flag | done |
+| `team_audit(tid, user_id, before_seq, limit)` | Return a page of the team's audit events to a member | done |
 
 ### backend/app/modules/teams/repo.py
 Team and membership SQL.
 | Name | Purpose | Status |
 |---|---|---|
-| `insert_team(conn, hid, name, leader_id, code)` | Insert a team copying sizes and TTL from the hackathon | planned |
-| `insert_membership(conn, tid, hid, user_id)` | Insert a membership row | planned |
-| `take_seat_by_code(conn, code)` | Conditional seat UPDATE by invite code; return id, hackathon, count, version or None | planned |
-| `take_seat_as_leader(conn, tid, leader_id)` | Conditional seat UPDATE for an accept; return row or None | planned |
-| `lock_team(conn, tid)` | SELECT ... FOR UPDATE on the team row | planned |
-| `lock_team_shared(conn, tid)` | SELECT ... FOR SHARE on the team row | planned |
-| `delete_membership(conn, tid, user_id)` | Delete one membership; return True if a row was deleted | planned |
-| `shrink_team(conn, tid, leaver_id)` | Decrement count, reopen, promote earliest member if the leader left | planned |
-| `delete_team(conn, tid)` | Delete the team row (requests cascade) | planned |
-| `set_status(conn, tid, leader_id, from_status, to_status)` | Conditional status change by the leader | planned |
-| `set_invite(conn, tid, leader_id, code)` | Replace the invite code and expiry | planned |
-| `update_fields(conn, tid, leader_id, fields)` | Update name or looking by the leader | planned |
-| `find_by_code(conn, code)` | Return the team for an invite code | planned |
-| `get_membership(conn, hid, user_id)` | Return the caller's team id in a hackathon | planned |
-| `get_detail(conn, tid)` | Return the team snapshot and members | planned |
-| `get_state(conn, tid)` | Return id, leader, status, counts and expiry for error explanation | planned |
+| `insert_team(conn, hid, name, leader_id, code)` | Insert a team copying sizes and invite TTL from the hackathon; None if the hackathon does not exist | done |
+| `insert_membership(conn, tid, hid, user_id)` | Insert a membership row (unique per hackathon and user) | done |
+| `take_seat_by_code(conn, code)` | Conditional seat UPDATE by invite code; return id, hackathon, count, version or None | done |
+| `take_seat_as_leader(conn, tid, leader_id)` | Conditional seat UPDATE for an accept by the leader | done |
+| `lock_team(conn, tid)` | SELECT ... FOR UPDATE on the team row (paths that may delete the team) | done |
+| `lock_team_shared(conn, tid)` | SELECT ... FOR SHARE on the team row | done |
+| `delete_membership(conn, tid, user_id)` | Delete one membership; return True if a row was deleted | done |
+| `shrink_team(conn, tid, leaver_id)` | Decrement count, reopen, promote the earliest member if the leader left; return the new state | done |
+| `delete_team(conn, tid)` | Delete the team row (requests cascade) and return its last version | done |
+| `set_status(conn, tid, leader_id, from_status, to_status)` | Conditional status change by the leader (finalizing needs member_count >= min_size); return the new state | done |
+| `set_invite(conn, tid, leader_id, code)` | Replace the invite code and expiry by the leader | done |
+| `update_fields(conn, tid, leader_id, name, looking)` | Update name or looking by the leader | done |
+| `find_by_code(conn, code)` | Return the team for an invite code with an `active` flag for expiry | done |
+| `get_state(conn, tid)` | Return id, hackathon, leader, counts, sizes and status for error explanation | done |
+| `get_membership(conn, hid, user_id)` | Return the caller's team id in a hackathon, or None | done |
+| `is_member(conn, tid, user_id)` | True if the user is a member of the team | done |
+| `is_registered(conn, hid, user_id)` | True if the user is a participant of the hackathon | done |
+| `get_invite(conn, tid)` | Return the invite code and expiry of a team | done |
+| `get_detail(conn, tid)` | Return the team snapshot with its members in join order, or None | done |
 
 ### backend/app/modules/requests/router.py
 Join request endpoints.
@@ -457,10 +476,9 @@ Audit SQL.
 | `list_for_team(conn, tid, before_seq, limit)` | Keyset page of a team's audit events, newest first | done |
 
 ### backend/app/modules/audit/router.py
-Team audit endpoint.
+Removed: the team audit endpoint lives in `teams/router.py` (`team_audit`) because it needs the team membership check.
 | Name | Purpose | Status |
 |---|---|---|
-| `team_audit(tid, limit, cursor, user_id)` | GET /api/teams/{tid}/audit for members | planned |
 
 ### backend/app/modules/events/router.py
 SSE endpoint.
@@ -474,16 +492,23 @@ SSE endpoint.
 Fixtures for the test database, a real API server and per-test cleanup.
 | Name | Purpose | Status |
 |---|---|---|
-| `_admin_url()` | Return a server URL from TEST_DATABASE_URL, or start the local pgserver test instance | done |
-| `_database_url(admin_url, name)` | Return the admin URL pointed at another database | done |
-| `_free_port()` | Return a free local TCP port | done |
+| `admin_url()` | Return a server URL from TEST_DATABASE_URL, or start the local test instance | done |
+| `server_url` | The PostgreSQL server URL used by the test session | done |
 | `db_url` | Create a fresh test database with all migrations applied | done |
+| `server` | Run one real API server for the whole session and return its base URL | done |
+| `users` | Factory for signed-up users; closes their clients after the test | done |
+| `truncate(db_url)` | Remove all rows from every application table | done |
+| `clean_db` | Empty the database before a test and assert the invariants after it | done |
+
+### backend/tests/serverctl.py
+Start and stop real API servers and create databases for tests.
+| Name | Purpose | Status |
+|---|---|---|
+| `database_url(server_url, name)` | Return a server URL pointed at another database | done |
+| `create_database(server_url, name)` | Drop and recreate a database, apply all migrations, and return its URL | done |
+| `free_port()` | Return a free local TCP port | done |
 | `start_server(db_url, log_path, extra_env)` | Start uvicorn as a subprocess and wait until /readyz answers | done |
 | `stop_server(proc)` | Stop a server subprocess | done |
-| `server` | Run one real API server for the whole session and return its base URL | done |
-| `truncate(db_url)` | Remove all rows from every application table | done |
-| `users` | Factory for signed-up users; closes their clients after the test | done |
-| `clean_db` | Empty the database before a test and assert the invariants after it | done |
 
 ### backend/tests/api/conftest.py
 | Name | Purpose | Status |
@@ -491,31 +516,45 @@ Fixtures for the test database, a real API server and per-test cleanup.
 | `_clean` | Apply clean_db to every API test | done |
 
 ### backend/tests/helpers.py
-Test helpers: users with their own HTTP client, hackathons, keys and raw queries.
+Test helpers: users with their own HTTP client, hackathons, teams, keys and raw queries.
 | Name | Purpose | Status |
 |---|---|---|
-| `TEST_JWT_SECRET`, `SERVER_ENV` | Settings for the test server (large pools, relaxed signup/login/mutation limits) | done |
+| `TEST_JWT_SECRET`, `SERVER_ENV` | Settings for the test server (large pools, relaxed signup/login/mutation/per-IP code limits) | done |
+| `SHARED_TLS` | One TLS context for every test client (bug B-19) | done |
 | `key()` | Return a fresh idempotency key | done |
 | `User` | A signed-up user with an authenticated client; `get`, `send`, `post`, `patch`, `delete` | done |
-| `Users` | Factory that signs up users (optionally registers them) and closes their clients | done |
+| `Users` | Factory: `new` signs up (optionally registers), `bulk` inserts registered users with minted cookies, `close` | done |
+| `session_token(user_id)` | Mint a session JWT for a user with the test secret | done |
+| `create_team(user, hid, name)` | Create a team as the user and return (team id, invite code) | done |
+| `join(user, code)` | Join a team by invite code | done |
 | `make_hackathon(db_url, min_size, max_size, ttl, name)` | Insert a hackathon and return its id | done |
-| `query(db_url, sql, *args)` | Run a raw query and return its rows | done |
+| `query(db_url, sql, *args)` | Run a raw query (json and jsonb decoded like the app) and return its rows | done |
 
 ### backend/tests/concurrency/barrier.py
-Helpers to release many requests at once.
+Helpers to release many requests at the same instant and retry 503s with the same key.
 | Name | Purpose | Status |
 |---|---|---|
-| `fire_together(calls)` | Await all calls behind one asyncio.Event barrier | planned |
-| `retry_busy(call)` | Repeat a call with the same key until it is not 503 | planned |
+| `fire_together(calls)` | Await all calls behind one asyncio.Event barrier so they start together | done |
+| `retry_busy(send, attempts)` | Repeat a call until it is not 503 (the caller keeps the same idempotency key) | done |
+| `keyed(user, method, path, body, idem)` | Return a call that sends one logical request, retrying 503 with one fixed key | done |
+| `warm(users)` | Open each user's HTTP connection before a race | done |
+| `close(users)` | Close the clients of users that are no longer needed | done |
 
 ### backend/tests/concurrency/naive.py
-Test-only check-then-insert join for the negative control.
+Test-only check-then-insert join used as the negative control. Never imported by the app.
 | Name | Purpose | Status |
 |---|---|---|
-| `naive_join(conn, tid, user_id, sleep_s)` | Read count, sleep, insert membership, increment without a predicate | planned |
-| `weaken_schema(conn)` | Drop `teams_cap` in the test schema | planned |
+| `weaken_schema(conn)` | Drop the capacity CHECK so only the application logic can prevent over-filling | done |
+| `seed_team(conn, hid, members, max_size, racers)` | Insert a team with members and registered outsiders; return (team, code, racer ids) | done |
+| `naive_join(pool, tid, hid, user_id, sleep_s)` | Read count, sleep, insert membership, increment without a predicate | done |
 
-Test modules (`backend/tests/api/test_*.py`, `backend/tests/concurrency/test_*.py`, `backend/tests/unit/test_*.py`): one test function per ID in verification.md.
+### backend/tests/concurrency/conftest.py
+Concurrency test fixtures.
+| Name | Purpose | Status |
+|---|---|---|
+| `_deadlocks(db_url)` | Return the deadlock counter of the test database | done |
+| `_clean` | Apply clean_db to every concurrency test | done |
+| `no_deadlocks` | T-RACE-15: the deadlock counter must not increase during the concurrency suite | done |
 
 ## Scripts
 

@@ -154,6 +154,7 @@ Index:
 **Why.** A join stampede cannot starve board reads (bulkhead). Server settings avoid a `SET LOCAL` round trip per transaction. Fast 503 is better than a hung request.
 **Rejected.** PgBouncer transaction mode (breaks LISTEN and prepared statements; not needed at this budget).
 **Consequences.** Pool sizes are starting values; tune from the load test and record before/after numbers.
+**Changed 10 Nov 2026 (bug B-20).** Pools open all their connections at startup (`min_size = max_size`) and never close idle ones (`max_inactive_connection_lifetime = 0`). A new PostgreSQL backend pays catalog loading and statement planning on first use (measured 60 to 130 ms vs 4 ms warm), and asyncpg's default 300 s idle reaping would recreate cold connections after every quiet period. Cost: the connections are held permanently, which on Neon keeps the compute awake (the LISTEN connection already does); counted in the connection budget.
 
 ## ADR-021 Board: keyset pagination, partial index, 1 s byte cache {#adr-021}
 
