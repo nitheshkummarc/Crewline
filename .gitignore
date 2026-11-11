@@ -2,8 +2,12 @@
 .env
 .env.*
 !.env.example
+secrets/
+*.pem
+*.key
+*.log
 
-# Local dev database (scripts/dev_db.py)
+# Local dev database (database/dev_db.py)
 .devdb/
 
 # Python
@@ -22,8 +26,9 @@ web/dist/
 loadtest/tokens.json
 loadtest/results/
 
-# Third-party design skills (installed locally, see CLAUDE.md) and their working files
-.claude/skills/
+# Local-only assistant files and third-party design tools (never pushed)
+CLAUDE.md
+.claude/
 .taste-skill/
 
 # OS / editor

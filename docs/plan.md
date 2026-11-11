@@ -18,7 +18,7 @@ Last checkpoint: Wed 11 Nov 2026, end of module 5 plus guarantee tests. All 88 b
 | 8 Frontend | `frontend/` React app (run `/impeccable init` first) | planned |
 | 9 Ops | Dockerfile, Compose, GitHub Actions, deploy (Render + Neon), README, design doc numbers, video | planned |
 
-How to resume: start the dev database (`uv run --project backend python database/dev_db.py start --name test` happens automatically in tests), run `uv run --project backend pytest backend/tests -q` from the repo root (about 2 minutes), then continue with the module marked next. Read "Known pitfalls" in CLAUDE.md and docs/bug-diary.md first.
+How to resume: start the dev database (`uv run --project backend python database/dev_db.py start --name test` happens automatically in tests), run `uv run --project backend pytest backend/tests -q` from the repo root (about 2 minutes), then continue with the module marked next. Read docs/bug-diary.md (root causes of every bug so far) first.
 
 ## Scope tiers
 

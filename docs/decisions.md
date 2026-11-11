@@ -258,7 +258,7 @@ Index:
 
 ## ADR-036 Design skills for the web UI {#adr-036}
 
-**Decision.** Three design skills installed locally in `.claude/skills/` (git-ignored): `impeccable` (pbakaus, main skill for app UI), `emil-design-eng` (Emil Kowalski, motion and interaction polish), `design-taste-frontend` (Leonxlnx taste-skill, marketing pages only). Usage rules are in `.claude/rules/frontend.md`.
+**Decision.** Three design guidance tools used locally during UI work (not part of the repo): `impeccable` (pbakaus, main skill for app UI), `emil-design-eng` (Emil Kowalski, motion and interaction polish), `design-taste-frontend` (Leonxlnx taste-skill, marketing pages only).
 **Why.** The UI is judged on usability, phone and keyboard support; the skills raise visual quality without a component library.
 **Precedence.** Project rules (accessibility, data flow, consistency) win over any skill guidance. The app is an operational tool: restraint and clarity over effects. taste-skill's shader and scene effects are not used in the app.
-**Consequences.** Skill files are third-party and stay out of the submission repo; reinstall commands are in CLAUDE.md.
+**Consequences.** The tools are third-party and stay out of the submission repo.

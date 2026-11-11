@@ -77,7 +77,7 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 
 ## 3. Concurrency tests
 
-Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real uvicorn subprocess, write pool 60, one client per user, `asyncio.Event` barrier, retry 503 with the same key, exact assertions, invariants after.
+Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Event` barrier, retry 503 with the same key, exact assertions, invariants after.
 
 | ID | Scenario | Assertions | Status |
 |---|---|---|---|

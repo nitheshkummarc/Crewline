@@ -33,13 +33,11 @@ Reasons for each choice are in [decisions.md](decisions.md); endpoint contracts 
 
 ```
 Crewline/
-  CLAUDE.md                       project guide and rules
   README.md                       quick start, reviewer accounts, links
-  Makefile                        task shortcuts (raw commands in CLAUDE.md)
+  Makefile                        task shortcuts (raw commands in README)
   docker-compose.yml              postgres:16 + api service (backend serving the frontend build)
   Dockerfile                      multi-stage: build frontend, install backend, run uvicorn
   .github/workflows/ci.yml        lint, tests, race tests, invariants, compose smoke, k6 smoke
-  .claude/rules/                  path-scoped rules
   database/                       everything that owns the schema and data
     migrations/0001_init.sql      full schema below
     migrate.py                    apply migrations
@@ -757,9 +755,9 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 - `hooks/useEventStream.ts`: one EventSource per hackathon, refetch on open, merge `team` events by version, keep tombstones, refetch People board on `people` events, refresh request lists on `request` events, handle `resync`.
 - `lib/merge.ts`: `mergeTeam`, `mergeBoardPage` and the tombstone map, shared by event and refetch paths.
 - Time zone: signup and profile default to the browser's `Intl.DateTimeFormat().resolvedOptions().timeZone`; shown as the current offset.
-- Visual design: `/impeccable init` creates `PRODUCT.md` and `DESIGN.md` before UI work; design skill usage is in [.claude/rules/frontend.md](../.claude/rules/frontend.md).
+- Visual design: `PRODUCT.md` (who uses the app and for what) and `DESIGN.md` (tokens, type, spacing, components) are written before UI work.
 - Optimistic updates for join, accept, leave with rollback on error. 409 messages in an `aria-live` region.
-- Accessibility rules in [.claude/rules/frontend.md](../.claude/rules/frontend.md).
+- Accessibility: real buttons, links and labels; visible focus; logical tab order and a skip link; 44 px touch targets; works at 360 px; one `aria-live="polite"` region per page; focus moves sensibly after accept, decline or remove.
 
 ## 14. Configuration (environment variables)
 
