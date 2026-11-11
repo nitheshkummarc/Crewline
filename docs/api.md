@@ -92,18 +92,18 @@ interface AuditEvent { seq: number; action: string; actor_id: string | null; cre
 |---|---|---|---|---|
 | POST | `/api/auth/signup` | `{email, password (8..128), display_name, skills?, timezone?}` (IANA; default `UTC`) | 201 `User`, sets cookie | 400, 409 `email_taken`, 429 |
 | POST | `/api/auth/login` | `{email, password}` | 200 `User`, sets cookie | 400, 401 `invalid_credentials`, 429 |
-| POST | `/api/auth/logout` | — | 204, clears cookie | — |
-| GET | `/api/auth/me` | — | 200 `User` | 401 |
+| POST | `/api/auth/logout` | - | 204, clears cookie | - |
+| GET | `/api/auth/me` | - | 200 `User` | 401 |
 | PATCH | `/api/users/me` | `{display_name?, skills?, timezone?}` | 200 `User`; bumps the version of the user's teams and publishes `team` and `people` events | 400, 401, 422, 503 |
 
 ## Hackathons
 
 | Method | Path | Body | Success | Errors |
 |---|---|---|---|---|
-| GET | `/api/hackathons` | — | 200 `Hackathon[]` | 401 |
-| GET | `/api/hackathons/{hid}` | — | 200 `Hackathon` | 401, 404 |
-| POST | `/api/hackathons/{hid}/register` | — | 200 `{registered: true, looking}` (idempotent); publishes a `people` event when newly registered | 401, 404 |
-| GET | `/api/hackathons/{hid}/me` | — | 200 `{registered, looking, team: TeamSummary \| null, pending_requests: JoinRequest[]}` | 401, 404 |
+| GET | `/api/hackathons` | - | 200 `Hackathon[]` | 401 |
+| GET | `/api/hackathons/{hid}` | - | 200 `Hackathon` | 401, 404 |
+| POST | `/api/hackathons/{hid}/register` | - | 200 `{registered: true, looking}` (idempotent); publishes a `people` event when newly registered | 401, 404 |
+| GET | `/api/hackathons/{hid}/me` | - | 200 `{registered, looking, team: TeamSummary \| null, pending_requests: JoinRequest[]}` | 401, 404 |
 | PATCH | `/api/hackathons/{hid}/me` | `{looking: boolean}` | 200 same as above; publishes a `people` event when the flag changes | 401, 404, 409 `not_registered`, 422, 503 |
 
 ## Board
@@ -120,15 +120,15 @@ Teams board lists teams that are `forming`, `looking` and not full, newest first
 | Method | Path | Body | Success | Errors |
 |---|---|---|---|---|
 | POST | `/api/hackathons/{hid}/teams` | `{name}` | 201 `TeamDetail` | 400, 401, 404, 409 `not_registered` / `already_in_team`, 422, 503 |
-| GET | `/api/teams/{tid}` | — | 200 `TeamDetail` | 401, 404 |
+| GET | `/api/teams/{tid}` | - | 200 `TeamDetail` | 401, 404 |
 | PATCH | `/api/teams/{tid}` | `{name?, looking?}` | 200 `TeamDetail` | 400, 401, 403 `not_leader`, 404, 422, 503 |
 | POST | `/api/teams/join` | `{code}` | 200 `TeamDetail` (also when already a member of that team) | 400, 401, 404 `invite_invalid`, 409 `team_full` / `team_finalized` / `already_in_team` / `not_registered`, 422, 429, 503 |
-| POST | `/api/teams/{tid}/leave` | — | 200 `{team: TeamDetail \| null}` (null when deleted) | 401, 404, 409 `not_a_member`, 422, 503 |
-| DELETE | `/api/teams/{tid}/members/{uid}` | — | 200 `TeamDetail` | 401, 403 `not_leader`, 404, 409 `not_a_member` / `cannot_remove_self`, 422, 503 |
-| POST | `/api/teams/{tid}/finalize` | — | 200 `TeamDetail` | 401, 403, 404, 409 `below_min_size` / `team_finalized`, 422, 503 |
-| POST | `/api/teams/{tid}/reopen` | — | 200 `TeamDetail` | 401, 403, 404, 409 `not_finalized`, 422, 503 |
-| GET | `/api/teams/{tid}/invite` | — | 200 `{code: "ABCDE-FGHJK", expires_at}` | 401, 403 `members_only`, 404 |
-| POST | `/api/teams/{tid}/invite/regenerate` | — | 200 `{code, expires_at}` | 401, 403 `not_leader`, 404, 422, 503 |
+| POST | `/api/teams/{tid}/leave` | - | 200 `{team: TeamDetail \| null}` (null when deleted) | 401, 404, 409 `not_a_member`, 422, 503 |
+| DELETE | `/api/teams/{tid}/members/{uid}` | - | 200 `TeamDetail` | 401, 403 `not_leader`, 404, 409 `not_a_member` / `cannot_remove_self`, 422, 503 |
+| POST | `/api/teams/{tid}/finalize` | - | 200 `TeamDetail` | 401, 403, 404, 409 `below_min_size` / `team_finalized`, 422, 503 |
+| POST | `/api/teams/{tid}/reopen` | - | 200 `TeamDetail` | 401, 403, 404, 409 `not_finalized`, 422, 503 |
+| GET | `/api/teams/{tid}/invite` | - | 200 `{code: "ABCDE-FGHJK", expires_at}` | 401, 403 `members_only`, 404 |
+| POST | `/api/teams/{tid}/invite/regenerate` | - | 200 `{code, expires_at}` | 401, 403 `not_leader`, 404, 422, 503 |
 | GET | `/api/teams/{tid}/audit` | `limit`, `cursor` | 200 `{items: AuditEvent[], next_cursor}` | 401, 403 `members_only`, 404 |
 
 ## Join requests
@@ -136,11 +136,11 @@ Teams board lists teams that are `forming`, `looking` and not full, newest first
 | Method | Path | Body | Success | Errors |
 |---|---|---|---|---|
 | POST | `/api/teams/{tid}/requests` | `{message?}` (≤ 280) | 201 `JoinRequest`, or 200 with the existing pending one | 400, 401, 404, 409 `team_full` / `team_finalized` / `already_in_team` / `not_registered` / `too_many_pending_requests`, 422, 503 |
-| GET | `/api/teams/{tid}/requests` | — | 200 `JoinRequest[]` (pending, oldest first, hides users already in a team) | 401, 403 `not_leader`, 404 |
-| GET | `/api/hackathons/{hid}/my-requests` | — | 200 `JoinRequest[]` (all statuses, newest first, max 50) | 401, 404 |
-| POST | `/api/requests/{rid}/accept` | — | 200 `TeamDetail` | 401, 403 `not_leader`, 404, 409 `team_full` / `team_finalized` / `request_not_pending` / `already_in_team`, 422, 503 |
-| POST | `/api/requests/{rid}/decline` | — | 200 `JoinRequest` | 401, 403, 404, 409 `request_not_pending`, 422, 503 |
-| POST | `/api/requests/{rid}/withdraw` | — | 200 `JoinRequest` | 401, 404, 409 `request_not_pending`, 422, 503 |
+| GET | `/api/teams/{tid}/requests` | - | 200 `JoinRequest[]` (pending, oldest first, hides users already in a team) | 401, 403 `not_leader`, 404 |
+| GET | `/api/hackathons/{hid}/my-requests` | - | 200 `JoinRequest[]` (all statuses, newest first, max 50) | 401, 404 |
+| POST | `/api/requests/{rid}/accept` | - | 200 `TeamDetail` | 401, 403 `not_leader`, 404, 409 `team_full` / `team_finalized` / `request_not_pending` / `already_in_team`, 422, 503 |
+| POST | `/api/requests/{rid}/decline` | - | 200 `JoinRequest` | 401, 403, 404, 409 `request_not_pending`, 422, 503 |
+| POST | `/api/requests/{rid}/withdraw` | - | 200 `JoinRequest` | 401, 404, 409 `request_not_pending`, 422, 503 |
 
 A request is only created for a forming team with a free seat, but the team may fill afterwards. Such requests stay pending; the UI shows them with accept disabled while the team is full, and accepting returns 409 `team_full`.
 

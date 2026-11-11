@@ -50,9 +50,9 @@ All in milliseconds. Targets: writes p95 < 150 ms uncontended, suggestions p95 <
 | Run | Client p50 | Client p95 | Client p99 | req/s | Errors | Server-side p95 | Load client CPU |
 |---|---|---|---|---|---|---|---|
 | 1 client process, 100 users, 30 s | 157.7 | 184.7 | 197.3 | 623 | 0 | 15.7 | saturated |
-| 1 client process, 100 users, 20 s, 1 worker | 150.7 | 174.9 | 189.5 | 652 | 0 | — | 19.7 CPU-s in 20 s (100 %) |
-| 1 client process, 100 users, 20 s, 2 workers | 149.3 | 169.3 | 178.4 | 663 | 0 | — | 19.6 CPU-s in 20 s (100 %) |
-| **4 client processes x 25 users, 20 s** | **75.8** | **114.5** | **153.7** | **1,224** | **0** | — | 15 to 15.7 CPU-s each in 20 s |
+| 1 client process, 100 users, 20 s, 1 worker | 150.7 | 174.9 | 189.5 | 652 | 0 | - | 19.7 CPU-s in 20 s (100 %) |
+| 1 client process, 100 users, 20 s, 2 workers | 149.3 | 169.3 | 178.4 | 663 | 0 | - | 19.6 CPU-s in 20 s (100 %) |
+| **4 client processes x 25 users, 20 s** | **75.8** | **114.5** | **153.7** | **1,224** | **0** | - | 15 to 15.7 CPU-s each in 20 s |
 | 1 client process, 100 users, 15 s (after tuning) | 156.5 | 296.6 | 349.1 | 576 | 0 | 24.2 | 14.7 CPU-s in 15 s (98 %) |
 
 Spec target: board p95 < 200 ms at 100 concurrent users. Met with every load client configuration that is not CPU-saturated, and server-side p95 is 15.7 to 24 ms.

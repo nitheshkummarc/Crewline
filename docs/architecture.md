@@ -271,12 +271,12 @@ CREATE TRIGGER audit_events_notify AFTER INSERT ON audit_events
 | `teams_cap` | No team is ever over capacity or empty, even if app code is wrong | I2 |
 | `memberships_one_team_per_hackathon` | One team per person per hackathon | I4 |
 | `memberships_team_fk` (composite) | A membership's hackathon equals its team's hackathon | I6 |
-| `memberships_participant_fk` | Only registered participants can be members | — |
+| `memberships_participant_fk` | Only registered participants can be members | - |
 | `teams_min_when_finalized` | A finalized team meets the minimum size | I5 |
-| `join_requests_one_pending` | At most one pending request per user per team | — |
-| `join_requests_decided` | Decided requests always have `decided_at` | — |
-| `teams_invite_code_unique` + format | Codes are unique and well-formed | — |
-| `audit_events_append_only` trigger | Audit history cannot be edited | — |
+| `join_requests_one_pending` | At most one pending request per user per team | - |
+| `join_requests_decided` | Decided requests always have `decided_at` | - |
+| `teams_invite_code_unique` + format | Codes are unique and well-formed | - |
+| `audit_events_append_only` trigger | Audit history cannot be edited | - |
 
 Member count equals actual membership rows (I1) and the leader is a member (I3) are kept by transactions and checked by the invariant checker. They are not constraints: a leader-is-member FK would need a circular deferrable FK (rejected in ADR-030).
 
@@ -564,16 +564,16 @@ The version bump makes the board and every client treat the new team snapshot as
 
 | Operation | Idempotency | Team row(s) | Participant row | Request row | Membership | Audit |
 |---|---|---|---|---|---|---|
-| Create team | 1 | 2 (new row) | FK KEY SHARE | — | 3 insert | 4 |
-| Join by code | 1 | 2 UPDATE | FK KEY SHARE | — | 3 insert | 4 |
-| Create request | 1 | 2 FOR SHARE | 3 FOR NO KEY UPDATE | 4 insert | — | 5 |
+| Create team | 1 | 2 (new row) | FK KEY SHARE | - | 3 insert | 4 |
+| Join by code | 1 | 2 UPDATE | FK KEY SHARE | - | 3 insert | 4 |
+| Create request | 1 | 2 FOR SHARE | 3 FOR NO KEY UPDATE | 4 insert | - | 5 |
 | Accept | 1 | 2 UPDATE | FK KEY SHARE | 3 UPDATE | 4 insert | 5 |
-| Decline | 1 | 2 FOR SHARE | — | 3 UPDATE | — | 4 |
-| Withdraw | 1 | — | — | 2 UPDATE | — | 3 |
-| Leave / remove | 1 | 2 FOR UPDATE | — | (cascade on delete) | 3 delete | 4 |
-| Finalize / reopen / regenerate / update | 1 | 2 UPDATE | — | — | — | 3 |
-| Register / set looking | 1 | — | 2 INSERT / UPDATE | — | — | 3 |
-| Update profile | 1 | 2 FOR NO KEY UPDATE, ascending id (then users row) | — | — | — | 3 |
+| Decline | 1 | 2 FOR SHARE | - | 3 UPDATE | - | 4 |
+| Withdraw | 1 | - | - | 2 UPDATE | - | 3 |
+| Leave / remove | 1 | 2 FOR UPDATE | - | (cascade on delete) | 3 delete | 4 |
+| Finalize / reopen / regenerate / update | 1 | 2 UPDATE | - | - | - | 3 |
+| Register / set looking | 1 | - | 2 INSERT / UPDATE | - | - | 3 |
+| Update profile | 1 | 2 FOR NO KEY UPDATE, ascending id (then users row) | - | - | - | 3 |
 
 Withdraw is the only path that takes a request row without the team row first. It holds no other lock, so it cannot complete a cycle.
 
@@ -751,6 +751,12 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 
 - Vite + React 18 + TypeScript strict + React Router v6 + TanStack Query v5 + Tailwind CSS. No component library.
 - Routes: `/login`, `/signup`, `/` (hackathon list), `/h/:hid` (board with Teams and People tabs), `/h/:hid/teams/new`, `/h/:hid/join` (enter code, also accepts `?code=`), `/teams/:tid` (members, requests, invite code, leave, finalize, audit), `/me` (profile: name, skills, time zone).
+- Public pages: `/privacy` (what is stored and why, retention, the single session cookie, contact) and `/terms` (acceptable use, accounts, invite codes and requests, no warranty). Signup links to both and requires agreeing. A custom 404 page handles unknown routes.
+- Head: SVG and PNG favicons, apple-touch-icon, Open Graph and Twitter card tags with a 1200x630 preview image.
+- Forms validate on the client with the same limits as the API, show field errors next to the field (`aria-describedby`), and still render API `validation_error` messages.
+- Bot protection on signup and login: a hidden honeypot field and a minimum fill time checked by the server (a signed form token issued when the form renders; submissions under 2 s or with the honeypot filled are rejected), on top of the per-IP rate limits.
+- Content rules: one primary call to action per page; no gradients in the purple range; no pill-shaped buttons; no testimonials, invented counters or stats; specific headline copy; no AI badges or notes; no em dashes in any text.
+- No secrets in the bundle: only public `VITE_*` values; the session stays in the httpOnly cookie; invite codes are shown only to team members.
 - `api/client.ts`: same-origin fetch with credentials, adds `Idempotency-Key` to mutations, parses the error envelope, retries network errors and 503 with the same key (max 3, `Retry-After` plus jitter).
 - `hooks/useEventStream.ts`: one EventSource per hackathon, refetch on open, merge `team` events by version, keep tombstones, refetch People board on `people` events, refresh request lists on `request` events, handle `resync`.
 - `lib/merge.ts`: `mergeTeam`, `mergeBoardPage` and the tombstone map, shared by event and refetch paths.
@@ -763,9 +769,9 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DATABASE_URL` | — | Direct connection string for pools |
+| `DATABASE_URL` | - | Direct connection string for pools |
 | `DATABASE_LISTEN_URL` | `DATABASE_URL` | Direct connection for LISTEN |
-| `JWT_SECRET` | — | HS256 key (32+ random bytes) |
+| `JWT_SECRET` | - | HS256 key (32+ random bytes) |
 | `JWT_TTL_MIN` | `120` | Token lifetime |
 | `COOKIE_SECURE` | `true` | `false` only for local HTTP |
 | `READ_POOL_MAX` / `WRITE_POOL_MAX` | `10` / `10` | Pool sizes per worker |
