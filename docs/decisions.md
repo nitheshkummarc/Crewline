@@ -192,6 +192,7 @@ Index:
 **Decision.** API and built SPA in one Render free web service; Neon free Postgres; both in Singapore. External keep-warm ping.
 **Why.** Same region keeps database round trips around 1 to 2 ms; same origin avoids CORS and cookie issues for SSE; Singapore is closest to India for both providers.
 **Risks.** Render free sleeps and has little CPU; Neon scales to zero. Both are tested Friday and reported honestly in the load report.
+**Changed 11 Nov 2026.** The Neon project runs PostgreSQL 18 (Neon's default for new projects), while development, Compose and the original CI used 16. CI now runs the API and race tests on both 16 and 18, so the guarantees are proven on the production version too.
 
 ## ADR-027 Tests against real PostgreSQL through a real server {#adr-027}
 

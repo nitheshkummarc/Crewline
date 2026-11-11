@@ -7,6 +7,10 @@ secrets/
 *.key
 *.log
 
+# Neon CLI link file and agent MCP config written by `neon init` (local only, may hold keys)
+.neon
+.mcp.json
+
 # Local dev database (database/dev_db.py)
 .devdb/
 

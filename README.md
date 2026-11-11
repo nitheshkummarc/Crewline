@@ -68,7 +68,7 @@ Run `npm --prefix frontend run build` before starting the API to serve the web a
 
 ## Stack
 
-FastAPI (Python 3.11+, asyncpg, raw SQL) · PostgreSQL 16 · React + TypeScript + TanStack Query · SSE · k6 · Docker Compose · GitHub Actions.
+FastAPI (Python 3.11+, asyncpg, raw SQL) · PostgreSQL 16 locally, 18 on Neon (CI tests both) · React + TypeScript + TanStack Query · SSE · k6 · Docker Compose · GitHub Actions.
 
 ## Reviewer accounts (live demo)
 

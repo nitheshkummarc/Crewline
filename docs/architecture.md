@@ -39,7 +39,7 @@ Crewline/
   Dockerfile                      multi-stage: build frontend, install backend, run uvicorn
   render.yaml                     Render Blueprint for the deploy (Singapore, Docker, free plan)
   .github/workflows/ci.yml        lint, API tests, race tests, web tests, e2e, k6 smoke, invariants
-  .github/scripts/                start-postgres.sh (postgres:16, max_connections=300), start-api.sh (background API, waits for /readyz)
+  .github/scripts/                start-postgres.sh (postgres:$PG_VERSION, default 16, max_connections=300), start-api.sh (background API, waits for /readyz)
   database/                       everything that owns the schema and data
     migrations/0001_init.sql      full schema below
     migrate.py                    apply migrations
@@ -812,7 +812,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 | Piece | Choice |
 |---|---|
 | API + web | Render free web service, region Singapore, Docker image from the repo `Dockerfile`, 1 uvicorn worker; defined in `render.yaml` (Blueprint: health check `/healthz`, generated `JWT_SECRET`, `DATABASE_URL` entered in the dashboard, `CREWLINE_PUBLIC_URL` as a build argument) |
-| Database | Neon free Postgres 16, region AWS ap-southeast-1 (Singapore), direct connection string |
+| Database | Neon free plan, PostgreSQL 18 (18.6 measured on the project), region AWS ap-southeast-1 (Singapore). `DATABASE_URL` is Neon's direct (unpooled) string with `channel_binding=require` removed: asyncpg 0.32 sends unknown URL parameters as server settings and the server rejects `channel_binding` (reproduced locally); `sslmode=require` stays. The pooled `-pooler` host is not used because LISTEN needs a session |
 | Migrations | `database/migrate.py` runs at container start before uvicorn |
 | Demo data | Small seed on the live DB: 1 hackathon, about 300 users, about 40 teams, 2 reviewer accounts (in README) |
 | Keep warm | External ping to `/healthz` every 10 minutes (Render free sleeps after 15 minutes idle) through 30 Nov |

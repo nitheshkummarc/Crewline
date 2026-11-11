@@ -236,13 +236,13 @@ Real bugs found during the build go to [bug-diary.md](bug-diary.md).
 
 ## 11. CI pipeline (.github/workflows/ci.yml)
 
-Runs on every push (any branch), every pull request and on demand. Every job that needs a database starts `postgres:16` with `max_connections=300` through `.github/scripts/start-postgres.sh` (a service container cannot pass server flags, and the concurrency tests run several servers at once, like `dev_db.py` locally). Jobs that need a running API start it with `.github/scripts/start-api.sh` and upload its log on failure. The pytest, Playwright and k6 jobs post their result line (test counts; board p50, p95, p99, max and req/s) as an annotation on the run page. All steps run in bash with `pipefail`, so piping into `tee` cannot hide a failure.
+Runs on every push (any branch), every pull request and on demand. Every job that needs a database starts `postgres:16` (or `postgres:18` in the API and race matrix jobs) with `max_connections=300` through `.github/scripts/start-postgres.sh` (a service container cannot pass server flags, and the concurrency tests run several servers at once, like `dev_db.py` locally). Jobs that need a running API start it with `.github/scripts/start-api.sh` and upload its log on failure. The pytest, Playwright and k6 jobs post their result line (test counts; board p50, p95, p99, max and req/s) as an annotation on the run page. All steps run in bash with `pipefail`, so piping into `tee` cannot hide a failure.
 
 | Job | Steps | Fails when |
 |---|---|---|
 | `lint` | ruff, mypy (inside `backend/`), `tsc -b`, eslint | Any error |
-| `api-tests` | PostgreSQL 16, pytest `backend/tests/api backend/tests/unit` (migrations applied by the fixture), invariants on the test database | Any failure or violation |
-| `race-tests` | PostgreSQL 16, pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20` (races, negative control, guarantees, deadlock counter check), invariants | Any failure, violation or deadlock |
+| `api-tests` | Matrix PostgreSQL 16 and 18 (18 is what Neon runs), pytest `backend/tests/api backend/tests/unit` (migrations applied by the fixture), invariants on the test database | Any failure or violation |
+| `race-tests` | Matrix PostgreSQL 16 and 18, pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20` (races, negative control, guarantees, deadlock counter check), invariants | Any failure, violation or deadlock |
 | `web-tests` | `npm ci`, vitest, contrast check, production build | Any failure |
 | `e2e` | PostgreSQL 16, migrate, seed 300 users and 40 teams, build web, start the API with the pytest server's relaxed rate limits (bot check on), E2E-01 to 10 on 360 px and 1280 px in the runner's preinstalled Chrome (no browser download), invariants | Any failure or violation |
 | `compose-smoke` | `docker compose up -d --build --wait` (image built from the `Dockerfile`), then `.github/scripts/compose-smoke.sh`: `/readyz`, `database/seed.py` inside the API container, signup through the real bot check, register, create team (201), web app served at `/`; image size as an annotation | Any non-2xx or missing page |
