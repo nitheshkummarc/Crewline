@@ -55,7 +55,7 @@ Source: Hack4Hack Crew Hiring Challenge 2026, Problem Statement 1, "Race-proof t
 | ID | Bonus | Plan | Verification | Status |
 |---|---|---|---|---|
 | B1 | Optimistic UI with rollback on conflict | arch 13 | T-WEB-01, 02 | passing |
-| B2 | Docker Compose | arch 16 | CI compose smoke | planned (Tier 2) |
+| B2 | Docker Compose | arch 16 | CI compose smoke | passing (CI run 43066048160: image built, migrations, seed, signup, register, create team 201, web app served) |
 | B3 | Tracing or metrics | arch 12 (`/metrics`) | T-API-38 | passing |
 | B4 | Chaos test: kill the server mid-join, no corruption | ADR-028 | T-CHAOS-01 | passing |
 
