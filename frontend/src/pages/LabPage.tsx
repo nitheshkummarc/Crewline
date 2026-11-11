@@ -6,7 +6,7 @@ import * as api from '../api/endpoints';
 import type { QueueResult, RaceResult, SpamResult, WalkthroughResult } from '../api/types';
 import { Button } from '../components/Button';
 import { ErrorNotice } from '../components/ErrorNotice';
-import { HeroBanner } from '../components/HeroBanner';
+import { HeroBanner, HeroFact } from '../components/HeroBanner';
 import { LatencyView, type BrowserSample } from '../components/lab/LatencyView';
 import { QueueView } from '../components/lab/QueueView';
 import { RaceView } from '../components/lab/RaceView';
@@ -87,7 +87,8 @@ export default function LabPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <HeroBanner eyebrow="Race lab" titleId="page-title" title="Watch one seat go to exactly one person">
+      <HeroBanner titleId="page-title" title="Watch one seat go to exactly one person"
+        facts={<><HeroFact>Real requests, real database</HeroFact><HeroFact>Up to {max} at the same instant</HeroFact><HeroFact>Every SQL statement shown</HeroFact></>}>
         <p className="max-w-[60ch] text-shell-ink2">
           Every run fires real requests at the same instant against the real database, through the same code the app uses,
           in a hidden lab hackathon. Nothing here is simulated or replayed from a recording.

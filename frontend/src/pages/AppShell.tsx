@@ -114,7 +114,7 @@ export default function AppShell() {
     { to: '/lab', label: 'Race lab', icon: 'lab' },
     { to: '/me', label: 'Profile', icon: 'profile' },
   ];
-  const context = hackathon ? <span><span className="block text-[12px] font-semibold uppercase tracking-[0.08em] text-shell-ink2">Hackathon</span><span className="font-semibold">{hackathon.name}</span></span> : null;
+  const context = hackathon ? <span><span className="block text-[12px] text-shell-ink2">Hackathon</span><span className="font-semibold">{hackathon.name}</span></span> : null;
 
   return (
     <ShellContext.Provider value={shell}>

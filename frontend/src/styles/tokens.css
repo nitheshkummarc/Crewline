@@ -41,6 +41,11 @@
   --band-6: #4fa8ff;
   --band-7: #ff6b5b;
 
+  /* Event texture: dot grid on the canvas and soft sky and mint glows on banners, never on buttons. */
+  --dot: rgb(15 42 68 / 0.09);
+  --glow-1: rgb(62 197 240 / 0.34);
+  --glow-2: rgb(52 214 176 / 0.24);
+
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -65,6 +70,7 @@
   --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px rgb(0 0 0 / 0.45);
   --overlay: rgb(3 10 18 / 0.65);
   --shell: #0c2238;
+  --dot: rgb(176 198 218 / 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -88,5 +94,6 @@
     --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px rgb(0 0 0 / 0.45);
     --overlay: rgb(3 10 18 / 0.65);
     --shell: #0c2238;
+    --dot: rgb(176 198 218 / 0.08);
   }
 }

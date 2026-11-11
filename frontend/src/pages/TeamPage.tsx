@@ -72,7 +72,7 @@ export default function TeamPage() {
         <ArrowLeft size={16} aria-hidden="true" /> Board
       </Link>
 
-      <section aria-labelledby="page-title" style={bandStyle(data.id)} className="band relative overflow-hidden rounded-lg p-6 shadow-2 md:p-8">
+      <section aria-labelledby="page-title" style={bandStyle(data.id)} className="band-soft relative overflow-hidden rounded-lg p-6 shadow-2 md:p-8">
         <div className="flex flex-wrap items-center gap-3">
           <StateTag team={data} mine={isMember} />
           {isLeader && <span className="rounded-sm bg-band-ink px-2 py-[2px] text-[12px] font-bold uppercase tracking-wide text-[var(--band)]">You lead this team</span>}

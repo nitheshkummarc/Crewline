@@ -983,19 +983,19 @@ Skill taxonomy, short codes and color families.
 ### frontend/src/styles/
 | File | Purpose | Status |
 |---|---|---|
-| `tokens.css` | Color tokens (light default, dark from the system), shadows, the 8 team band colors | done |
-| `index.css` | Font, browser surfaces, type roles (`display`, `label`), cards and lift, band fields, live ping, seat fill and dialog keyframes, reduced motion | done |
+| `tokens.css` | Color tokens (light default, dark from the system or the switch), shadows, the 8 team band colors, dot and glow colors | done |
+| `index.css` | Font, dot-grid canvas, browser surfaces, type roles (`display`, sentence-case `label`), cards and lift, `band`, `band-soft`, `hero-surface`, live ping, seat fill and dialog keyframes, reduced motion | done |
 
 ### frontend/src/components/
 Presentational components (no data fetching).
 | File | Exports | Status |
 |---|---|---|
 | `ActivityFeed.tsx` | `ActivityFeed` (live feed, entries slide in, times refresh every 20 s), `ago(at, now)` | done |
-| `AuthShell.tsx` | `AuthShell` (dark panel with the headline and decorative wristband stripes beside the form), `HEADLINE` | done |
+| `AuthShell.tsx` | `AuthShell` (lit navy panel with the headline and three how-it-works steps beside the form), `HEADLINE` | done |
 | `Avatar.tsx` | `Avatar`: initials in the person's band color | done |
 | `BoardToolbar.tsx` | `BoardToolbar` (search, skill filter popover with needs or has, sort, removable filter chips), `SearchBox` | done |
 | `Button.tsx` | `Button` (primary, secondary, ghost, danger; md and sm; busy spinner; `data-variant`), `ButtonLink`, `buttonClass` | done |
-| `HeroBanner.tsx` | `HeroBanner`: page header on the navy brand field | done |
+| `HeroBanner.tsx` | `HeroBanner` (page header on the lit navy surface, optional facts row), `HeroFact` (one real fact) | done |
 | `ThemeToggle.tsx` | `ThemeToggle`: Light, Dark or System radio group | done |
 | `CommandPalette.tsx` | `CommandPalette` (cmdk list in a dialog: groups of items, arrow keys, Enter, Escape) | done |
 | `ConfirmDialog.tsx` | `ConfirmDialog`, `DIALOG_CLASS` | done |

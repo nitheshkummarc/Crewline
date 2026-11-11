@@ -148,7 +148,7 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-WEB-09 | Board filters: name search, skills a team needs or has, sort by open seats, URL round trip with defaults dropped, people search | passing |
 | T-WEB-10 | Activity feed: team events become readable items, non-news events skipped, deleted teams named from cache, newest first, duplicates ignored, capped at 30 | passing |
 | T-WEB-11 | Team colors are stable per id and spread over all 8 bands; initials from names | passing |
-| T-WEB-08 | Content rules in every frontend text file (source, configs, e2e, scripts, index.html, README; B-31): no em dash, no banned marketing words, no `rounded-full`, no gradients, no AI badge, no secrets, only public `VITE_` env values | passing |
+| T-WEB-08 | Content rules in every frontend text file (source, configs, e2e, scripts, index.html, README; B-31): no em dash, no banned marketing words, no `rounded-full`, no purple, gradients only in the style files and never on buttons, no AI badge, no secrets, only public `VITE_` env values | passing |
 
 ## 5b. End-to-end tests (Playwright, real API and database, phone 360 px and laptop 1280 px)
 

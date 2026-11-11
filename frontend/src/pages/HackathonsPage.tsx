@@ -15,8 +15,8 @@ export default function HackathonsPage() {
   const firstName = me.data?.display_name.split(' ')[0];
   return (
     <section aria-labelledby="page-title" className="flex flex-col gap-8">
-      <HeroBanner eyebrow={`Welcome${firstName ? `, ${firstName}` : ''}`} titleId="page-title" title="Hackathons">
-        <p className="max-w-[52ch] text-shell-ink2">Open a hackathon to see teams with open seats, the people looking for one, and everything that changes, live.</p>
+      <HeroBanner titleId="page-title" title="Hackathons">
+        <p className="max-w-[52ch] text-shell-ink2">{firstName ? `Welcome, ${firstName}. ` : ''}Open a hackathon to see teams with open seats, the people looking for one, and everything that changes, live.</p>
       </HeroBanner>
       {hackathons.isPending && <SkeletonCards count={2} label="Loading hackathons" />}
       {hackathons.error && <LoadError error={hackathons.error} onRetry={() => void hackathons.refetch()} />}
@@ -27,7 +27,7 @@ export default function HackathonsPage() {
         <ul className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {list.map((hackathon, index) => (
             <li key={hackathon.id} style={bandStyle(hackathon.id)} className="card card-lift flex flex-col overflow-hidden">
-              <div className="band flex min-h-[132px] flex-col justify-end gap-2 p-6">
+              <div className="band-soft flex min-h-[132px] flex-col justify-end gap-2 p-6">
                 <h2 className="display text-[26px] leading-8">
                   <Link to={`/h/${hackathon.id}`} className="hover:underline">{hackathon.name}</Link>
                 </h2>

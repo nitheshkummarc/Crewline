@@ -1,4 +1,4 @@
-// Layout for login and signup: the product headline on the navy brand panel with wristband stripes, beside the form.
+// Layout for login and signup: the headline and how Crewline works on the lit navy panel, beside the form.
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CONTACT_URL, Wordmark } from './Layout';
@@ -6,53 +6,34 @@ import { ThemeToggle } from './ThemeToggle';
 
 export const HEADLINE = 'Form a hackathon team. One seat, one winner, no double joins.';
 
-// Decorative stripes: each is a wristband with its seats; the last stripe has one seat left.
-const STRIPES: Array<{ band: number; taken: number; size: number; rotate: number }> = [
-  { band: 0, taken: 4, size: 4, rotate: -6 },
-  { band: 1, taken: 2, size: 4, rotate: 3 },
-  { band: 2, taken: 1, size: 4, rotate: -2 },
-  { band: 4, taken: 3, size: 4, rotate: 5 },
+const STEPS: Array<{ band: number; title: string; text: string }> = [
+  { band: 0, title: 'See who has a seat', text: 'Every team with an open seat, live, with the skills it still needs.' },
+  { band: 1, title: 'Join or ask', text: 'Use an invite code from a team, or send the leader a request.' },
+  { band: 5, title: 'One seat, one winner', text: 'When many people go for the last seat at once, exactly one gets it.' },
 ];
 
-function Stripes() {
-  return (
-    <div aria-hidden="true" className="pointer-events-none flex select-none flex-col gap-4">
-      {STRIPES.map((stripe, index) => (
-        <div key={index} className="flex h-14 items-center gap-2 rounded-md px-4 shadow-2 md:h-16"
-          style={{ background: `var(--band-${stripe.band})`, transform: `rotate(${stripe.rotate}deg) translateX(${index * 18}px)` }}>
-          <span className="h-3 w-16 rounded-sm bg-[color-mix(in_srgb,var(--band-ink)_80%,transparent)]" />
-          <span className="ml-auto flex gap-[6px]">
-            {Array.from({ length: stripe.size }, (_, seat) => (
-              <span key={seat} className={seat < stripe.taken
-                ? 'h-8 w-5 rounded-sm bg-[color-mix(in_srgb,var(--band-ink)_85%,transparent)]'
-                : 'h-8 w-5 rounded-sm border-2 border-dashed border-[var(--band-ink)]'} />
-            ))}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** Split screen: color panel with the headline and stripes, then the form; stacked on phones. */
+/** Split screen: lit navy panel with the headline and three steps, then the form; stacked on phones. */
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas md:grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+    <div className="flex min-h-dvh flex-col md:grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
       <a href="#main" className="sr-only z-50 rounded bg-plate px-4 py-3 text-plate-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to main content
       </a>
       <section aria-labelledby="headline"
-        className="relative flex flex-col justify-between gap-10 overflow-hidden bg-shell px-5 pb-10 pt-6 text-shell-ink md:px-12 md:py-12">
+        className="hero-surface relative flex flex-col justify-between gap-10 overflow-hidden px-5 pb-10 pt-6 text-shell-ink md:px-12 md:py-12">
         <div className="flex items-center justify-between gap-4"><Wordmark /><ThemeToggle onShell /></div>
-        <div className="relative z-10 flex flex-col gap-5">
-          <h1 id="headline" className="display max-w-[16ch] text-[34px] leading-[38px] md:text-[52px] md:leading-[56px]">{HEADLINE}</h1>
-          <ul className="flex max-w-[46ch] flex-col gap-2 text-shell-ink2">
-            <li>See every team with an open seat, live, as people join and leave.</li>
-            <li>Join with an invite code, or ask a leader and get an answer here.</li>
-            <li>When two people go for the last seat, exactly one gets it.</li>
-          </ul>
+        <div className="flex flex-col gap-8">
+          <h1 id="headline" className="display max-w-[15ch] text-[34px] leading-[38px] md:text-[54px] md:leading-[58px]">{HEADLINE}</h1>
+          <ol className="flex max-w-[480px] flex-col gap-4">
+            {STEPS.map((step, index) => (
+              <li key={step.title} className="flex items-start gap-4">
+                <span className="num band flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-lg font-bold"
+                  style={{ ['--band' as string]: `var(--band-${step.band})` }}>{index + 1}</span>
+                <span><span className="block font-bold">{step.title}</span><span className="text-shell-ink2">{step.text}</span></span>
+              </li>
+            ))}
+          </ol>
         </div>
-        <div className="hidden md:block"><Stripes /></div>
         <nav aria-label="Legal and contact" className="hidden gap-6 text-sm text-shell-ink2 md:flex">
           <Link to="/privacy" className="underline underline-offset-[3px] hover:text-shell-ink">Privacy</Link>
           <Link to="/terms" className="underline underline-offset-[3px] hover:text-shell-ink">Terms</Link>

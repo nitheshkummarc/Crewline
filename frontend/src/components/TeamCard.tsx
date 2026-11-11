@@ -28,7 +28,7 @@ export function TeamCard({ team, mine, actions }: CardProps) {
   return (
     <article style={bandStyle(team.id)} aria-labelledby={`team-${team.id}`}
       className={`card card-lift flex h-full flex-col overflow-hidden ${mine ? 'ring-2 ring-ok' : ''}`}>
-      <header className="band flex items-start justify-between gap-3 px-4 pb-3 pt-4">
+      <header className="band-soft flex items-start justify-between gap-3 px-4 pb-3 pt-4">
         <h3 id={`team-${team.id}`} className="display min-w-0 text-[19px] leading-6">
           <Link to={`/teams/${team.id}`} className="block truncate hover:underline">{team.name}</Link>
         </h3>

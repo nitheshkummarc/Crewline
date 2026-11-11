@@ -8,7 +8,7 @@
 
 @layer base {
   html {
-    background: var(--canvas);
+    background: radial-gradient(var(--dot) 1.2px, transparent 1.4px) 0 0 / 22px 22px, var(--canvas);
     color: var(--ink);
     font-family: 'Archivo Variable', system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
@@ -46,14 +46,24 @@
     font-weight: 760;
     letter-spacing: -0.015em;
   }
+  /* Small field label in sentence case (no tracked uppercase). */
   .label {
-    font-stretch: 100%;
     font-weight: 620;
-    font-size: 12px;
-    line-height: 16px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: 13px;
+    line-height: 18px;
     color: var(--ink-2);
+  }
+  /* Navy banner lit by a sky glow top right and a mint glow bottom left. */
+  .hero-surface {
+    background:
+      radial-gradient(circle at 88% 8%, var(--glow-1), transparent 46%),
+      radial-gradient(circle at 4% 112%, var(--glow-2), transparent 50%),
+      var(--shell);
+  }
+  /* A team's band color with a soft lighter end, for card headers and heroes. */
+  .band-soft {
+    background: linear-gradient(120deg, var(--band) 0%, color-mix(in srgb, var(--band) 72%, #ffffff) 100%);
+    color: var(--band-ink);
   }
   .num {
     font-variant-numeric: tabular-nums;

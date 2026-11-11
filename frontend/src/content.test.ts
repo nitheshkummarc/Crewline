@@ -29,12 +29,15 @@ describe('T-WEB-08 content rules', () => {
     for (const path of SOURCES) expect(banned.exec(read(path))?.[0], path).toBeUndefined();
   });
 
-  it('has no pill-shaped buttons and no gradients (rules 11, 13)', () => {
+  it('has no pill-shaped buttons; gradients are subtle, defined in the style files, never purple (rules 11, 13)', () => {
     for (const path of SOURCES) {
       const text = read(path);
       expect(text.includes('rounded-full'), path).toBe(false);
-      expect(/gradient\(|bg-gradient|from-(purple|violet)/.test(text), path).toBe(false);
+      expect(/purple|violet|indigo|fuchsia/i.test(text), path).toBe(false);
+      const isStyleFile = /styles[\\/][a-z]+\.css$/.test(path) || path.endsWith('make-images.mjs');
+      if (!isStyleFile) expect(/gradient\(|bg-gradient/.test(text), path).toBe(false);
     }
+    expect(read(join(ROOT, 'src/components/Button.tsx')).includes('gradient'), 'no gradient on buttons').toBe(false);
   });
 
   it('has no AI or build-tool badge (rule 16) and no secrets (rule 3)', () => {

@@ -8,7 +8,7 @@ import { ActivityFeed } from '../components/ActivityFeed';
 import { BoardToolbar, SearchBox } from '../components/BoardToolbar';
 import { Button } from '../components/Button';
 import { ErrorNotice } from '../components/ErrorNotice';
-import { HeroBanner } from '../components/HeroBanner';
+import { HeroBanner, HeroFact } from '../components/HeroBanner';
 import { EmptyState, LoadError, SkeletonCards } from '../components/LoadState';
 import { PeopleGrid, SuggestionList } from '../components/People';
 import { RequestDialog } from '../components/RequestDialog';
@@ -96,11 +96,14 @@ export default function BoardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <HeroBanner eyebrow="Team board" titleId="page-title" title={hackathon.data?.name ?? 'Team board'}>
-        <span className="inline-flex self-start rounded-sm bg-surface px-2 py-1 text-ink shadow-1"><LiveDot status={stream} /></span>
-        {hackathon.data && (
-          <p className="text-shell-ink2">Teams of {hackathon.data.min_team_size} to {hackathon.data.max_team_size}. Invite codes last {hackathon.data.invite_ttl_hours} h. Seats, teams and requests update here the moment anyone acts.</p>
-        )}
+      <HeroBanner titleId="page-title" title={hackathon.data?.name ?? 'Team board'}
+        facts={<>
+          <span className="inline-flex min-h-[36px] items-center rounded bg-surface px-3 text-ink shadow-1"><LiveDot status={stream} /></span>
+          {hackathon.data && <HeroFact>Teams of {hackathon.data.min_team_size} to {hackathon.data.max_team_size}</HeroFact>}
+          {hackathon.data && <HeroFact>Invite codes last {hackathon.data.invite_ttl_hours} h</HeroFact>}
+          {teams.isSuccess && <HeroFact>{loaded.length}{teams.hasNextPage ? '+' : ''} teams with open seats</HeroFact>}
+        </>}>
+        <p className="max-w-[60ch] text-shell-ink2">Find a team that needs your skills, or fill the seats of yours. Every seat, team and request changes here the moment anyone acts.</p>
       </HeroBanner>
 
       <StatusPanel hid={hid} status={status.data} loading={status.isPending} />

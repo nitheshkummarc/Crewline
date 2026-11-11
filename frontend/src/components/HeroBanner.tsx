@@ -1,46 +1,27 @@
-// Page header on the navy brand field with decorative wristband stripes on the right (hidden on phones).
+// Page header on the navy brand field lit by soft warm and cool glows, with an optional row of facts.
 import type { ReactNode } from 'react';
 
-const STRIPES = [
-  { band: 0, taken: 4, rotate: -8 },
-  { band: 1, taken: 2, rotate: 4 },
-  { band: 5, taken: 3, rotate: -3 },
-];
-
 interface Props {
-  eyebrow: string;
   title: ReactNode;
   titleId: string;
   children?: ReactNode;
-  aside?: ReactNode;
+  facts?: ReactNode;
 }
 
-/** A colored header: label, big title, supporting content, optional right-hand content instead of the stripes. */
-export function HeroBanner({ eyebrow, title, titleId, children, aside }: Props) {
+/** A colored page header: big title, supporting text, and real facts underneath. */
+export function HeroBanner({ title, titleId, children, facts }: Props) {
   return (
-    <section aria-labelledby={titleId} className="relative overflow-hidden rounded-lg bg-shell p-6 text-shell-ink shadow-2 md:p-8">
-      <div className="relative z-10 flex max-w-[640px] flex-col gap-3">
-        <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-shell-ink2">{eyebrow}</p>
-        <h1 id={titleId} className="display text-[30px] leading-9 md:text-[44px] md:leading-[50px]">{title}</h1>
+    <section aria-labelledby={titleId} className="hero-surface relative overflow-hidden rounded-lg p-6 text-shell-ink shadow-2 md:p-9">
+      <div className="relative z-10 flex max-w-[760px] flex-col gap-3">
+        <h1 id={titleId} className="display text-[32px] leading-[38px] md:text-[48px] md:leading-[54px]">{title}</h1>
         {children}
       </div>
-      {aside ?? (
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 top-1/2 hidden w-[340px] -translate-y-1/2 flex-col gap-3 md:flex">
-          {STRIPES.map((stripe, index) => (
-            <div key={index} className="flex h-12 items-center gap-2 rounded-md px-4 shadow-2"
-              style={{ background: `var(--band-${stripe.band})`, transform: `rotate(${stripe.rotate}deg) translateX(${index * 14}px)` }}>
-              <span className="h-3 w-14 rounded-sm bg-[color-mix(in_srgb,var(--band-ink)_80%,transparent)]" />
-              <span className="ml-auto flex gap-[5px]">
-                {Array.from({ length: 4 }, (_, seat) => (
-                  <span key={seat} className={seat < stripe.taken
-                    ? 'h-7 w-[18px] rounded-sm bg-[color-mix(in_srgb,var(--band-ink)_85%,transparent)]'
-                    : 'h-7 w-[18px] rounded-sm border-2 border-dashed border-band-ink'} />
-                ))}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      {facts && <div className="relative z-10 mt-6 flex flex-wrap gap-2">{facts}</div>}
     </section>
   );
+}
+
+/** One fact chip on the banner (real data only). */
+export function HeroFact({ children }: { children: ReactNode }) {
+  return <span className="inline-flex min-h-[36px] items-center gap-2 rounded bg-[rgb(255_255_255/0.1)] px-3 text-sm font-semibold text-shell-ink">{children}</span>;
 }
