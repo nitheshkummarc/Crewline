@@ -39,8 +39,12 @@ On Windows without make, run the raw commands (uv is installed with `pip install
 | Race and guarantee tests only | `uv run --project backend pytest backend/tests/concurrency -q` |
 | Invariant checker | `uv run --project backend python database/invariants.py` |
 | Lint and types | `uv run --project backend ruff check backend database && uv run --project backend mypy backend/app` |
+| Seed 10k users / 2k teams | `JWT_SECRET=... uv run --project backend python database/seed.py --url <db> --tokens loadtest/tokens.json` |
+| Latency of every endpoint | `uv run --project backend python backend/scripts/latency_probe.py --base <api> --server-log <api log>` |
+| Chaos test (kills the API 3 times) | `uv run --project backend python backend/scripts/chaos.py` |
+| Load tests (k6) | `k6 run -e BASE_URL=<api> loadtest/board.js` (also `mixed.js`, `soak.js`) |
 
-Seed, load test, chaos test and web commands are added as those parts land (see docs/plan.md).
+Web commands are added with the frontend (see docs/plan.md).
 
 ## What to look at
 

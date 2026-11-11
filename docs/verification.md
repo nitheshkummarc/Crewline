@@ -153,7 +153,9 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 5. Assert: invariants I1 to I9 clean; every client action ended in 200 or 409; for every key that got 200, a matching membership exists; no team over capacity.
 6. Print a summary: kills, in-flight requests at each kill, retries, final counts.
 
-Status: planned (Tier 2).
+Status: passing. Run on 11 Nov 2026 (`python backend/scripts/chaos.py`, 200 users, 20 one-seat teams, 60 s, 3 kills at 15, 34 and 53 s): 23,012 actions (3,582 x 200, 19,430 x 409), 779 network retries and 749 busy retries with the same keys, 0 responses of 500, 0 replay mismatches, 0 teams over capacity, 0 keys without a response, invariants clean.
+
+The replay check is stronger than the plan above: every action that finally got 200 is re-sent with its key after the run and must return byte-identical content, which proves no effect was lost or applied twice across the crashes.
 
 ## 8. Load scenarios (k6)
 

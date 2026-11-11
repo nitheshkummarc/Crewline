@@ -36,7 +36,7 @@ Source: Hack4Hack Crew Hiring Challenge 2026, Problem Statement 1, "Race-proof t
 | R4 | Leadership handover when leader leaves | arch 6.7; ADR-011 | T-API-20; T-RACE-08; I3 | passing |
 | R5 | Team deleted when last member leaves | arch 6.7; ADR-012 | T-API-21; T-RACE-09 | passing |
 | R6 | 50 simultaneous attempts on the last seat give exactly one success, proven by an automated test | arch 6.2; ADR-005, 006, 007 | T-RACE-01, 02, 03; I1, I2 | passing |
-| R7 | Retried requests never create a second join or team | arch 5; ADR-013 | T-API-26, 27, 28; T-RACE-10, 11, 12, 16; T-GUAR-03, 04; T-CHAOS-01 | partial (T-GUAR-03 atomicity passes; chaos test pending) |
+| R7 | Retried requests never create a second join or team | arch 5; ADR-013 | T-API-26, 27, 28; T-RACE-10, 11, 12, 16; T-GUAR-03, 04; T-CHAOS-01 | passing |
 | R8 | Board and team pages update live (WebSockets or SSE), including the People board | arch 6.11, 9; ADR-017, 018, 034, 035 | T-API-35, 36, 40, 41, 42, 45; T-WEB-03, 04; manual M-04 | passing |
 | R9 | Authentication | arch 10; ADR-016 | T-API-01 to 04 | passing |
 | R10 | Leader-only actions (accept, decline, remove) | arch 6.4, 6.5, 6.8 | T-API-15, 16, 22 | passing |
@@ -57,7 +57,7 @@ Source: Hack4Hack Crew Hiring Challenge 2026, Problem Statement 1, "Race-proof t
 | B1 | Optimistic UI with rollback on conflict | arch 13 | T-WEB-01, 02 | planned (Tier 2) |
 | B2 | Docker Compose | arch 16 | CI compose smoke | planned (Tier 2) |
 | B3 | Tracing or metrics | arch 12 (`/metrics`) | T-API-38 | passing |
-| B4 | Chaos test: kill the server mid-join, no corruption | ADR-028 | T-CHAOS-01 | planned (Tier 2) |
+| B4 | Chaos test: kill the server mid-join, no corruption | ADR-028 | T-CHAOS-01 | passing |
 
 ## Interpretations we state in the design doc
 

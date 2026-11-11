@@ -84,6 +84,7 @@ Why the single-process client numbers are not the board's latency: during the ru
 | Seed | Invariants I1 to I9 clean |
 | 50-way stampedes (T-RACE-01, 20 rounds) | Exactly one winner every round; invariants clean |
 | Overload (T-GUAR-01) | Fast 503 with Retry-After, no 500, correct final membership |
+| Chaos (T-CHAOS-01): 3 hard kills in 60 s, 200 users | 23,012 actions, 0 x 500, 0 replay mismatches, 0 over capacity, invariants clean |
 
 ## Pending (k6)
 

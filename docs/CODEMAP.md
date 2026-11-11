@@ -652,13 +652,17 @@ Invariant checker.
 | `main()` | Print violations and exit non-zero if any | done |
 
 ### backend/scripts/chaos.py
-Kill the API mid-join and verify.
+Chaos test (T-CHAOS-01): hard-kill the API mid-workload, restart it, prove nothing is lost or duplicated.
 | Name | Purpose | Status |
 |---|---|---|
-| `start_api()` | Start uvicorn as a subprocess | planned |
-| `workload(...)` | Clients joining teams with retries and fixed keys | planned |
-| `run_chaos(kills, interval_s)` | Kill and restart the API during the workload, then check invariants | planned |
-| `main()` | CLI entry point | planned |
+| `Action` | One logical client action with its fixed idempotency key and final response | done |
+| `Api` | The API subprocess: `start` waits for /readyz, `kill` hard-kills with no shutdown hooks | done |
+| `setup(server_url, users, teams)` | Create `crewline_chaos`: one hackathon, teams with 3 of 4 seats taken, free users | done |
+| `perform(client, action, stats)` | Send an action until a final status, retrying network errors and 503 with the same key | done |
+| `user_loop(base, user_id, codes, deadline, done, stats)` | Join a random team, leave again after a pause, repeat until the deadline | done |
+| `replay_all(base, actions, user_of)` | Re-send every 200 action with its key; count responses that differ from the original bytes | done |
+| `run_chaos(args)` | Run the workload with kills and restarts, then verify statuses, replays, capacity, keys and invariants | done |
+| `main()` | CLI entry point; exit code 1 on any violation | done |
 
 ## Load tests
 
