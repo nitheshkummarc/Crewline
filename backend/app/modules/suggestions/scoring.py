@@ -64,16 +64,16 @@ def completeness(cand_skills: frozenset[str]) -> float:
 def score_candidate(group: Group, cand: dict, at: datetime) -> dict:
     """Weighted score, breakdown and plain-language reasons for one candidate."""
     skills = frozenset(cand["skills"])
+    hours = overlap_hours(group.zones, cand["timezone"], at)
     breakdown = {
         "complement": round(complement(group.skills, skills), 3),
-        "timezone": round(tz_overlap(group.zones, cand["timezone"], at), 3),
+        "timezone": round(hours / WORK_HOURS, 3),
         "completeness": round(completeness(skills), 3),
         "redundancy": round(redundancy(group.skills, skills), 3),
     }
     raw = sum(WEIGHTS[name] * value for name, value in breakdown.items())
     covers = sorted(skills & set(missing_roles(group.skills)))
     shared = sorted(skills & group.skills)
-    hours = overlap_hours(group.zones, cand["timezone"], at)
     whom = "you" if group.solo else "every member"
     reasons = []
     if covers:

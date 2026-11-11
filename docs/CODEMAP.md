@@ -91,12 +91,13 @@ Invite code generation and normalization (10 Crockford base32 characters, about 
 | `format_code(code)` | Return the code as XXXXX-XXXXX for display | done |
 
 ### backend/app/core/timezones.py
-IANA time zone validation and current offsets.
+IANA time zone validation and current offsets (zones and offsets cached, bug B-21).
 | Name | Purpose | Status |
 |---|---|---|
 | `_known()` | Return the set of known IANA zone names | done |
 | `validate_timezone(name)` | Return the name if it is a known IANA zone, else raise ValueError (rendered as 400) | done |
-| `current_offset_hours(name, at)` | Return the UTC offset in hours of a zone at an instant | done |
+| `_zone(name)` | Return a ZoneInfo kept for the process lifetime | done |
+| `current_offset_hours(name, at)` | Return the UTC offset in hours of a zone at an instant (cached per zone and instant) | done |
 
 ### backend/app/core/ratelimit.py
 In-process sliding-window rate limiter (per worker; abuse protection, not correctness).
@@ -620,12 +621,27 @@ Local PostgreSQL 16 without Docker, using the pgserver package.
 | `main()` | CLI entry point | done |
 
 ### database/seed.py
-Bulk seed data and k6 tokens.
+Bulk seed data with COPY and a k6 tokens file; every invariant holds on the result.
 | Name | Purpose | Status |
 |---|---|---|
-| `seed(url, users, teams, hackathons)` | Insert users, participants, teams, memberships and audit rows with COPY | planned |
-| `write_tokens(path, user_ids)` | Write pre-minted JWTs for k6 | planned |
-| `main()` | CLI entry point | planned |
+| `ZONES` | Time zones used for seeded users | done |
+| `build(users, teams, max_size, min_size, rng)` | Build all rows in memory; team members are at most half the users | done |
+| `seed(url, users, teams, max_size, min_size, password_hash, rng_seed)` | Insert one hackathon and all rows with COPY in a single transaction | done |
+| `write_tokens(path, user_ids, hackathon_id, secret, count, team_codes)` | Write pre-minted session JWTs, the hackathon id and open team codes for k6 | done |
+| `main()` | CLI entry point | done |
+
+### backend/scripts/latency_probe.py
+Latency probe: every endpoint uncontended plus the board under concurrent users; server-side numbers from the access log.
+| Name | Purpose | Status |
+|---|---|---|
+| `percentiles(values)` | Format n, p50, p95, p99 and max of a list of milliseconds | done |
+| `Probe` | Clients for seeded users and a per-route latency record | done |
+| `Probe.client(token)` | Return a client authenticated with a seeded user's token | done |
+| `Probe.call(client, label, method, path, body, mutate)` | Send one request and record its client latency | done |
+| `Probe.every_endpoint(rounds)` | Exercise each endpoint sequentially with fresh users | done |
+| `Probe.board_load(users, seconds)` | Concurrent clients loop on the teams board | done |
+| `server_side(log_path, since)` | Read per-route server durations from the JSON access log | done |
+| `run(args)`, `main()` | Run both phases and print the report; CLI entry point | done |
 
 ### database/invariants.py and database/invariants.sql
 Invariant checker.
@@ -650,28 +666,30 @@ Kill the API mid-join and verify.
 Shared k6 helpers.
 | Name | Purpose | Status |
 |---|---|---|
-| `loadTokens()` | Read tokens.json in the init stage | planned |
-| `authParams(token, route)` | Cookie header and route tag | planned |
+| `loadData()` | Read the seeded tokens, hackathon id and open team codes | done |
+| `BASE` | Base URL from `BASE_URL` | done |
+| `params(token, route, mutate)` | Session cookie, route tag, and an Idempotency-Key for mutations | done |
+| `idempotencyKey()` | A random 32-character hex key | done |
 
 ### loadtest/board.js
-Scenario L-A1 and L-A2.
+Scenario L-A1 and L-A2 (THINK=1).
 | Name | Purpose | Status |
 |---|---|---|
-| `options` | Stages and thresholds | planned |
-| `default()` | Fetch board pages, follow cursors | planned |
+| `options` | Ramp to 100 VUs, thresholds p95 < 200 ms and errors < 0.1 % on route board_teams | done (not yet run) |
+| `default()` | One board read: 70 % first page, 30 % follow the cursor | done (not yet run) |
 
 ### loadtest/mixed.js
 Scenario L-B.
 | Name | Purpose | Status |
 |---|---|---|
-| `options` | Board, stampede and churn scenarios | planned |
-| `boardReader()`, `stampede()`, `churn()` | Scenario functions | planned |
+| `options` | 100 board readers, a 50-user stampede every 5 s (12 rounds), churn at 2 creates per second | done (not yet run) |
+| `boardReader()`, `stampede()`, `churn()` | Scenario functions | done (not yet run) |
 
 ### loadtest/soak.js
 Scenario L-C.
 | Name | Purpose | Status |
 |---|---|---|
-| `options`, `default()` | 10-minute steady board load | planned |
+| `options`, `default()` | 10 minutes of 100 VUs with 1 s think time; p95 < 200 ms and p99 < 400 ms | done (not yet run) |
 
 ## Web
 

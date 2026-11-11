@@ -137,9 +137,9 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 
 | ID | Check | Status |
 |---|---|---|
-| T-OPS-01 | `database/seed.py --users 10000 --teams 2000` finishes in under 60 s and invariants pass | planned |
+| T-OPS-01 | `database/seed.py --users 10000 --teams 2000` finishes in under 60 s and invariants pass | passing (0.9 s, invariants clean) |
 | T-OPS-02 | `docker compose up` from a clean clone serves `/readyz` | planned |
-| T-OPS-03 | `EXPLAIN (ANALYZE, BUFFERS)` of both board queries on seeded data shows index scans on `teams_board` / `participants_board`; output saved in `docs/explain/` | planned |
+| T-OPS-03 | `EXPLAIN (ANALYZE, BUFFERS)` of both board queries on seeded data shows index scans on `teams_board` / `participants_board`; output saved in `docs/explain/` | passing |
 | T-OPS-04 | CI fails when a race test fails (verify once by breaking the predicate on a branch) | planned |
 | T-OPS-05 | Schema: migrations re-run applies nothing; `teams_cap` rejects an over-capacity raw UPDATE; health, readiness, request id and 404 envelope | passing |
 
