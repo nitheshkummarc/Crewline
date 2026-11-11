@@ -369,44 +369,50 @@ Team and membership SQL.
 Join request endpoints.
 | Name | Purpose | Status |
 |---|---|---|
-| `create_request(tid, body, ...)` | POST /api/teams/{tid}/requests | planned |
-| `list_for_team(tid, user_id)` | GET /api/teams/{tid}/requests | planned |
-| `list_mine(hid, user_id)` | GET /api/hackathons/{hid}/my-requests | planned |
-| `accept(rid, ...)` | POST /api/requests/{rid}/accept | planned |
-| `decline(rid, ...)` | POST /api/requests/{rid}/decline | planned |
-| `withdraw(rid, ...)` | POST /api/requests/{rid}/withdraw | planned |
+| `_respond(outcome)` | Render a write outcome | done |
+| `create_request(tid, body, ...)` | POST /api/teams/{tid}/requests | done |
+| `list_for_team(tid, user_id)` | GET /api/teams/{tid}/requests (leader only) | done |
+| `list_mine(hid, user_id)` | GET /api/hackathons/{hid}/my-requests | done |
+| `accept(rid, ...)` | POST /api/requests/{rid}/accept | done |
+| `decline(rid, ...)` | POST /api/requests/{rid}/decline | done |
+| `withdraw(rid, ...)` | POST /api/requests/{rid}/withdraw | done |
 
 ### backend/app/modules/requests/schemas.py
-Join request models.
+Join request models (responses use the `REQUEST_SELECT` shape from repo.py).
 | Name | Purpose | Status |
 |---|---|---|
-| `CreateRequestIn`, `JoinRequestOut` | Validated models | planned |
+| `CreateRequestIn` | Body for POST /api/teams/{tid}/requests | done |
 
 ### backend/app/modules/requests/service.py
 Join request rules and transactions (architecture.md 6.3 to 6.6).
 | Name | Purpose | Status |
 |---|---|---|
-| `create_request(ctx, tid, message)` | Lock the team (forming, not full) and the participant row (cap 5), then create a pending request or return the existing one | planned |
-| `accept(ctx, rid)` | Leader accepts: seat, request transition, membership; mark stale on 23505 | planned |
-| `decline(ctx, rid)` | Leader declines a pending request | planned |
-| `withdraw(ctx, rid)` | Requester withdraws a pending request | planned |
-| `list_for_team(tid, user_id)` | Pending requests for the leader, hiding users already in a team | planned |
-| `list_mine(hid, user_id)` | The caller's requests in a hackathon | planned |
-| `_mark_stale(rid, actor_id)` | Follow-up transaction that marks a request stale and audits it | planned |
+| `MAX_PENDING` | Pending requests allowed per user per hackathon (5) | done |
+| `_request_body(conn, rid)` | Return a request in the API shape; StateChanged (retry) if it vanished inside the transaction | done |
+| `create_request(ctx, tid, message)` | Lock the team (forming, not full) and the participant row (cap 5), then create a pending request | done |
+| `accept(ctx, rid)` | Leader accepts: seat, request transition, membership; a requester already in a team makes it stale | done |
+| `_explain_accept(tid, user_id)` | After a 0-row seat update on accept: 404, 403, 409 finalized or full, or StateChanged | done |
+| `_mark_stale(rid, actor_id, request_tag)` | Follow-up transaction that marks a request stale and audits it (no idempotency claim) | done |
+| `decline(ctx, rid)` | Leader declines a pending request | done |
+| `withdraw(ctx, rid)` | Requester withdraws a pending request | done |
+| `list_for_team(tid, user_id)` | Pending requests for the leader, hiding users already in a team | done |
+| `list_mine(hid, user_id)` | The caller's requests in a hackathon, newest first (uses hackathons.repo.my_requests) | done |
 
 ### backend/app/modules/requests/repo.py
 Join request SQL.
 | Name | Purpose | Status |
 |---|---|---|
-| `insert_request(conn, tid, hid, user_id, message)` | Insert pending; return id or None if one exists | planned |
-| `get_pending(conn, tid, user_id)` | Return the existing pending request | planned |
-| `get_ids(conn, rid)` | Return the team and hackathon ids of a request | planned |
-| `lock_participant(conn, hid, user_id)` | SELECT ... FOR NO KEY UPDATE on the participant row; return False if missing | planned |
-| `transition(conn, rid, tid, from_status, to_status, actor_id)` | Conditional status change; return user_id or None | planned |
-| `withdraw(conn, rid, user_id)` | Conditional withdraw by the requester; return team and hackathon or None | planned |
-| `count_pending_for_user(conn, hid, user_id)` | Count the caller's pending requests in a hackathon | planned |
-| `list_pending_for_team(conn, tid)` | Pending requests excluding users already in a team | planned |
-| `list_for_user(conn, hid, user_id)` | The caller's requests | planned |
+| `REQUEST_SELECT` | Shared SELECT for the request API shape (with team name and display name) | done |
+| `lock_participant(conn, hid, user_id)` | SELECT ... FOR NO KEY UPDATE on the participant row; False if not registered | done |
+| `count_pending_for_user(conn, hid, user_id)` | Count the caller's pending requests in a hackathon | done |
+| `insert_request(conn, tid, hid, user_id, message)` | Insert a pending request; return its id, or None if one is already pending for this team | done |
+| `get_pending(conn, tid, user_id)` | Return the caller's pending request for a team, or None | done |
+| `get_request(conn, rid)` | Return one request in the API shape, or None | done |
+| `get_ids(conn, rid)` | Return the team, hackathon and requester ids of a request | done |
+| `transition(conn, rid, tid, from_status, to_status, actor_id)` | Conditional status change; return the requester id or None | done |
+| `withdraw(conn, rid, user_id)` | Conditional withdraw by the requester; return the team and hackathon ids, or None | done |
+| `mark_stale(conn, rid, actor_id)` | Mark a pending request stale; return its team, hackathon and requester ids, or None | done |
+| `list_pending_for_team(conn, tid)` | Pending requests for a team, oldest first, hiding users already in a team | done |
 
 ### backend/app/modules/board/router.py
 Board endpoints.

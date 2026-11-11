@@ -61,7 +61,7 @@ interface Member extends PublicUser { joined_at: string; is_leader: boolean; }
 interface TeamDetail extends TeamSummary { members: Member[]; }
 
 interface JoinRequest {
-  id: string; team_id: string; user_id: string; display_name: string; message: string | null;
+  id: string; team_id: string; team_name: string; user_id: string; display_name: string; message: string | null;
   status: 'pending' | 'accepted' | 'declined' | 'withdrawn' | 'stale';
   created_at: string; decided_at: string | null;
 }
@@ -135,8 +135,9 @@ Teams board lists teams that are `forming`, `looking` and not full, newest first
 
 | Method | Path | Body | Success | Errors |
 |---|---|---|---|---|
-| POST | `/api/teams/{tid}/requests` | `{message?}` (≤ 280) | 201 `JoinRequest`, or 200 with the existing pending one | 400, 401, 404, 409 `team_full` / `team_finalized` / `already_in_team` / `not_registered` / `too_many_pending_requests`, 422, 503 || GET | `/api/teams/{tid}/requests` | — | 200 `JoinRequest[]` (pending, hides users already in a team) | 401, 403 `not_leader`, 404 |
-| GET | `/api/hackathons/{hid}/my-requests` | — | 200 `JoinRequest[]` | 401, 404 |
+| POST | `/api/teams/{tid}/requests` | `{message?}` (≤ 280) | 201 `JoinRequest`, or 200 with the existing pending one | 400, 401, 404, 409 `team_full` / `team_finalized` / `already_in_team` / `not_registered` / `too_many_pending_requests`, 422, 503 |
+| GET | `/api/teams/{tid}/requests` | — | 200 `JoinRequest[]` (pending, oldest first, hides users already in a team) | 401, 403 `not_leader`, 404 |
+| GET | `/api/hackathons/{hid}/my-requests` | — | 200 `JoinRequest[]` (all statuses, newest first, max 50) | 401, 404 |
 | POST | `/api/requests/{rid}/accept` | — | 200 `TeamDetail` | 401, 403 `not_leader`, 404, 409 `team_full` / `team_finalized` / `request_not_pending` / `already_in_team`, 422, 503 |
 | POST | `/api/requests/{rid}/decline` | — | 200 `JoinRequest` | 401, 403, 404, 409 `request_not_pending`, 422, 503 |
 | POST | `/api/requests/{rid}/withdraw` | — | 200 `JoinRequest` | 401, 404, 409 `request_not_pending`, 422, 503 |

@@ -400,13 +400,16 @@ SELECT 1 FROM memberships WHERE hackathon_id = $h AND user_id = $me;
   -- found → 409 already_in_team
 SELECT 1 FROM participants WHERE hackathon_id = $h AND user_id = $me FOR NO KEY UPDATE;
   -- missing → 409 not_registered; the lock serializes this user's request creations
+SELECT ... FROM join_requests WHERE team_id = $t AND user_id = $me AND status = 'pending';
+  -- found → the existing pending request, 200 (rolled back, not stored); checked before the cap
+  --   so repeating a request never turns into a 409
 SELECT count(*) FROM join_requests WHERE user_id = $me AND hackathon_id = $h AND status = 'pending';
   -- >= 5 → 409 too_many_pending_requests (exact, because of the participant lock)
 INSERT INTO join_requests (team_id, hackathon_id, user_id, message)
 VALUES ($t, $h, $me, $msg)
 ON CONFLICT (team_id, user_id) WHERE status = 'pending' DO NOTHING
 RETURNING id;
-  -- 0 rows → the existing pending request, 200 (rolled back, not stored)
+  -- 0 rows cannot happen under the participant lock; if it does, StateChanged retries
 -- audit request_created {request_id, user_id}
 ```
 

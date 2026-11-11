@@ -19,6 +19,7 @@ from app.db import pools as db_pools
 from app.db import tx
 from app.modules.auth.router import router as auth_router
 from app.modules.hackathons.router import router as hackathons_router
+from app.modules.requests.router import router as requests_router
 from app.modules.teams.router import router as teams_router
 
 
@@ -66,7 +67,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ratelimit.configure(settings)
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
-    for router in (auth_router, hackathons_router, teams_router):
+    for router in (auth_router, hackathons_router, teams_router, requests_router):
         app.include_router(router)
 
     @app.get("/healthz", include_in_schema=False)

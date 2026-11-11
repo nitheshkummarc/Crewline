@@ -42,11 +42,11 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-11 | Join a full team | 409 `team_full`, count unchanged | passing |
 | T-API-12 | Join a team you are already in | 200 with current team, no new row, no audit | passing |
 | T-API-13 | Join a finalized team | 409 `team_finalized` | passing |
-| T-API-14 | Create a join request twice | 201 then 200 with the same request id | planned |
-| T-API-15 | Accept a request as a non-leader | 403 `not_leader`, nothing changed | planned |
-| T-API-16 | Decline a request as leader; decline again | 200 then 409 `request_not_pending` | planned |
-| T-API-17 | Withdraw own request; withdraw someone else's | 200; 404 | planned |
-| T-API-18 | Accept a request from a user who joined another team | 409 `already_in_team`, request becomes `stale`, team count unchanged, audit `request_stale` | planned |
+| T-API-14 | Create a join request twice | 201 then 200 with the same request id | passing |
+| T-API-15 | Accept a request as a non-leader | 403 `not_leader`, nothing changed | passing |
+| T-API-16 | Decline a request as leader; decline again | 200 then 409 `request_not_pending` | passing |
+| T-API-17 | Withdraw own request; withdraw someone else's | 200; 404 | passing |
+| T-API-18 | Accept a request from a user who joined another team | 409 `already_in_team`, request becomes `stale`, team count unchanged, audit `request_stale` | passing |
 | T-API-19 | Non-leader member leaves | 200, count −1, leader unchanged, audit `member_left` | passing |
 | T-API-20 | Leader leaves with 3 members | Earliest joined member becomes leader, audit `leader_promoted` actor null | passing |
 | T-API-21 | Last member leaves | Team row gone, its requests gone, audit `member_left` and `team_deleted` remain | passing |
@@ -57,7 +57,7 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-26 | Same key, same body, sent twice in sequence | Second response identical to the first, one effect | passing |
 | T-API-27 | Same key, different body | 422 `idempotency_key_mismatch` | passing |
 | T-API-28 | Mutation without `Idempotency-Key` | 400 `idempotency_key_required` | passing |
-| T-API-29 | Validation: bad UUID, name too long, limit 500, message 281 chars, unknown IANA time zone | 400 `validation_error` each (never FastAPI's default 422) | partial (signup and team cases pass; request cases in module 4) |
+| T-API-29 | Validation: bad UUID, name too long, limit 500, message 281 chars, unknown IANA time zone | 400 `validation_error` each (never FastAPI's default 422) | passing |
 | T-API-30 | 6 wrong codes in a minute from one user | 6th gets 429 `rate_limited` with `Retry-After` | passing |
 | T-API-31 | Board pagination | Pages do not overlap, full and finalized teams excluded, `next_cursor` null at end | planned |
 | T-API-32 | Board ETag | Second request with `If-None-Match` gets 304 | planned |
@@ -70,8 +70,8 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-39 | Invite code visibility | Board and events never contain `invite_code`; `/invite` returns it to members only | passing |
 | T-API-40 | Participant registers, then toggles `looking` | Each publishes a `people` event; the People board reflects it on the next fetch (cache cleared); audit rows `participant_registered`, `participant_updated` | partial (audit rows pass; SSE delivery in the realtime module) |
 | T-API-41 | Team member changes skills | Team `version` increases; a `team` event carries the new skills; board shows them | planned |
-| T-API-42 | Request event privacy | A non-member subscriber receives no `request` events; the leader and the requester do | planned |
-| T-API-43 | Create a request for a full team | 409 `team_full`, no request row | planned |
+| T-API-42 | Request event privacy | A non-member subscriber receives no `request` events; the leader and the requester do | partial (audience in payload passes; SSE delivery in module 6) |
+| T-API-43 | Create a request for a full team | 409 `team_full`, no request row | passing |
 | T-API-44 | Suggestions for a caller without a team | `context.team_id` null; the time zone term compares against the caller; a candidate covering the caller's missing roles ranks first | planned |
 | T-API-45 | Leave as the last member | `team_deleted` event has `team: null` and `version` = last version + 1 | passing |
 
@@ -85,20 +85,20 @@ Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real
 | T-RACE-02 | Negative control: naive check-then-insert on a schema without `teams_cap`, 15 ms sleep between check and write | More than 1 winner in at least one iteration (the test can fail) | passing |
 | T-RACE-03 | Real join on the same weakened schema | Exactly 1 winner every iteration (the predicate does the work, not only the CHECK) | passing |
 | T-RACE-04 | One user joins two different teams at the same instant | Exactly one membership; the other team's count unchanged | passing |
-| T-RACE-05 | Code join and leader accept race for the last seat | Exactly one new member | planned |
-| T-RACE-06 | Two leaders accept the same user at the same instant | One membership; other request `stale`; other team count unchanged | planned |
-| T-RACE-07 | Same request accepted twice concurrently (two tabs) | Count +1 once; one 200, one 409 `request_not_pending` | planned |
+| T-RACE-05 | Code join and leader accept race for the last seat | Exactly one new member | passing |
+| T-RACE-06 | Two leaders accept the same user at the same instant | One membership; other request `stale`; other team count unchanged | passing |
+| T-RACE-07 | Same request accepted twice concurrently (two tabs) | Count +1 once; one 200, one 409 `request_not_pending` | passing |
 | T-RACE-08 | Leader leaves while 10 users join | Leader is always a member; I1 to I3 hold | passing |
 | T-RACE-09 | Last member leaves while 10 users join | No deadlock, no 500; either team deleted and joins 404, or joins succeed then leave decrements; invariants clean | passing |
 | T-RACE-10 | Same idempotency key sent 20 times at once | One membership; 20 identical bodies | passing |
 | T-RACE-11 | Retry after a successful last-seat join (bug B-1) | Retry with the same key, sent after the original commits, returns 200 replay, not 409 | passing |
 | T-RACE-12 | Key reused after a 409 | Request re-executes (no stuck row); I9 clean | passing |
-| T-RACE-13 | Accept vs withdraw of the same request | Exactly one transition; counts consistent | planned |
+| T-RACE-13 | Accept vs withdraw of the same request | Exactly one transition; counts consistent | passing |
 | T-RACE-14 | Randomized: 200 operations (join, leave, request, accept, decline, withdraw, remove) on 20 teams and 50 users, 16 workers, fixed seed printed on failure | Invariants clean; no 500 | planned (Tier 3) |
 | T-RACE-15 | Deadlock counter | `pg_stat_database.deadlocks` unchanged after the whole concurrency suite | passing |
 | T-RACE-16 | A join and its retry (same key) fire together with 48 other joiners for the last seat (bug B-7) | If the keyed request wins, both copies return the same 200; never a 200 plus a 409 for the same key | passing |
-| T-RACE-17 | 20 users create join requests while 20 others join by code until the team is full | No request created after the team became full (`created_at` vs the filling audit event) unless it was created before; no 500 | planned |
-| T-RACE-18 | One user fires 8 create-request calls to 8 teams at once | Exactly 5 pending, 3 × 409 `too_many_pending_requests` | planned |
+| T-RACE-17 | 20 users create join requests while 20 others join by code until the team is full | No request created after the team became full (`created_at` vs the filling audit event) unless it was created before; no 500 | passing |
+| T-RACE-18 | One user fires 8 create-request calls to 8 teams at once | Exactly 5 pending, 3 × 409 `too_many_pending_requests` | passing |
 | T-RACE-19 | Profile update while 10 users join the same team | No deadlock; final snapshot version is the highest; invariants clean | planned |
 
 ## 4. Unit tests

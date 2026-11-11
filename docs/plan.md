@@ -4,21 +4,21 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Tue 10 Nov 2026, end of module 3. All 50 backend tests pass (`RACE_ITERATIONS=20`), ruff and mypy clean, pushed to `main`.
+Last checkpoint: Wed 11 Nov 2026, end of module 4. All 68 backend tests pass (`RACE_ITERATIONS=20`), ruff and mypy clean, pushed to `main`.
 
 | Module | Scope | Status |
 |---|---|---|
 | 1 Foundation | Schema 0001 + 0002, migrate, dev_db, pools, `run_write`, errors, app skeleton, test harness | done |
 | 2 Auth and hackathons | Signup, login, logout, me, profile (team version bump), register, looking flag, meta | done |
 | 3 Teams | Create, join by code, leave, handover, delete with tombstone, remove, finalize, reopen, invite, update, team audit; race tests + negative control | done |
-| 4 Join requests | Create (team FOR SHARE, participant lock, cap 5), accept (stale on 23505), decline, withdraw, lists; T-API-14 to 18, 42, 43; T-RACE-05, 06, 07, 13, 17, 18 | next |
-| 5 Board and suggestions | Keyset board (teams, people), micro-cache + ETag, suggestions + scoring unit tests | planned |
+| 4 Join requests | Create (team FOR SHARE, participant lock, cap 5), accept (stale on 23505), decline, withdraw, lists; T-API-14 to 18, 42, 43; T-RACE-05, 06, 07, 13, 17, 18 | done |
+| 5 Board and suggestions | Keyset board (teams, people), micro-cache + ETag, suggestions + scoring unit tests | next |
 | 6 Realtime | Listener with reconnect, EventHub (team, people, request audience), SSE endpoint, metrics | planned |
 | 7 Data and load | `database/seed.py`, k6 scenarios, chaos test, EXPLAIN | planned |
 | 8 Frontend | `frontend/` React app (run `/impeccable init` first) | planned |
 | 9 Ops | Dockerfile, Compose, GitHub Actions, deploy (Render + Neon), README, design doc numbers, video | planned |
 
-How to resume: start the dev database (`uv run --project backend python database/dev_db.py start --name test` happens automatically in tests), run `uv run --project backend pytest backend/tests -q` from the repo root (about 2 minutes), then continue with module 4. Read "Known pitfalls" in CLAUDE.md and docs/bug-diary.md first.
+How to resume: start the dev database (`uv run --project backend python database/dev_db.py start --name test` happens automatically in tests), run `uv run --project backend pytest backend/tests -q` from the repo root (about 2 minutes), then continue with the module marked next. Read "Known pitfalls" in CLAUDE.md and docs/bug-diary.md first.
 
 ## Scope tiers
 
