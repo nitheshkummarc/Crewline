@@ -174,7 +174,7 @@ Run against a server started with relaxed signup and login limits (as the pytest
 | T-OPS-01 | `database/seed.py --users 10000 --teams 2000` finishes in under 60 s and invariants pass | passing (0.9 s, invariants clean) |
 | T-OPS-02 | `docker compose up` from a clean clone serves `/readyz` | planned |
 | T-OPS-03 | `EXPLAIN (ANALYZE, BUFFERS)` of both board queries on seeded data shows index scans on `teams_board` / `participants_board`; output saved in `docs/explain/` | passing |
-| T-OPS-04 | CI fails when a race test fails (verify once by breaking the predicate on a branch) | planned |
+| T-OPS-04 | CI fails when a race test fails (verify once by breaking the predicate on a branch) | passing (11 Nov 2026: a throwaway branch removed `member_count < max_size` from the join-by-code UPDATE; CI run [43065335527](https://github.com/nitheshkummarc/Crewline/actions/runs/43065335527) failed the race job on T-RACE-03, real join on the schema without `teams_cap`: `Counter({200: 50})`, all 50 racers took one seat. T-RACE-01 on the full schema still passed because the `teams_cap` CHECK turned every overflow into 409. Branch deleted, never merged) |
 | T-OPS-05 | Schema: migrations re-run applies nothing; `teams_cap` rejects an over-capacity raw UPDATE; health, readiness, request id and 404 envelope | passing |
 
 ## 7. Chaos test (T-CHAOS-01)
