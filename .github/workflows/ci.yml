@@ -43,6 +43,8 @@ jobs:
       - name: mypy
         working-directory: backend
         run: uv run mypy app
+      - name: Makefile targets parse (dry run)
+        run: make -n devdb migrate api web test race invariants seed load-a load-b load-c chaos lint > /dev/null
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -111,7 +113,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm --prefix frontend ci
       - name: vitest
-        run: npm --prefix frontend test
+        run: |
+          npm --prefix frontend test | tee vitest.log
+          echo "::notice title=Vitest::$(sed 's/\x1b\[[0-9;]*m//g' vitest.log | grep -E 'Tests +[0-9]+' | tr -s ' ')"
       - name: Contrast of color tokens
         run: node frontend/scripts/contrast.mjs
       - name: Build
@@ -202,7 +206,9 @@ jobs:
           import json
           m = json.load(open("k6-summary.json"))["metrics"]
           d, r = m["http_req_duration{route:board_teams}"], m["http_reqs"]
-          print(f"::notice title=k6 board_teams::p50 {d['med']:.1f} ms, p95 {d['p(95)']:.1f} ms, "
+          import subprocess
+          version = subprocess.run(["k6", "version"], capture_output=True, text=True).stdout.split()[1]
+          print(f"::notice title=k6 {version} board_teams::p50 {d['med']:.1f} ms, p95 {d['p(95)']:.1f} ms, "
                 f"p99 {d['p(99)']:.1f} ms, max {d['max']:.1f} ms, {r['rate']:.0f} req/s, {r['count']} requests")
           EOF
       - name: Invariants

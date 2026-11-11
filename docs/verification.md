@@ -253,8 +253,8 @@ README shows the CI badge.
 ## 12. Submission acceptance checklist
 
 - [ ] All must-haves R1 to R19 show `passing` in requirements.md
-- [ ] 20+ API tests (target 48 API + 5 lab + 19 race + 4 guarantee + 8 unit + 11 web + 10 end-to-end) green in CI
-- [ ] T-RACE-01 and T-RACE-02 both behave as expected in CI logs
+- [x] 20+ API tests (catalog IDs: 48 API + 5 lab + 19 race + 4 guarantee + 8 unit + 11 web + 10 end-to-end; collected: 73 API incl. lab + 13 unit + 20 concurrency, 65 Vitest, 20 Playwright runs) green in CI
+- [x] T-RACE-01 and T-RACE-02 both behave as expected in CI logs (run 43063463873)
 - [ ] Invariants clean on seed, after tests, after L-B, after chaos
 - [ ] Load report filled with measured numbers, commands and hardware
 - [ ] Design doc is one page and matches the code

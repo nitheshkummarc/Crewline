@@ -1,7 +1,7 @@
 # Load and latency report
 
 Measured numbers only. Scenario definitions are in [verification.md](verification.md) section 8.
-Status: development measurements with the Python latency probe are below. The official k6 runs (L-A, L-B, L-C, L-LIVE) are pending: k6 is not installed on the dev machine yet (`winget install k6 --source winget`) and will also run in CI.
+Status: development measurements with the Python latency probe are below, plus the k6 smoke run from CI (every push). The full k6 runs (L-A, L-B, L-C, L-LIVE) are pending in module 9; k6 is installed on the dev machine at `C:\Program Files\k6\k6.exe`.
 
 ## Setup (development measurements, 11 Nov 2026)
 
@@ -59,6 +59,17 @@ Spec target: board p95 < 200 ms at 100 concurrent users. Met with every load cli
 
 Why the single-process client numbers are not the board's latency: during the run the load client used a full core while the server used about 35 % of one (6.9 CPU-s in 20 s) and PostgreSQL 0.2 CPU-s (the board cache serves most reads). A second server worker did not raise throughput (652 to 663 req/s), which confirms the client was the limit. Splitting the same 100 users over 4 client processes doubled throughput and cut p95 to 114.5 ms. With a closed loop, latency is about users / throughput (100 / 652 req/s ≈ 153 ms), so a saturated client caps it. The official number comes from k6, which uses far less CPU per request.
 
+## k6 smoke in CI (L-A1 shortened, every push)
+
+Job `k6-smoke` in `.github/workflows/ci.yml`: GitHub-hosted `ubuntu-24.04` runner; PostgreSQL 16 (`postgres:16` in Docker, `max_connections=300`), the API (1 uvicorn worker, default pools read 10 and write 10) and k6 all on the same runner. Data from `database/seed.py --users 10000 --teams 2000`. Command: `k6 run -e RAMP=5s -e DURATION=15s loadtest/board.js` (100 VUs, no think time, 70 % first page, 30 % next cursor). Numbers are client-side, from the run's annotation.
+
+| Run | Commit | p50 | p95 | p99 | max | req/s | Requests | Thresholds |
+|---|---|---|---|---|---|---|---|---|
+| [43063124622](https://github.com/nitheshkummarc/Crewline/actions/runs/43063124622) | `d4a0f5f` | 68.5 | 108.1 | 123.4 | 177.6 | 1,308 | 26,226 | passed |
+| [43063463873](https://github.com/nitheshkummarc/Crewline/actions/runs/43063463873) | `5fe142c` | 47.6 | 71.1 | 81.2 | 140.2 | 1,925 | 38,558 | passed |
+
+All in milliseconds. Spec target p95 < 200 ms: met in both runs. The two runs differ by about 1.5x on identical code, which is runner-to-runner variation on shared hardware; the full L-A runs report their own numbers.
+
 ## Database plans
 
 `EXPLAIN (ANALYZE, BUFFERS)` on the seeded data, saved in [explain/board.md](explain/board.md):
@@ -90,7 +101,7 @@ Why the single-process client numbers are not the board's latency: during the ru
 
 | Scenario | Status |
 |---|---|
-| L-A1 / L-A2 board, 100 VUs | script `loadtest/board.js` written; to run with k6 |
+| L-A1 / L-A2 board, 100 VUs | script `loadtest/board.js`; a 20 s smoke version runs in CI (above); full run pending |
 | L-B mixed (board + stampedes + churn) | script `loadtest/mixed.js` written; to run with k6 |
 | L-C soak 10 min | script `loadtest/soak.js` written; to run with k6 |
 | L-LIVE against the deployed URL | after deploy (module 9) |
