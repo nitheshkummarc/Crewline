@@ -231,7 +231,8 @@ Index:
 
 **Decision.** Vite, React 18, TypeScript strict, React Router v6, TanStack Query v5, Tailwind CSS, Vitest. Changed 11 Nov 2026: added headless Radix primitives (dialog, tabs, dropdown menu, switch), `motion`, `lucide-react`, `zod`, the self-hosted Archivo font, Testing Library, eslint-plugin-jsx-a11y and Playwright. Still no styled component library.
 **Why.** TanStack Query gives caching, optimistic updates and rollback with little code. Tailwind is fast to write and keeps focus styles consistent. Radix gives correct focus trapping, keyboard handling and ARIA for dialogs, tabs and menus without imposing a look. `motion` animates rows entering and leaving the live board and honors reduced motion. `zod` keeps the client form limits in one place next to the API limits. Playwright runs the real flows on phone and laptop sizes against the real API.
-**Measured cost.** Production bundle 473 kB raw, 151 kB gzip for the main chunk (React DOM 127 kB, motion 73 kB, zod 52 kB, TanStack Query 34 kB raw); pages are split into lazy chunks of 2 to 24 kB.
+**Measured cost.** Main chunk 508 kB raw, 162.5 kB gzip after the redesign (473 kB / 151 kB before; React DOM, motion, zod and TanStack Query are most of it); pages are lazy chunks of 3 to 43 kB.
+**Changed 11 Nov 2026 (redesign).** Added `cmdk` (command palette with correct listbox semantics), `qrcode.react` (invite QR codes for in-person events) and Radix Popover (skill filter panel).
 
 ## ADR-032 Rate limits in process memory {#adr-032}
 
@@ -271,15 +272,17 @@ Index:
 **Rejected.** A third-party CAPTCHA (external script, privacy cost, breaks the strict CSP), storing issued tokens in the database (a write per page view), a client-only check (a script skips it).
 **Consequences.** A token can be reused until it expires; the per-IP and per-email rate limits bound that. A headless browser that waits 2 s passes; stated as a gap. Tests mint aged tokens with the test secret instead of sleeping.
 
-## ADR-038 Visual system: the concourse board {#adr-038}
+## ADR-038 Visual system: wristband team colors {#adr-038}
 
-**Decision.** The teams board looks and behaves like a station departure board: rows are live entities, columns never move, only their content changes, and a changed value turns over like a flap. Board surfaces are always dark; the page around them follows the system light or dark theme. Lamps carry state (amber attention, green confirmation, red conflict), always with a text label. One plate-style primary action per page. Archivo in condensed caps for board cells.
-**Why.** The core promise is a live, trustworthy seat count. A board where values change in place, without rows jumping under the pointer, makes live updates readable and keeps the button the user is about to press where it is. Chosen by the project owner from three directions (draft board, concourse board, event wristband) plus the plain category standard.
-**Rejected.** A grid of identical team cards (the category default; every update reflows the grid), dark-only theme (heavy on phones in daylight; the room theme follows the system instead).
-**Consequences.** Every color pair is measured by `frontend/scripts/contrast.mjs`. Buttons on board surfaces use the `board` variant instead of class overrides (bug B-27).
+**Decision.** Every team gets one of 8 band colors, picked from its id with a hash so every client shows the same color. The color follows the team everywhere: board card header, seat tabs, page hero, peek sheet, activity feed. Light theme by default, dark from the system setting; wide Archivo for headings; sidebar on laptops and bottom tabs on phones. The board is a card grid with search, skill filters and sort in the URL, a live activity feed, a peek sheet and a command palette.
+**Why.** The project owner reviewed the first version (a dark departure-board look, 11 Nov 2026) and found it plain and hard to scan. Team colors turn a list of names into something the eye can track while it changes live, and the feed makes the realtime system visible instead of silent.
+**Changed 11 Nov 2026.** Replaced the concourse board look. Kept: one primary action per page, measured contrast, no gradients, no pill buttons, reduced motion respected.
+**Rejected.** Category-standard grey cards with one blue accent (plain), a dark-only board (heavy in daylight), server-side search on the board endpoint (would bypass the 1 s page cache; the client filters loaded pages and says so).
+**Consequences.** Filters search only loaded pages; the UI says how many loaded teams match and offers to load more. Activity is live only (no history across reloads), because there is no hackathon-wide audit endpoint.
 
 ## ADR-039 Security headers and a strict CSP {#adr-039}
 
-**Decision.** `core/headers.py` adds a Content-Security-Policy with `default-src 'self'` and no `'unsafe-inline'` for scripts or styles, plus HSTS, nosniff, Referrer-Policy, X-Frame-Options and Permissions-Policy, to every response. The SPA shell is served `no-cache`; hashed assets `immutable`.
-**Why.** Architecture section 10 promised these headers but none were sent (bug B-23). A same-origin app with a self-hosted font needs nothing from other origins. `'unsafe-inline'` for styles was not added on a guess: a browser run of every page at both sizes showed no CSP violations with the strict policy (React and Radix set styles through the DOM, which CSP allows).
+**Decision.** `core/headers.py` adds a Content-Security-Policy with `default-src 'self'`, scripts from `'self'` only, and `'unsafe-inline'` for styles, plus HSTS, nosniff, Referrer-Policy, X-Frame-Options and Permissions-Policy, to every response. The SPA shell is served `no-cache`; hashed assets `immutable`.
+**Why.** Architecture section 10 promised these headers but none were sent (bug B-23). A same-origin app with a self-hosted font needs nothing from other origins.
+**Changed 11 Nov 2026.** The first version also refused inline styles. A later run that opened dialogs showed violations: Radix dialogs lock page scroll through `react-remove-scroll`, which injects a `<style>` element at runtime, so scroll locking was silently broken (bug B-28). Nonces need per-request templating of index.html and hashes cannot cover content that changes with the scrollbar width, so styles allow `'unsafe-inline'`. Scripts stay `'self'` only, which is what stops injected code. Every e2e page now fails on any CSP violation.
 **Consequences.** No third-party scripts, fonts or analytics can be added without changing the policy on purpose. `no-cache` on the shell means a deploy is picked up on the next load.

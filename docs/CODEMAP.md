@@ -73,7 +73,7 @@ Bot checks for signup and login: a signed form token with a minimum fill time, p
 Security headers on every response and cache rules for the built web app (pure ASGI, safe for streaming).
 | Name | Purpose | Status |
 |---|---|---|
-| `CSP`, `SECURITY_HEADERS` | Strict Content-Security-Policy (self only, no inline script or style), HSTS, nosniff, Referrer-Policy, X-Frame-Options, Permissions-Policy | done |
+| `CSP`, `SECURITY_HEADERS` | Content-Security-Policy (self only, scripts never inline, inline styles allowed for dialog scroll locking), HSTS, nosniff, Referrer-Policy, X-Frame-Options, Permissions-Policy | done |
 | `cache_control(path, headers)` | Return `no-cache` for HTML, `immutable` for hashed `/assets/`, nothing for `/api/` | done |
 | `SecurityHeadersMiddleware` | Add the security headers to every HTTP response and cache rules to web app files | done |
 
@@ -716,12 +716,12 @@ Scenario L-C.
 
 ## Web
 
-Tooling files: `frontend/package.json` (scripts: dev, build, typecheck, lint, test, e2e), `vite.config.ts` (build, `/api` dev proxy, Vitest settings, `publicUrlPlugin` that fills `%PUBLIC_URL%` in index.html from `CREWLINE_PUBLIC_URL`), `tsconfig*.json` (strict), `tailwind.config.ts` (theme from tokens; no `full` radius, so pill buttons cannot be built), `postcss.config.js`, `eslint.config.js` (typescript-eslint strict, react-hooks, jsx-a11y, no raw `fetch`, no em dash literals), `playwright.config.ts` (phone 360 px and laptop 1280 px projects), `index.html` (favicons, Open Graph and Twitter tags).
+Tooling files: `frontend/package.json` (scripts: dev, build, typecheck, lint, test, e2e), `vite.config.ts` (build, `/api` dev proxy, Vitest settings, `publicUrlPlugin` that fills `%PUBLIC_URL%` in index.html from `CREWLINE_PUBLIC_URL`), `tsconfig*.json` (strict), `tailwind.config.ts` (theme from tokens; no `full` radius, so pill buttons cannot be built; `rounded-avatar` only for avatars and dots), `postcss.config.js`, `eslint.config.js` (typescript-eslint strict, react-hooks, jsx-a11y, no raw `fetch`, no em dash literals), `playwright.config.ts` (phone 360 px and laptop 1280 px projects), `index.html` (favicons, Open Graph and Twitter tags).
 
 ### frontend/public/
 | File | Purpose | Status |
 |---|---|---|
-| `favicon.svg` | Three seat tiles, the last one amber | done |
+| `favicon.svg` | Two seat tabs in band colors and one open (dashed) seat, like the wordmark | done |
 | `favicon-32.png`, `apple-touch-icon.png`, `og-image.png` | Rendered by `scripts/make-images.mjs` (32 px, 180 px, 1200x630) | done |
 
 ### frontend/scripts/
@@ -794,7 +794,21 @@ Event stream hook: patches cached board and team data from SSE events, refetches
 | `refetchAll(client, hid)` | Refetch everything that belongs to one hackathon and every open team page | done |
 | `applyTeamEvent(client, hid, event)` | Apply one `team` event to the board pages, the team detail and the caller's status; return an announcement | done |
 | `applyRequestEvent(client, hid, event)` | Refresh that team's request list and the caller's own requests | done |
-| `useEventStream(hid)` | Open one EventSource; refetch on open, merge team events, handle people, request and resync; reconnect with backoff; return the stream status | done |
+| `knownTeamName(client, hid, teamId)` | Return the cached name of a team (for deletion events, which carry no snapshot) | done |
+| `useEventStream(hid)` | Open one EventSource; refetch on open, merge team events and feed the activity store, handle people, request and resync; reconnect with backoff; return the stream status | done |
+
+### frontend/src/hooks/useShell.ts
+Shell context shared by signed-in pages.
+| Name | Purpose | Status |
+|---|---|---|
+| `ShellContext`, `ShellState` | Current hackathon id and setter, live stream status, palette opener | done |
+| `useShell()` | Return the shell state | done |
+| `useCurrentHackathon(hid)` | Make a hackathon the current one (its stream opens in the shell) once its id is known | done |
+
+### frontend/src/hooks/useActivity.ts
+| Name | Purpose | Status |
+|---|---|---|
+| `useActivity()` | Return the newest activity items; re-render when one arrives | done |
 
 ### frontend/src/hooks/useBotCheckedSubmit.ts
 Bot-checked form submit for login and signup: form token per render, honeypot, minimum fill time.
@@ -811,6 +825,32 @@ Version-based merging of live events and refetched snapshots, with tombstones fo
 | `onBoard(team)` | True if a team belongs on the teams board (forming, looking, not full) | done |
 | `mergeBoardPage(items, teamId, incoming, isFirstPage, isLastPage)` | Patch in place, remove, or insert one team inside the page's range (bug B-26) | done |
 | `mergeFetchedPage(fresh, cached)` | Merge a refetched page: higher version wins, tombstoned and off-board teams dropped | done |
+
+### frontend/src/lib/teamColor.ts
+Team band colors and initials.
+| Name | Purpose | Status |
+|---|---|---|
+| `BAND_COUNT`, `bandIndex(teamId)` | Stable band index 0 to 7 from an id (FNV-1a) | done |
+| `bandColor(teamId)`, `bandStyle(teamId)` | CSS value and style object that set `--band` | done |
+| `initials(name)` | Up to two initials for a display name | done |
+
+### frontend/src/lib/filter.ts
+Board filters over loaded teams and people.
+| Name | Purpose | Status |
+|---|---|---|
+| `TeamFilter`, `DEFAULT_FILTER` | Search text, skills, needs or has, sort | done |
+| `filterFromParams(params)`, `filterToParams(filter, params)` | Read and write the filter in the URL (defaults dropped) | done |
+| `isFiltering(filter)` | True if search text or skills narrow the list | done |
+| `filterTeams(teams, filter)` | Search, filter by needs or has, sort by open seats; input unchanged | done |
+| `filterPeople(people, q, skills)` | Search people by name and required skills | done |
+
+### frontend/src/lib/activity.ts
+Live activity feed items and store.
+| Name | Purpose | Status |
+|---|---|---|
+| `activityFromEvent(event, previousName, at)` | Feed item for a team event, or null for events that are not news | done |
+| `activityText(item)` | One line of text for an item | done |
+| `activityStore`, `FEED_LIMIT` | External store (push, clear, subscribe, snapshot) of the last 30 items | done |
 
 ### frontend/src/lib/keys.ts
 Query key factory.
@@ -859,43 +899,51 @@ Skill taxonomy, short codes and color families.
 ### frontend/src/styles/
 | File | Purpose | Status |
 |---|---|---|
-| `tokens.css` | Color tokens: the room follows the system theme, the board is always dark, the primary plate flips per theme | done |
-| `index.css` | Font, browser surfaces (selection, caret, focus, scrollbars), board cell type, flap tile and seam, flap turn keyframes, reduced motion | done |
+| `tokens.css` | Color tokens (light default, dark from the system), shadows, the 8 team band colors | done |
+| `index.css` | Font, browser surfaces, type roles (`display`, `label`), cards and lift, band fields, live ping, seat fill and dialog keyframes, reduced motion | done |
 
 ### frontend/src/components/
 Presentational components (no data fetching).
 | File | Exports | Status |
 |---|---|---|
-| `Board.tsx` | `Lamp` (square lamp with text), `FlapText` (characters turn over when the value changes; words never split), `SeatStrip` (one tile per seat) | done |
-| `Button.tsx` | `Button` (primary, secondary, board, danger, quiet; busy state; `data-variant`), `ButtonLink`, `buttonClass` | done |
-| `Field.tsx` | `FieldShell`, `TextField`, `TextAreaField`, `SelectField`, `FieldError` (the one field error line), `Honeypot` | done |
-| `ErrorNotice.tsx` | `ErrorNotice`: the one error display (red lamp, exact error code, one-line message, request id for 5xx) | done |
+| `ActivityFeed.tsx` | `ActivityFeed` (live feed, entries slide in, times refresh every 20 s), `ago(at, now)` | done |
+| `AuthShell.tsx` | `AuthShell` (dark panel with the headline and decorative wristband stripes beside the form), `HEADLINE` | done |
+| `Avatar.tsx` | `Avatar`: initials in the person's band color | done |
+| `BoardToolbar.tsx` | `BoardToolbar` (search, skill filter popover with needs or has, sort, removable filter chips), `SearchBox` | done |
+| `Button.tsx` | `Button` (primary, secondary, ghost, danger; md and sm; busy spinner; `data-variant`), `ButtonLink`, `buttonClass` | done |
+| `CommandPalette.tsx` | `CommandPalette` (cmdk list in a dialog: groups of items, arrow keys, Enter, Escape) | done |
+| `ConfirmDialog.tsx` | `ConfirmDialog`, `DIALOG_CLASS` | done |
+| `ErrorNotice.tsx` | `ErrorNotice`: the one error display (code tag, one-line message, request id for 5xx) | done |
+| `Field.tsx` | `FieldShell`, `TextField`, `TextAreaField`, `SelectField`, `FieldError`, `Honeypot` | done |
+| `Layout.tsx` | `Layout` (sidebar on laptops; top bar and bottom tabs on phones), `Wordmark`, `FooterLinks`, `ActionBar`, `CONTACT_URL`, `SOURCE_URL` | done |
 | `LiveRegion.tsx` | `LiveRegionProvider` (the page's single polite live region), `useAnnounce` | done |
-| `LoadState.tsx` | `SkeletonRows`, `LoadError`, `EmptyState` | done |
-| `Layout.tsx` | `Layout` (skip link, top bar, main, footer), `Wordmark`, `ActionBar` (bottom bar on phones), `CONTACT_URL`, `SOURCE_URL` | done |
-| `AuthShell.tsx` | `AuthShell` (headline beside the form, above it on phones), `HEADLINE` | done |
-| `TeamBoard.tsx` | `TeamBoard`, `TeamRow`, `seatLamp` | done |
-| `People.tsx` | `PersonRow`, `PeopleBoard`, `SuggestionList` (score, reasons, weighted parts) | done |
-| `TeamParts.tsx` | `MemberList`, `RequestList`, `InviteCodeBox`, `AuditList` | done |
-| `Skills.tsx` | `SkillLabel`, `SkillList`, `SkillPicker` (aria-pressed toggles) | done |
+| `LoadState.tsx` | `SkeletonCards`, `LoadError`, `EmptyState` | done |
+| `People.tsx` | `PersonCard`, `PeopleGrid`, `SuggestionList`, `ScoreBar` (stacked bar of the weighted score parts), `localTime(timezone)` | done |
+| `RequestDialog.tsx` | `RequestDialog` to ask to join with an optional message and a live character count | done |
+| `Seats.tsx` | `SeatTabs` (tabs in the band color; `onBand` for band surfaces), `StateTag`, `teamState`, `LiveDot` | done |
+| `Sheet.tsx` | `Sheet`: side sheet on wide screens, bottom sheet on phones | done |
+| `Skills.tsx` | `SkillChip`, `SkillList`, `SkillPicker` (aria-pressed toggles) | done |
+| `TeamCard.tsx` | `TeamCard` (band header, seat tabs, has and needs), `TeamGrid` (cards animate in and out) | done |
+| `TeamParts.tsx` | `MemberList`, `RequestList`, `InviteCard` (copy code or link, QR code), `AuditTimeline` | done |
 | `TimeZoneField.tsx` | `TimeZoneField` (IANA select with current offsets, labels built once) | done |
-| `ConfirmDialog.tsx` | `ConfirmDialog` for leave, remove, regenerate, finalize, reopen | done |
-| `RequestDialog.tsx` | `RequestDialog` to ask to join with an optional message | done |
 
 ### frontend/src/pages/
-One file per route (sections that own their data live in `TeamSections.tsx`).
+One file per route; files without a route hold sections or helpers of one page.
 | File | Exports | Status |
 |---|---|---|
 | `LoginPage.tsx` | Login form; `safeNext(next)` keeps redirects in the app | done |
 | `SignupPage.tsx` | Signup with skills, time zone and agreement to terms and privacy | done |
-| `AppShell.tsx` | Session gate for signed-in routes and the layout | done |
-| `HackathonsPage.tsx` | Hackathon list | done |
-| `BoardPage.tsx` | Status, one primary action, live Teams and People tabs (everyone or ranked), your requests | done |
-| `CreateTeamPage.tsx` | Create a team | done |
-| `JoinPage.tsx` | Join with a code (also from `?code=`) | done |
-| `TeamPage.tsx` | Team header, members, member and leader actions, ask to join | done |
+| `AppShell.tsx` | Session gate, layout, the one event stream for the current hackathon, command palette; `isPaletteKey(event)` | done |
+| `HackathonsPage.tsx` | Hackathon cards in their band colors | done |
+| `BoardPage.tsx` | Board: title with live dot, status panel, Teams, People and Live tabs, toolbar, card grid, activity rail, peek | done |
+| `BoardStatus.tsx` | `StatusPanel` (register, your team, or create and join with the looking switch), `MyRequests` | done |
+| `BoardPeek.tsx` | `BoardPeek`: sheet with a team's members, has and needs, and actions | done |
+| `CreateTeamPage.tsx` | Create a team, with what happens next | done |
+| `JoinPage.tsx` | Join with a code (also from `?code=` and QR links) | done |
+| `TeamPage.tsx` | Team hero in the band color, members, leader tools, invite and actions | done |
 | `TeamSections.tsx` | `Section`, `RequestsSection`, `InviteSection`, `SettingsSection`, `SuggestionsSection`, `AuditSection` | done |
-| `ProfilePage.tsx` | Edit name, skills, time zone; `profileChanges(user, values)` sends only changed fields | done |
+| `teamConfirm.ts` | `teamConfirmCopy(args)`: text and action for leave, finalize, reopen and remove dialogs; `Confirm` | done |
+| `ProfilePage.tsx` | Edit name, skills, time zone with a live preview card; `profileChanges(user, values)` | done |
 | `LegalPages.tsx` | `PrivacyPage`, `TermsPage`, `NotFoundPage`, `LEGAL_UPDATED` | done |
 
 ### frontend/src/test/ and tests
@@ -908,11 +956,13 @@ One file per route (sections that own their data live in `TeamSections.tsx`).
 | `hooks/mutations.test.tsx` | T-WEB-01 | done |
 | `lib/validation.test.ts` | T-WEB-06 | done |
 | `routes.test.tsx` | T-WEB-05 (+ B-24, B-25 regressions, one primary action per page) | done |
+| `lib/filter.test.ts` | T-WEB-09 | done |
+| `lib/activity.test.ts` | T-WEB-10, T-WEB-11 | done |
 | `hooks/useEventStream.test.tsx` | T-WEB-07 | done |
 | `content.test.ts` | T-WEB-08 | done |
 
 ### frontend/e2e/
 | File | Purpose | Status |
 |---|---|---|
-| `helpers.ts` | `unique`, `hackathonId`, `people` (real signups with the bot check, registered, one signed-in page each), `inviteCode` | done |
-| `crewline.spec.ts` | E2E-01 to E2E-07 | done |
+| `helpers.ts` | `unique`, `hackathonId`, `people` (real signups with the bot check, registered, one signed-in page each), `inviteCode`, `watch` and `assertClean` (CSP violations, page errors, horizontal overflow) | done |
+| `crewline.spec.ts` | E2E-01 to E2E-09 | done |

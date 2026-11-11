@@ -63,8 +63,8 @@ export default function SignupPage() {
 
   return (
     <AuthShell>
-      <h2 className="page-title">Create an account</h2>
-      <p className="mt-2 text-room-ink2">
+      <h2 className="display text-[28px] leading-8">Create an account</h2>
+      <p className="mt-2 text-ink-2">
         Have one? <Link to="/login" className="underline underline-offset-[3px]">Log in</Link>.
       </p>
       <form noValidate onSubmit={submit} className="relative mt-6 flex flex-col gap-5">
@@ -83,7 +83,7 @@ export default function SignupPage() {
           <label className="flex min-h-touch items-start gap-3">
             <input type="checkbox" checked={values.agree} onChange={(e) => set('agree', e.target.checked)}
               aria-describedby={errors.agree ? 'agree-error' : undefined} aria-invalid={Boolean(errors.agree)}
-              className="mt-1 h-5 w-5 accent-[var(--lamp-green)]" />
+              className="mt-1 h-5 w-5 accent-[var(--ok)]" />
             <span>
               I agree to the <Link to="/terms" className="underline underline-offset-[3px]">terms</Link> and
               have read the <Link to="/privacy" className="underline underline-offset-[3px]">privacy notice</Link>.

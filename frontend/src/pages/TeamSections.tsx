@@ -7,18 +7,21 @@ import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { TextField } from '../components/Field';
-import { EmptyState, LoadError, SkeletonRows } from '../components/LoadState';
+import { EmptyState, LoadError, SkeletonCards } from '../components/LoadState';
 import { SuggestionList } from '../components/People';
-import { AuditList, InviteCodeBox, RequestList } from '../components/TeamParts';
+import { AuditTimeline, InviteCard, RequestList } from '../components/TeamParts';
 import { useAcceptRequest, useDeclineRequest, useRegenerateInvite, useUpdateTeam } from '../hooks/mutations';
 import { useInvite, useSuggestions, useTeamAudit, useTeamRequests } from '../hooks/queries';
 import { LIMITS, teamNameSchema, validate } from '../lib/validation';
 
 /** A titled section of the team page. */
-export function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+export function Section({ id, title, aside, children }: { id: string; title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
-      <h2 id={id} tabIndex={-1} className="caps-heading outline-none">{title}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 id={id} tabIndex={-1} className="text-lg font-bold outline-none">{title}</h2>
+        {aside}
+      </div>
       {children}
     </section>
   );
@@ -55,9 +58,9 @@ export function RequestsSection({ team }: { team: TeamDetail }) {
 
   return (
     <Section id="requests-title" title="Requests to join">
-      {full && team.status === 'forming' && <p className="text-sm text-room-ink2">The team is full. Accept is off until a seat opens.</p>}
+      {full && team.status === 'forming' && <p className="text-sm text-ink-2">The team is full. Accept is off until a seat opens.</p>}
       <ErrorNotice error={accept.error ?? decline.error} />
-      {requests.isPending && <SkeletonRows rows={1} label="Loading requests" />}
+      {requests.isPending && <SkeletonCards count={1} grid={false} label="Loading requests" />}
       {requests.error && <LoadError error={requests.error} onRetry={() => void requests.refetch()} />}
       {requests.data?.length === 0 && <EmptyState title="No requests waiting">Requests appear here live when someone asks to join.</EmptyState>}
       {requests.data && requests.data.length > 0 && (
@@ -75,14 +78,14 @@ export function InviteSection({ team, isLeader }: { team: TeamDetail; isLeader: 
   const [confirming, setConfirming] = useState(false);
   return (
     <Section id="invite-title" title="Invite code">
-      {invite.isPending && <SkeletonRows rows={1} label="Loading invite code" />}
+      {invite.isPending && <SkeletonCards count={1} grid={false} label="Loading invite code" />}
       {invite.error && <LoadError error={invite.error} onRetry={() => void invite.refetch()} />}
       {invite.data && (
-        <InviteCodeBox invite={invite.data} hackathonId={team.hackathon_id}
+        <InviteCard invite={invite.data} hackathonId={team.hackathon_id}
           primary={team.status === 'forming' && team.member_count < team.max_size} />
       )}
       {isLeader && (
-        <Button variant="danger" className="self-start" onClick={() => { regenerate.reset(); setConfirming(true); }}>
+        <Button variant="ghost" size="sm" className="self-center" onClick={() => { regenerate.reset(); setConfirming(true); }}>
           Replace the code
         </Button>
       )}
@@ -123,8 +126,8 @@ export function SettingsSection({ team }: { team: TeamDetail }) {
       </form>
       <div className="flex min-h-touch items-center gap-3">
         <Switch.Root id="team-looking-switch" checked={team.looking} disabled={update.isPending} onCheckedChange={(looking) => update.mutate({ looking })}
-          className="press relative h-7 w-12 shrink-0 rounded border border-room-control bg-room-raised data-[state=checked]:border-room-green">
-          <Switch.Thumb className="block h-5 w-5 translate-x-[3px] rounded-sm bg-room-ink2 transition-transform duration-150 data-[state=checked]:translate-x-[23px] data-[state=checked]:bg-room-green" />
+          className="press relative h-7 w-12 shrink-0 rounded-md border border-control bg-control data-[state=checked]:border-ok data-[state=checked]:bg-ok">
+          <Switch.Thumb className="block h-5 w-5 translate-x-[3px] rounded bg-surface shadow-1 transition-transform duration-150 data-[state=checked]:translate-x-[23px]" />
         </Switch.Root>
         <label htmlFor="team-looking-switch">List the team on the board while seats are open</label>
       </div>
@@ -138,13 +141,13 @@ export function SuggestionsSection({ hackathonId }: { hackathonId: string }) {
   const suggestions = useSuggestions(hackathonId);
   return (
     <Section id="suggestions-title" title="People who fill your gaps">
-      {suggestions.isPending && <SkeletonRows rows={2} label="Ranking people" />}
+      {suggestions.isPending && <SkeletonCards count={2} grid={false} label="Ranking people" />}
       {suggestions.error && <LoadError error={suggestions.error} onRetry={() => void suggestions.refetch()} />}
       {suggestions.data?.items.length === 0 && <EmptyState title="Nobody to rank yet">Suggestions come from people who are looking.</EmptyState>}
       {suggestions.data && suggestions.data.items.length > 0 && (
         <>
-          <p className="text-sm text-room-ink2">Share your invite code with them, or ask them to request a seat.</p>
-          <SuggestionList items={suggestions.data.items.slice(0, 5)} />
+          <p className="text-sm text-ink-2">Share your invite code with them, or ask them to request a seat.</p>
+          <SuggestionList items={suggestions.data.items.slice(0, 4)} />
         </>
       )}
     </Section>
@@ -158,9 +161,9 @@ export function AuditSection({ team }: { team: TeamDetail }) {
   const events = audit.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <Section id="audit-title" title="Team history">
-      {audit.isPending && <SkeletonRows rows={2} label="Loading team history" />}
+      {audit.isPending && <SkeletonCards count={2} grid={false} label="Loading team history" />}
       {audit.error && <LoadError error={audit.error} onRetry={() => void audit.refetch()} />}
-      {events.length > 0 && <AuditList events={events} names={names} />}
+      {events.length > 0 && <AuditTimeline events={events} names={names} />}
       {audit.hasNextPage && (
         <Button variant="secondary" className="self-start" busy={audit.isFetchingNextPage} busyLabel="Loading"
           onClick={() => void audit.fetchNextPage()}>Show older entries</Button>

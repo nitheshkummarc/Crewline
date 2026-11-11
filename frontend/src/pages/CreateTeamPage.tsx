@@ -1,4 +1,5 @@
 // Create a team in one hackathon; the creator becomes the leader and gets the invite code on the team page.
+import { ArrowLeft, Crown, QrCode, UserCheck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
@@ -8,6 +9,12 @@ import { TextField } from '../components/Field';
 import { useCreateTeam, useRegister } from '../hooks/mutations';
 import { useHackathon } from '../hooks/queries';
 import { LIMITS, apiFieldError, teamNameSchema, validate, type FieldErrors } from '../lib/validation';
+
+const NEXT_STEPS = [
+  { icon: Crown, title: 'You lead the team', text: 'You can accept or decline requests, remove members and finalize the team.' },
+  { icon: QrCode, title: 'Share the invite', text: 'Copy the code or the link, or show the QR code to people next to you.' },
+  { icon: UserCheck, title: 'Fill the seats', text: 'Requests arrive live. When the last seat goes, exactly one person gets it.' },
+];
 
 /** The create team page. */
 export default function CreateTeamPage() {
@@ -34,33 +41,45 @@ export default function CreateTeamPage() {
   const notRegistered = create.error instanceof ApiError && create.error.code === 'not_registered';
 
   return (
-    <section aria-labelledby="page-title" className="mx-auto flex max-w-[520px] flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 id="page-title" className="page-title">Create a team</h1>
-        <p className="text-room-ink2">
-          You become the leader. Teams in {hackathon.data?.name ?? 'this hackathon'} have
-          {hackathon.data ? ` ${hackathon.data.min_team_size} to ${hackathon.data.max_team_size}` : ''} people; you share an invite code
-          or accept requests to fill the seats.
-        </p>
+    <div className="flex flex-col gap-6">
+      <Link to={`/h/${hid}`} className="inline-flex min-h-touch items-center gap-2 self-start text-sm font-semibold text-ink-2 hover:text-ink">
+        <ArrowLeft size={16} aria-hidden="true" /> Board
+      </Link>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section aria-labelledby="page-title" className="card flex flex-col gap-6 p-6 md:p-8">
+          <div className="flex flex-col gap-2">
+            <h1 id="page-title" className="display text-[30px] leading-9">Create a team</h1>
+            <p className="text-ink-2">
+              Teams in {hackathon.data?.name ?? 'this hackathon'} have
+              {hackathon.data ? ` ${hackathon.data.min_team_size} to ${hackathon.data.max_team_size}` : ''} people.
+            </p>
+          </div>
+          <form noValidate onSubmit={submit} className="flex flex-col gap-4">
+            <TextField label="Team name" value={name} maxLength={LIMITS.teamNameMax + 10} autoComplete="off"
+              hint={`${name.trim().length} of ${LIMITS.teamNameMax} characters. Shown on the board.`} error={errors.name}
+              placeholder="Null Pointers" onChange={(event) => setName(event.target.value)} />
+            <ErrorNotice error={create.error} />
+            {notRegistered && (
+              <Button variant="secondary" busy={register.isPending} busyLabel="Registering"
+                onClick={() => register.mutate(undefined, { onSuccess: () => create.reset() })}>Register for this hackathon</Button>
+            )}
+            <Button type="submit" variant="primary" className="self-start" busy={create.isPending} busyLabel="Creating team">Create team</Button>
+          </form>
+        </section>
+        <aside aria-labelledby="next-title" className="flex flex-col gap-4">
+          <h2 id="next-title" className="text-lg font-bold">What happens next</h2>
+          <ol className="flex flex-col gap-3">
+            {NEXT_STEPS.map(({ icon: Icon, title, text }, index) => (
+              <li key={title} className="card flex gap-4 p-4">
+                <span className="band flex h-10 w-10 shrink-0 items-center justify-center rounded-md" style={{ ['--band' as string]: `var(--band-${index * 2 + 1})` }}>
+                  <Icon size={18} aria-hidden="true" />
+                </span>
+                <span><span className="block font-semibold">{title}</span><span className="text-sm text-ink-2">{text}</span></span>
+              </li>
+            ))}
+          </ol>
+        </aside>
       </div>
-      <form noValidate onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label="Team name" value={name} maxLength={LIMITS.teamNameMax + 10} autoComplete="off"
-          hint={`Up to ${LIMITS.teamNameMax} characters. Shown on the board.`} error={errors.name}
-          onChange={(event) => setName(event.target.value)} />
-        <ErrorNotice error={create.error} />
-        {notRegistered && (
-          <Button variant="secondary" busy={register.isPending} busyLabel="Registering"
-            onClick={() => register.mutate(undefined, { onSuccess: () => create.reset() })}>
-            Register for this hackathon
-          </Button>
-        )}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row">
-          <Button type="submit" variant="primary" busy={create.isPending} busyLabel="Creating team">Create team</Button>
-          <Link to={`/h/${hid}`} className="inline-flex min-h-touch items-center justify-center px-4 text-room-ink2 underline underline-offset-[3px]">
-            Back to the board
-          </Link>
-        </div>
-      </form>
-    </section>
+    </div>
   );
 }

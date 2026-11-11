@@ -12,9 +12,9 @@ Run from the repository root (or drop `--prefix frontend` inside this folder).
 | Dev server (proxies `/api` to `http://127.0.0.1:8000`, override with `CREWLINE_API`) | `npm --prefix frontend run dev` |
 | Type check | `npm --prefix frontend run typecheck` |
 | Lint (typescript-eslint strict, react-hooks, jsx-a11y) | `npm --prefix frontend run lint` |
-| Unit and component tests (Vitest, T-WEB-01 to 08) | `npm --prefix frontend test` |
+| Unit and component tests (Vitest, T-WEB-01 to 11) | `npm --prefix frontend test` |
 | Production build (set `CREWLINE_PUBLIC_URL` for the preview image URLs) | `npm --prefix frontend run build` |
-| End-to-end tests (Playwright, E2E-01 to 07) | `npm --prefix frontend run e2e` |
+| End-to-end tests (Playwright, E2E-01 to 09) | `npm --prefix frontend run e2e` |
 | Contrast check of the color tokens | `node frontend/scripts/contrast.mjs` |
 | Re-render favicons and the preview image | `node frontend/scripts/make-images.mjs` |
 
@@ -34,10 +34,10 @@ Locally Playwright uses the installed Chrome; set `PW_CHANNEL=chromium` after `n
 ```
 src/
   api/          client.ts (fetch, Idempotency-Key, error envelope, 503 retry), endpoints.ts (every /api route), types.ts
-  hooks/        queries, mutations (optimistic accept and leave), useEventStream (SSE merge by version), useBotCheckedSubmit
+  hooks/        queries, mutations (optimistic accept and leave), useEventStream (SSE merge, activity), useShell, useActivity, useBotCheckedSubmit
   pages/        one file per route, TeamSections for team page sections that own their data
-  components/   presentational: board rows, seat strip, flap text, fields, buttons, dialogs, error notice, live region
-  lib/          merge (versions, tombstones), keys, validation (zod, same limits as the API), errors, skills, time
+  components/   presentational: team cards, seat tabs, activity feed, toolbar, palette, sheet, fields, buttons, dialogs, error notice
+  lib/          merge (versions, tombstones), filter, activity, teamColor, keys, validation (zod), errors, skills, time
   styles/       tokens.css (theme tokens), index.css
   test/         Vitest setup and fixtures
 e2e/            Playwright flows

@@ -1,7 +1,7 @@
 // Route table: the single list of client routes, used by the app and by the link checker test.
 import { lazy, Suspense, type ReactNode } from 'react';
 import { matchRoutes, type RouteObject } from 'react-router-dom';
-import { SkeletonRows } from './components/LoadState';
+import { SkeletonCards } from './components/LoadState';
 import AppShell from './pages/AppShell';
 import { NotFoundPage, PrivacyPage, TermsPage } from './pages/LegalPages';
 import LoginPage from './pages/LoginPage';
@@ -14,7 +14,7 @@ const JoinPage = lazy(() => import('./pages/JoinPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
-const page = (element: ReactNode) => <Suspense fallback={<SkeletonRows rows={3} />}>{element}</Suspense>;
+const page = (element: ReactNode) => <Suspense fallback={<SkeletonCards count={3} />}>{element}</Suspense>;
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },

@@ -1,10 +1,12 @@
-// Team page parts: member list, pending requests, invite code box, audit log.
-import { Check, Copy } from 'lucide-react';
+// Team page parts: member cards, pending requests, invite card with copy and QR code, history timeline.
+import { Check, Copy, Crown, QrCode, Link as LinkIcon } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
 import type { AuditEvent, Invite, JoinRequest, Member } from '../api/types';
 import { formatZone, relativeTime, timeUntil } from '../lib/time';
+import { Avatar } from './Avatar';
 import { Button } from './Button';
-import { Lamp } from './Board';
+import { localTime } from './People';
 import { SkillList } from './Skills';
 
 interface MemberListProps {
@@ -15,28 +17,34 @@ interface MemberListProps {
   onRemove: (member: Member) => void;
 }
 
-/** Team members with the leader marked; the leader sees a remove button for everyone else. */
+/** Team members as cards with the leader marked; the leader sees a remove button for everyone else. */
 export function MemberList({ members, meId, canRemove, removingId, onRemove }: MemberListProps) {
   return (
-    <ul className="divide-y divide-flap-seam overflow-hidden rounded-md bg-board" aria-label="Members">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Members">
       {members.map((member) => (
-        <li key={member.user_id} id={`member-${member.user_id}`} tabIndex={-1}
-          className="grid gap-2 px-4 py-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto] md:items-center">
-          <span className="flex items-center gap-3">
-            <span className="cells truncate text-[15px] text-paint">{member.display_name}</span>
-            {member.is_leader && <Lamp tone="green" label="Leader" className="cells text-[12px] text-paint-2" />}
-            {member.user_id === meId && <span className="cells text-[12px] text-paint-2">You</span>}
-          </span>
-          <span className="text-sm text-paint-2">{formatZone(member.timezone)}</span>
-          <SkillList skills={member.skills} full label={`Skills of ${member.display_name}`} />
-          <span className="md:justify-self-end">
-            {canRemove && member.user_id !== meId && (
-              <Button variant="danger" busy={removingId === member.user_id} busyLabel="Removing"
-                onClick={() => onRemove(member)} aria-label={`Remove ${member.display_name}`}>
-                Remove
-              </Button>
+        <li key={member.user_id} id={`member-${member.user_id}`} tabIndex={-1} className="card flex flex-col gap-3 p-4">
+          <div className="flex items-center gap-3">
+            <Avatar id={member.user_id} name={member.display_name} />
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-2 truncate font-semibold">
+                {member.display_name}
+                {member.user_id === meId && <span className="text-sm font-normal text-ink-2">(you)</span>}
+              </p>
+              <p className="truncate text-sm text-ink-2">{formatZone(member.timezone)} · <span className="num">{localTime(member.timezone)}</span></p>
+            </div>
+            {member.is_leader && (
+              <span className="inline-flex items-center gap-1 rounded-sm bg-plate px-2 py-[2px] text-[12px] font-bold uppercase tracking-wide text-plate-ink">
+                <Crown size={12} aria-hidden="true" /> Leader
+              </span>
             )}
-          </span>
+          </div>
+          <SkillList skills={member.skills} label={`Skills of ${member.display_name}`} />
+          {canRemove && member.user_id !== meId && (
+            <Button variant="danger" size="sm" className="self-start" busy={removingId === member.user_id} busyLabel="Removing"
+              onClick={() => onRemove(member)} aria-label={`Remove ${member.display_name}`}>
+              Remove
+            </Button>
+          )}
         </li>
       ))}
     </ul>
@@ -54,22 +62,22 @@ interface RequestListProps {
 /** Pending join requests, oldest first, with accept (disabled while the team is full) and decline. */
 export function RequestList({ requests, teamFull, busyId, onAccept, onDecline }: RequestListProps) {
   return (
-    <ul className="divide-y divide-room-line rounded-md border border-room-line" aria-label="Pending requests">
+    <ul className="flex flex-col gap-3" aria-label="Pending requests">
       {requests.map((request) => (
-        <li key={request.id} id={`request-${request.id}`} tabIndex={-1} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">{request.display_name}</p>
-            {request.message && <p className="mt-1 text-sm text-room-ink2">"{request.message}"</p>}
-            <p className="mt-1 text-sm text-room-ink2">Asked {relativeTime(request.created_at)}</p>
+        <li key={request.id} id={`request-${request.id}`} tabIndex={-1} className="card flex flex-col gap-3 p-4 md:flex-row md:items-center">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <Avatar id={request.user_id} name={request.display_name} />
+            <div className="min-w-0">
+              <p className="font-semibold">{request.display_name} <span className="text-sm font-normal text-ink-2">· {relativeTime(request.created_at)}</span></p>
+              {request.message && <p className="mt-2 rounded-md bg-surface-2 px-3 py-2 text-sm">"{request.message}"</p>}
+            </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" disabled={teamFull || busyId !== null} busy={busyId === request.id}
-              busyLabel="Accepting" onClick={() => onAccept(request)}
-              aria-label={`Accept ${request.display_name}`} title={teamFull ? 'The team is full' : undefined}>
-              Accept
+            <Button variant="secondary" disabled={teamFull || busyId !== null} busy={busyId === request.id} busyLabel="Accepting"
+              onClick={() => onAccept(request)} aria-label={`Accept ${request.display_name}`} title={teamFull ? 'The team is full' : undefined}>
+              <Check size={16} aria-hidden="true" /> Accept
             </Button>
-            <Button variant="quiet" disabled={busyId !== null} onClick={() => onDecline(request)}
-              aria-label={`Decline ${request.display_name}`}>
+            <Button variant="ghost" disabled={busyId !== null} onClick={() => onDecline(request)} aria-label={`Decline ${request.display_name}`}>
               Decline
             </Button>
           </div>
@@ -79,9 +87,10 @@ export function RequestList({ requests, teamFull, busyId, onAccept, onDecline }:
   );
 }
 
-/** The invite code with a copy button, a share link and its expiry; members only. `primary` makes copy the page's main action. */
-export function InviteCodeBox({ invite, hackathonId, primary = false }: { invite: Invite; hackathonId: string; primary?: boolean }) {
+/** The invite code with copy buttons, a scannable QR code of the join link, and its expiry; members only. */
+export function InviteCard({ invite, hackathonId, primary = false }: { invite: Invite; hackathonId: string; primary?: boolean }) {
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
+  const [showQr, setShowQr] = useState(false);
   // The API already returns the code formatted as XXXXX-XXXXX (api.md).
   const code = invite.code;
   const link = `${window.location.origin}/h/${hackathonId}/join?code=${code}`;
@@ -95,20 +104,29 @@ export function InviteCodeBox({ invite, hackathonId, primary = false }: { invite
     }
   };
   return (
-    <div className="flex flex-col gap-3 rounded-md bg-board p-4 text-paint">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="flap-tile cells px-3 py-2 text-[22px] leading-7 tracking-[0.12em]" aria-label={`Invite code ${code.split('').join(' ')}`}>
-          {code}
-        </span>
-        <Button variant={primary ? 'primary' : 'board'} onClick={() => void copy('code')}>
+    <div className="card flex flex-col gap-4 p-5">
+      <p className="num select-all text-center font-mono text-[28px] font-bold tracking-[0.14em]" aria-label={`Invite code ${code.split('').join(' ')}`}>
+        {code}
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant={primary ? 'primary' : 'secondary'} onClick={() => void copy('code')}>
           {copied === 'code' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
           {copied === 'code' ? 'Copied' : 'Copy code'}
         </Button>
-        <Button variant="board" onClick={() => void copy('link')}>
+        <Button variant="secondary" onClick={() => void copy('link')}>
+          {copied === 'link' ? <Check size={16} aria-hidden="true" /> : <LinkIcon size={16} aria-hidden="true" />}
           {copied === 'link' ? 'Copied' : 'Copy link'}
         </Button>
       </div>
-      <p className="text-sm text-paint-2">Expires in {timeUntil(invite.expires_at)}. Anyone with the code can join while a seat is open.</p>
+      <Button variant="ghost" size="sm" aria-expanded={showQr} onClick={() => setShowQr((v) => !v)}>
+        <QrCode size={16} aria-hidden="true" /> {showQr ? 'Hide QR code' : 'Show QR code to scan'}
+      </Button>
+      {showQr && (
+        <div role="img" aria-label={`QR code for the join link of code ${code}`} className="mx-auto rounded-md bg-paper p-3">
+          <QRCodeSVG value={link} size={176} level="M" aria-hidden="true" />
+        </div>
+      )}
+      <p className="text-center text-sm text-ink-2">Expires in {timeUntil(invite.expires_at)}. Anyone with the code can join while a seat is open.</p>
     </div>
   );
 }
@@ -132,17 +150,16 @@ const ACTION_TEXT: Record<string, string> = {
   member_profile_updated: 'updated their profile',
 };
 
-/** Team audit events, newest first: who did what and when. */
-export function AuditList({ events, names }: { events: AuditEvent[]; names: Map<string, string> }) {
+/** Team audit events as a timeline, newest first: who did what and when. */
+export function AuditTimeline({ events, names }: { events: AuditEvent[]; names: Map<string, string> }) {
   return (
-    <ol className="flex flex-col gap-2 text-sm">
+    <ol className="relative flex flex-col gap-4 border-l-2 border-line pl-5">
       {events.map((event) => (
-        <li key={event.seq} className="grid grid-cols-[84px_minmax(0,1fr)] gap-3">
-          <time dateTime={event.created_at} className="cells text-[12px] text-room-ink2">{relativeTime(event.created_at)}</time>
-          <span>
-            <span className="font-semibold">{event.actor_id ? names.get(event.actor_id) ?? 'A former member' : 'System'}</span>{' '}
-            {ACTION_TEXT[event.action] ?? event.action.replace(/_/g, ' ')}
-          </span>
+        <li key={event.seq} className="relative text-sm">
+          <span aria-hidden="true" className="absolute -left-[27px] top-[6px] h-3 w-3 rounded-avatar border-2 border-surface bg-control" />
+          <span className="font-semibold">{event.actor_id ? names.get(event.actor_id) ?? 'A former member' : 'System'}</span>{' '}
+          {ACTION_TEXT[event.action] ?? event.action.replace(/_/g, ' ')}
+          <time dateTime={event.created_at} className="ml-2 text-ink-2">{relativeTime(event.created_at)}</time>
         </li>
       ))}
     </ol>

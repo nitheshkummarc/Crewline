@@ -1,45 +1,51 @@
-// Buttons and button-styled links: primary (one per page), secondary, board, danger, quiet; 44 px targets, 4 px radius.
+// Buttons and button-styled links: primary (one per page), secondary, ghost, danger; 44 px targets, 6 px radius.
 import clsx from 'clsx';
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { Link, type LinkProps } from 'react-router-dom';
 
-export type Variant = 'primary' | 'secondary' | 'board' | 'danger' | 'quiet';
+export type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type Size = 'md' | 'sm';
 
-const BASE = 'press inline-flex min-h-touch min-w-touch items-center justify-center gap-2 rounded px-4 '
-  + 'text-[15px] font-semibold leading-5 disabled:cursor-not-allowed disabled:opacity-50';
+const BASE = 'press inline-flex items-center justify-center gap-2 rounded font-semibold '
+  + 'disabled:cursor-not-allowed disabled:opacity-50';
 
-const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-plate text-plate-ink hover:brightness-110',
-  secondary: 'border border-room-control text-room-ink hover:border-room-ink aria-pressed:border-room-ink aria-pressed:bg-room-raised',
-  // Secondary action on an always-dark board surface.
-  board: 'border border-flap-edge text-paint hover:border-paint aria-pressed:border-paint',
-  danger: 'border border-room-red text-room-red hover:bg-[color-mix(in_srgb,var(--room-red)_12%,transparent)]',
-  quiet: 'text-room-ink2 underline underline-offset-[3px] hover:text-room-ink',
+const SIZES: Record<Size, string> = {
+  md: 'min-h-touch min-w-touch px-4 text-[15px] leading-5',
+  sm: 'min-h-touch min-w-touch px-3 text-sm leading-5',
 };
 
-/** Class list for a button of a variant. */
-export const buttonClass = (variant: Variant = 'secondary', className?: string) =>
-  clsx(BASE, VARIANTS[variant], className);
+const VARIANTS: Record<Variant, string> = {
+  primary: 'bg-plate text-plate-ink shadow-1 hover:shadow-2 hover:-translate-y-px',
+  secondary: 'border border-control bg-surface text-ink hover:border-ink aria-pressed:border-ink aria-pressed:bg-plate aria-pressed:text-plate-ink',
+  ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+  danger: 'border border-bad text-bad hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)]',
+};
+
+/** Class list for a button of a variant and size. */
+export const buttonClass = (variant: Variant = 'secondary', size: Size = 'md', className?: string) =>
+  clsx(BASE, SIZES[size], VARIANTS[variant], className);
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
+  size?: Size;
   busy?: boolean;
   busyLabel?: string;
 }
 
 /** A button that is disabled and relabeled while its action is in flight. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'secondary', busy = false, busyLabel, className, children, disabled, type = 'button', ...rest }, ref,
+  { variant = 'secondary', size = 'md', busy = false, busyLabel, className, children, disabled, type = 'button', ...rest }, ref,
 ) {
   return (
-    <button ref={ref} type={type} className={buttonClass(variant, className)} disabled={disabled || busy} data-variant={variant}
-      aria-busy={busy || undefined} {...rest}>
+    <button ref={ref} type={type} className={buttonClass(variant, size, className)} disabled={disabled || busy}
+      aria-busy={busy || undefined} data-variant={variant} {...rest}>
+      {busy && <span aria-hidden="true" className="h-3 w-3 animate-spin rounded-avatar border-2 border-current border-r-transparent" />}
       {busy && busyLabel ? busyLabel : children}
     </button>
   );
 });
 
 /** A router link styled as a button. */
-export function ButtonLink({ variant = 'secondary', className, ...rest }: LinkProps & { variant?: Variant }) {
-  return <Link className={buttonClass(variant, className)} data-variant={variant} {...rest} />;
+export function ButtonLink({ variant = 'secondary', size = 'md', className, ...rest }: LinkProps & { variant?: Variant; size?: Size }) {
+  return <Link className={buttonClass(variant, size, className)} data-variant={variant} {...rest} />;
 }

@@ -1,18 +1,21 @@
-// T-WEB-08: product content rules hold in every source file and in index.html (no em dashes, AI words, pill buttons, purple gradients, secrets).
+// T-WEB-08: product content rules hold in every frontend text file: source, configs, e2e, scripts, index.html, README (bug B-31).
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = join(__dirname, '..');
 
+const SKIP = new Set(['node_modules', 'dist', 'test-results', 'playwright-report', 'coverage']);
+
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    return statSync(path).isDirectory() ? files(path) : /\.(tsx?|css|html|svg)$/.test(name) ? [path] : [];
+    if (statSync(path).isDirectory()) return SKIP.has(name) ? [] : files(path);
+    return /\.(tsx?|m?js|css|html|svg|md|json)$/.test(name) && name !== 'package-lock.json' ? [path] : [];
   });
 }
 
-const SOURCES = [...files(join(ROOT, 'src')), join(ROOT, 'index.html')].filter((path) => !path.endsWith('content.test.ts'));
+const SOURCES = files(ROOT).filter((path) => !path.endsWith('content.test.ts'));
 const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('T-WEB-08 content rules', () => {

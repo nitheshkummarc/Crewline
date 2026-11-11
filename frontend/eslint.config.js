@@ -20,7 +20,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-restricted-globals': ['error', { name: 'fetch', message: 'All HTTP goes through src/api/client.ts.' }],
       'no-restricted-syntax': ['error', {
-        selector: 'Literal[value=/—/]',
+        selector: 'Literal[value=/\u2014/]',
         message: 'No em dashes in any text (product rule 17).',
       }],
     },

@@ -1,93 +1,180 @@
-// Page shell: skip link, top bar with the user menu, main landmark, footer with legal and contact links.
+// App shell: skip link, sidebar on wide screens, top bar and bottom tab bar on phones, footer links.
 import * as Menu from '@radix-ui/react-dropdown-menu';
-import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import clsx from 'clsx';
+import { Command as CommandIcon, Home, LayoutGrid, LogOut, Search, UserRound, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import type { User } from '../api/types';
+import { Avatar } from './Avatar';
 
 export const CONTACT_URL = 'https://github.com/nitheshkummarc/Crewline/issues';
 export const SOURCE_URL = 'https://github.com/nitheshkummarc/Crewline';
 
-/** The Crewline wordmark: a seat strip and the name in condensed caps. */
-export function Wordmark() {
+/** The Crewline wordmark: three seat tabs, the last one open, and the name. */
+export function Wordmark({ className }: { className?: string }) {
   return (
-    <span className="cells inline-flex items-center gap-2 text-[17px] tracking-[0.12em] text-paint">
-      <span aria-hidden="true" className="inline-flex gap-[2px]">
-        <span className="h-[14px] w-[8px] rounded-sm bg-paint" />
-        <span className="h-[14px] w-[8px] rounded-sm bg-paint" />
-        <span className="h-[14px] w-[8px] rounded-sm bg-lamp-amber" />
+    <span className={clsx('inline-flex items-center gap-2', className)}>
+      <span aria-hidden="true" className="inline-flex items-end gap-[3px]">
+        <span className="h-4 w-[9px] rounded-sm" style={{ background: 'var(--band-0)' }} />
+        <span className="h-4 w-[9px] rounded-sm" style={{ background: 'var(--band-1)' }} />
+        <span className="h-4 w-[9px] rounded-sm border-2 border-dashed border-current" />
       </span>
-      Crewline
+      <span className="display text-[19px] leading-6">Crewline</span>
     </span>
   );
 }
 
+export interface NavItem {
+  to: string;
+  label: string;
+  icon: 'home' | 'board' | 'team' | 'profile';
+}
+
+const ICONS = { home: Home, board: LayoutGrid, team: Users, profile: UserRound } as const;
+
 interface LayoutProps {
-  user: User | null;
-  onLogout?: () => void;
+  user: User;
+  nav: NavItem[];
   context?: ReactNode;
+  onLogout: () => void;
+  onOpenPalette: () => void;
   children: ReactNode;
 }
 
-/** Header, main content and footer for every page. */
-export function Layout({ user, onLogout, context, children }: LayoutProps) {
+/** Sidebar layout on wide screens, top bar plus bottom tabs on phones. */
+export function Layout({ user, nav, context, onLogout, onOpenPalette, children }: LayoutProps) {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <a href="#main" className="sr-only z-50 rounded bg-paint px-4 py-3 text-board focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <a href="#main" className="sr-only z-50 rounded bg-plate px-4 py-3 text-plate-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 border-b border-flap-seam bg-board text-paint">
-        <div className="mx-auto flex h-14 max-w-page items-center gap-4 px-4">
-          <Link to="/" className="inline-flex min-h-touch items-center" aria-label="Crewline home">
-            <Wordmark />
-          </Link>
-          <div className="min-w-0 flex-1 truncate text-sm text-paint-2">{context}</div>
-          {user && <UserMenu user={user} onLogout={onLogout} />}
-        </div>
-      </header>
-      <main id="main" tabIndex={-1} className="mx-auto w-full max-w-page flex-1 px-4 pb-28 pt-6 outline-none md:pb-12">
-        {children}
-      </main>
-      <footer className="border-t border-room-line">
-        <nav aria-label="Legal and contact" className="mx-auto flex max-w-page flex-wrap gap-x-6 gap-y-2 px-4 py-5 text-sm text-room-ink2">
-          <Link to="/privacy" className="inline-flex min-h-touch items-center underline underline-offset-[3px] hover:text-room-ink">Privacy</Link>
-          <Link to="/terms" className="inline-flex min-h-touch items-center underline underline-offset-[3px] hover:text-room-ink">Terms</Link>
-          <a href={CONTACT_URL} className="inline-flex min-h-touch items-center underline underline-offset-[3px] hover:text-room-ink">Contact</a>
-          <a href={SOURCE_URL} className="inline-flex min-h-touch items-center underline underline-offset-[3px] hover:text-room-ink">Source code</a>
+
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line bg-surface px-4 py-5 lg:flex">
+        <Link to="/" className="inline-flex min-h-touch items-center px-2" aria-label="Crewline home"><Wordmark /></Link>
+        {context && <div className="rounded-md bg-surface-2 px-3 py-2 text-sm">{context}</div>}
+        <button type="button" onClick={onOpenPalette}
+          className="press flex min-h-touch items-center gap-3 rounded border border-line bg-canvas px-3 text-sm text-ink-2 hover:border-control">
+          <Search size={16} aria-hidden="true" /> <span className="flex-1 text-left">Search or jump to</span>
+          <kbd className="inline-flex items-center gap-1 rounded-sm border border-line px-[6px] text-[12px]"><CommandIcon size={11} aria-hidden="true" />K</kbd>
+        </button>
+        <nav aria-label="Main" className="flex flex-col gap-1">
+          {nav.map((item) => <SideLink key={item.to} item={item} />)}
         </nav>
-      </footer>
+        <div className="mt-auto flex flex-col gap-4">
+          <UserMenu user={user} onLogout={onLogout} />
+          <FooterLinks />
+        </div>
+      </aside>
+
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden">
+        <Link to="/" className="inline-flex min-h-touch items-center" aria-label="Crewline home"><Wordmark /></Link>
+        <div className="min-w-0 flex-1 truncate text-sm text-ink-2">{context}</div>
+        <button type="button" onClick={onOpenPalette} aria-label="Search or jump to"
+          className="press inline-flex h-11 w-11 items-center justify-center rounded text-ink hover:bg-surface-2">
+          <Search size={20} aria-hidden="true" />
+        </button>
+      </header>
+
+      <div className="flex min-w-0 flex-col">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-page flex-1 px-4 pb-40 pt-6 outline-none md:px-8 lg:pb-12 lg:pt-8">
+          {children}
+        </main>
+        <footer className="border-t border-line px-4 pb-24 pt-4 lg:hidden"><FooterLinks /></footer>
+      </div>
+
+      <nav aria-label="Tabs" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
+        style={{ gridTemplateColumns: `repeat(${nav.length + 1}, minmax(0, 1fr))` }}>
+        {nav.map((item) => <TabLink key={item.to} item={item} />)}
+        <Menu.Root>
+          <Menu.Trigger className="flex min-h-[56px] flex-col items-center justify-center gap-1 text-[11px] font-semibold text-ink-2">
+            <Avatar id={user.id} name={user.display_name} size="sm" className="h-6 w-6 text-[10px] ring-0" />
+            Account
+          </Menu.Trigger>
+          <AccountMenuContent user={user} onLogout={onLogout} />
+        </Menu.Root>
+      </nav>
     </div>
   );
 }
 
-/** The signed-in user's menu: profile and log out. */
-function UserMenu({ user, onLogout }: { user: User; onLogout?: (() => void) | undefined }) {
-  const item = 'flex min-h-touch cursor-pointer items-center gap-3 rounded px-3 text-[15px] outline-none data-[highlighted]:bg-flap';
+function SideLink({ item }: { item: NavItem }) {
+  const Icon = ICONS[item.icon];
+  return (
+    <NavLink to={item.to} end={item.icon === 'home'}
+      className={({ isActive }) => clsx('press flex min-h-touch items-center gap-3 rounded px-3 font-medium',
+        isActive ? 'bg-plate text-plate-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink')}>
+      <Icon size={18} aria-hidden="true" /> {item.label}
+    </NavLink>
+  );
+}
+
+function TabLink({ item }: { item: NavItem }) {
+  const Icon = ICONS[item.icon];
+  return (
+    <NavLink to={item.to} end={item.icon === 'home'}
+      className={({ isActive }) => clsx('flex min-h-[56px] flex-col items-center justify-center gap-1 text-[11px] font-semibold',
+        isActive ? 'text-ink' : 'text-ink-2')}>
+      {({ isActive }) => (
+        <>
+          <span className={clsx('flex h-7 w-12 items-center justify-center rounded-md transition-colors', isActive && 'bg-plate text-plate-ink')}>
+            <Icon size={18} aria-hidden="true" />
+          </span>
+          {item.label}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+function UserMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <Menu.Root>
-      <Menu.Trigger className="press inline-flex min-h-touch items-center gap-2 rounded border border-flap-edge px-3 text-sm text-paint">
-        <span className="max-w-[120px] truncate sm:max-w-[200px]">{user.display_name}</span>
-        <ChevronDown size={16} aria-hidden="true" />
+      <Menu.Trigger className="press flex min-h-touch w-full items-center gap-3 rounded px-2 py-2 text-left hover:bg-surface-2">
+        <Avatar id={user.id} name={user.display_name} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">{user.display_name}</span>
+          <span className="block truncate text-[12px] text-ink-2">{user.email}</span>
+        </span>
       </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Content align="end" sideOffset={6} className="z-40 min-w-[200px] rounded-md border border-flap-edge bg-board p-1 text-paint shadow-dialog">
-          <Menu.Item asChild>
-            <Link to="/me" className={item}><UserRound size={16} aria-hidden="true" />Profile</Link>
-          </Menu.Item>
-          <Menu.Item className={item} onSelect={() => onLogout?.()}>
-            <LogOut size={16} aria-hidden="true" />Log out
-          </Menu.Item>
-        </Menu.Content>
-      </Menu.Portal>
+      <AccountMenuContent user={user} onLogout={onLogout} />
     </Menu.Root>
   );
 }
 
-/** A bar fixed to the bottom on phones that holds the page's primary action; inline on wide screens. */
+function AccountMenuContent({ onLogout }: { user: User; onLogout: () => void }) {
+  const item = 'flex min-h-touch cursor-pointer items-center gap-3 rounded px-3 text-[15px] outline-none data-[highlighted]:bg-surface-2';
+  return (
+    <Menu.Portal>
+      <Menu.Content align="end" side="top" sideOffset={8} className="card z-40 min-w-[220px] p-1 shadow-2">
+        <Menu.Item asChild>
+          <Link to="/me" className={item}><UserRound size={16} aria-hidden="true" />Profile</Link>
+        </Menu.Item>
+        <Menu.Item className={item} onSelect={onLogout}>
+          <LogOut size={16} aria-hidden="true" />Log out
+        </Menu.Item>
+      </Menu.Content>
+    </Menu.Portal>
+  );
+}
+
+/** Privacy, terms, contact and source links. */
+export function FooterLinks() {
+  const link = 'inline-flex min-h-touch items-center underline underline-offset-[3px] hover:text-ink';
+  return (
+    <nav aria-label="Legal and contact" className="flex flex-wrap gap-x-4 px-2 text-[13px] text-ink-2">
+      <Link to="/privacy" className={link}>Privacy</Link>
+      <Link to="/terms" className={link}>Terms</Link>
+      <a href={CONTACT_URL} className={link}>Contact</a>
+      <a href={SOURCE_URL} className={link}>Source</a>
+    </nav>
+  );
+}
+
+/** The page's primary action: a bar above the tab bar on phones, inline on wide screens. */
 export function ActionBar({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-room-line bg-room px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
-      <div className="mx-auto flex max-w-page gap-2 [&>*]:flex-1 md:[&>*]:flex-none">{children}</div>
+    <div className="fixed inset-x-0 bottom-[calc(57px+env(safe-area-inset-bottom))] z-20 border-t border-line bg-surface px-4 py-3 shadow-2 md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+      <div className="flex gap-2 [&>*]:flex-1 md:[&>*]:flex-none">{children}</div>
     </div>
   );
 }

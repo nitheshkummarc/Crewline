@@ -36,7 +36,8 @@ async def test_api_48_security_headers_and_web_cache_rules(server: str) -> None:
         asset = await client.get("/assets/index-abc123.js")
         missing_api = await client.get("/api/does-not-exist")
     for response in (api, shell, asset, missing_api):
-        assert "script-src 'self'" in response.headers["content-security-policy"]
+        csp = response.headers["content-security-policy"]
+        assert "script-src 'self';" in csp and "script-src 'self' 'unsafe" not in csp
         assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
         assert response.headers["x-content-type-options"] == "nosniff"
         assert response.headers["referrer-policy"] == "same-origin"

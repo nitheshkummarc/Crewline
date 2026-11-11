@@ -1,10 +1,11 @@
-// Event stream hook: patches cached board and team data from SSE events, refetches on every (re)connect.
+// Event stream hook: patches cached board and team data from SSE events, feeds the activity store, refetches on every (re)connect.
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { eventsUrl } from '../api/endpoints';
 import type { JoinRequest, MyStatus, RequestEvent, TeamDetail, TeamEvent, TeamSummary } from '../api/types';
 import { useAnnounce } from '../components/LiveRegion';
 import { keys } from '../lib/keys';
+import { activityFromEvent, activityStore } from '../lib/activity';
 import { mergeBoardPage, mergeTeam, recordTombstone } from '../lib/merge';
 import type { TeamsBoardData } from './queries';
 
@@ -66,6 +67,14 @@ export function applyTeamEvent(client: QueryClient, hid: string, event: TeamEven
   return null;
 }
 
+/** Return the cached name of a team (board pages or team detail), or null if it is not cached. */
+export function knownTeamName(client: QueryClient, hid: string, teamId: string): string | null {
+  const detail = client.getQueryData<TeamDetail>(keys.team(teamId));
+  if (detail) return detail.name;
+  const board = client.getQueryData<TeamsBoardData>(keys.teamsBoard(hid));
+  return board?.pages.flatMap((page) => page.items).find((team) => team.id === teamId)?.name ?? null;
+}
+
 /** Apply one `request` event: refresh that team's request list and the caller's own requests. */
 export function applyRequestEvent(client: QueryClient, hid: string, event: RequestEvent): void {
   void client.invalidateQueries({ queryKey: keys.teamRequests(event.team_id) });
@@ -119,6 +128,9 @@ export function useEventStream(hid: string | undefined): StreamStatus {
       source.addEventListener('team', (message) => {
         const event = parse<TeamEvent>(message as MessageEvent<string>);
         if (!event) return;
+        // Read the name before applying: a deletion event carries no team snapshot.
+        const item = activityFromEvent(event, knownTeamName(client, hid, event.team_id));
+        if (item) activityStore.push(item);
         const text = applyTeamEvent(client, hid, event);
         if (text) announceRef.current(text);
       });

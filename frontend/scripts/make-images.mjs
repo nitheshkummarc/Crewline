@@ -14,20 +14,22 @@ const font = `data:font/woff2;base64,${readFileSync(fontFile).toString('base64')
 const card = `<!doctype html><html><head><style>
 @font-face { font-family: Archivo; src: url('${font}') format('woff2'); font-weight: 100 900; font-stretch: 62% 125%; }
 * { margin: 0; box-sizing: border-box; }
-body { width: 1200px; height: 630px; background: #0b0c0d; color: #f4f2ec; font-family: Archivo, sans-serif;
+body { width: 1200px; height: 630px; background: #111317; color: #f2f3f5; font-family: Archivo, sans-serif;
   padding: 72px 80px; display: flex; flex-direction: column; justify-content: space-between; }
-.mark { display: flex; align-items: center; gap: 14px; font-stretch: 75%; font-weight: 650; font-size: 34px; letter-spacing: 0.12em; text-transform: uppercase; }
-.seats { display: flex; gap: 5px; } .seats i { width: 18px; height: 32px; border-radius: 3px; background: #f4f2ec; display: block; }
-.seats i:last-child { background: #ffb21e; }
-h1 { font-stretch: 75%; font-weight: 700; font-size: 84px; line-height: 88px; text-transform: uppercase; letter-spacing: 0.01em; max-width: 980px; }
+.mark { display: flex; align-items: center; gap: 14px; font-stretch: 118%; font-weight: 760; font-size: 36px; }
+.seats { display: flex; gap: 5px; } .seats i { width: 18px; height: 32px; border-radius: 4px; display: block; }
+.seats i:nth-child(1) { background: #ff8a3d; } .seats i:nth-child(2) { background: #3ec5f0; }
+.seats i:last-child { border: 3px dashed #f2f3f5; }
+h1 { font-stretch: 118%; font-weight: 760; font-size: 72px; line-height: 78px; letter-spacing: -0.015em; max-width: 1040px; }
 .row { display: flex; gap: 10px; align-items: center; }
-.row b { width: 46px; height: 64px; border-radius: 4px; background: #f4f2ec; display: block; position: relative; }
-.row b.open { background: #181a1c; border: 2px solid #ffb21e; }
-.row span { font-stretch: 75%; font-weight: 650; font-size: 30px; letter-spacing: 0.06em; color: #9ea3a8; margin-left: 18px; text-transform: uppercase; }
+.row b { width: 46px; height: 64px; border-radius: 6px; display: block; }
+.row b:nth-child(1) { background: #ff8a3d; } .row b:nth-child(2) { background: #a3e635; } .row b:nth-child(3) { background: #ff7aa2; }
+.row b.open { border: 4px dashed #f2f3f5; }
+.row span { font-weight: 620; font-size: 30px; color: #c4c9d0; margin-left: 18px; }
 </style></head><body>
 <div class="mark"><div class="seats"><i></i><i></i><i></i></div>Crewline</div>
 <h1>Form a hackathon team. One seat, one winner, no double joins.</h1>
-<div class="row"><b></b><b></b><b></b><b class="open"></b><span>Last seat open</span></div>
+<div class="row"><b></b><b></b><b></b><b class="open"></b><span>Last seat open. Exactly one person gets it.</span></div>
 </body></html>`;
 
 const browser = await chromium.launch({ channel: process.env.PW_CHANNEL ?? 'chrome' });
@@ -39,7 +41,7 @@ const shoot = async (html, width, height, file) => {
   await page.screenshot({ path: join(root, 'public', file), omitBackground: false });
   await page.close();
 };
-const icon = (size) => `<!doctype html><html><body style="margin:0;background:#0b0c0d">${svg.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`;
+const icon = (size) => `<!doctype html><html><body style="margin:0;background:#111317">${svg.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`;
 await shoot(icon(32), 32, 32, 'favicon-32.png');
 await shoot(icon(180), 180, 180, 'apple-touch-icon.png');
 await shoot(card, 1200, 630, 'og-image.png');

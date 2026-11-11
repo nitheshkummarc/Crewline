@@ -53,7 +53,7 @@ const PAGES: Array<[string, string, boolean]> = [
   ['/privacy', 'Privacy', false],
   ['/terms', 'Terms of use', false],
   ['/', 'Hackathons', true],
-  [`/h/${HID}`, 'Team board', true],
+  [`/h/${HID}`, 'Hack4Hack 2026', true],
   [`/h/${HID}/teams/new`, 'Create a team', true],
   [`/h/${HID}/join?code=ABCDE-FGHJK`, 'Join with a code', true],
   [`/teams/${TID}`, 'Null Pointers', true],

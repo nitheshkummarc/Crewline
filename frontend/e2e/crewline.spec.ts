@@ -1,12 +1,15 @@
-// End-to-end flows through the real UI and API: signup with the bot check, live updates, requests, last-seat race.
+// End-to-end flows through the real UI and API: signup with the bot check, live updates, requests, last-seat race,
+// command palette, search, team peek and the live feed. Every page is checked for CSP violations, errors and overflow.
 import { expect, test } from '@playwright/test';
-import { PASSWORD, hackathonId, inviteCode, people, unique } from './helpers';
+import { PASSWORD, assertClean, hackathonId, inviteCode, people, unique, watch } from './helpers';
 
 let hid = '';
 
 test.beforeAll(async ({ baseURL }) => {
   hid = await hackathonId(baseURL ?? '');
 });
+
+test.beforeEach(({ page }) => watch(page));
 
 test('E2E-01 sign up in the UI, register, create a team and see the invite code', async ({ page }) => {
   const name = `Ana ${unique().slice(-4)}`;
@@ -30,8 +33,9 @@ test('E2E-01 sign up in the UI, register, create a team and see the invite code'
   await expect(page.getByText('You lead this team')).toBeVisible();
   await expect(page.getByLabel(/Invite code /)).toBeVisible();
   expect(await inviteCode(page)).toMatch(/^[0-9A-Z]{5}-[0-9A-Z]{5}$/);
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-  expect(overflow).toBe(false);
+  await page.getByRole('button', { name: /Show QR code/ }).click();
+  await expect(page.getByRole('img', { name: /QR code for the join link/ })).toBeVisible();
+  await assertClean(page);
 });
 
 test('E2E-02 signup form shows field errors next to the fields', async ({ page }) => {
@@ -44,6 +48,7 @@ test('E2E-02 signup form shows field errors next to the fields', async ({ page }
   const describedBy = await password.getAttribute('aria-describedby');
   expect(describedBy).toContain('error');
   await expect(page.getByText('Agree to the terms and the privacy notice to continue.')).toBeVisible();
+  await assertClean(page);
 });
 
 test('E2E-03 a join by shared link shows up live on the leader page without a reload', async ({ browser, baseURL, viewport }) => {
@@ -57,10 +62,12 @@ test('E2E-03 a join by shared link shows up live on the leader page without a re
   await joiner.page.goto(`/h/${hid}/join?code=${code}`);
   await expect(joiner.page.getByLabel('Invite code')).toHaveValue(code);
   await joiner.page.getByRole('button', { name: 'Join team' }).click();
-  await expect(joiner.page.getByText('Your team')).toBeVisible();
+  await expect(joiner.page.getByText('Your team').first()).toBeVisible();
 
   await expect(leader.page.getByRole('list', { name: 'Members' }).getByText(joiner.name)).toBeVisible();
   await expect(leader.page.getByText('2 of 4 seats taken').first()).toBeAttached();
+  await assertClean(leader.page);
+  await assertClean(joiner.page);
   await leader.context.close();
   await joiner.context.close();
 });
@@ -83,13 +90,15 @@ test('E2E-04 request, live request list, accept, then leave hands leadership ove
   await expect(leader.page.getByText('"I do backend and some devops."')).toBeVisible();
   await leader.page.getByRole('button', { name: `Accept ${asker.name}` }).click();
   await expect(leader.page.getByText('2 of 4 seats taken').first()).toBeAttached();
-  await expect(asker.page.getByText('Your team')).toBeVisible();
+  await expect(asker.page.getByText('Your team').first()).toBeVisible();
 
   await leader.page.getByRole('button', { name: 'Leave team' }).click();
   await expect(leader.page.getByText('Leadership passes to the member who joined earliest.')).toBeVisible();
   await leader.page.getByRole('dialog').getByRole('button', { name: 'Leave team' }).click();
-  await expect(leader.page.getByRole('heading', { name: 'Team board' })).toBeVisible();
+  await expect(leader.page.getByRole('tab', { name: 'Teams' })).toBeVisible();
   await expect(asker.page.getByText('You lead this team')).toBeVisible();
+  await assertClean(leader.page);
+  await assertClean(asker.page);
   await leader.context.close();
   await asker.context.close();
 });
@@ -104,7 +113,7 @@ test('E2E-05 two people press join on the last seat at once: exactly one gets it
   for (const member of [second, third]) {
     await member.page.goto(`/h/${hid}/join?code=${code}`);
     await member.page.getByRole('button', { name: 'Join team' }).click();
-    await expect(member.page.getByText('Your team')).toBeVisible();
+    await expect(member.page.getByText('Your team').first()).toBeVisible();
   }
   for (const racer of [racerA, racerB]) {
     await racer.page.goto(`/h/${hid}/join?code=${code}`);
@@ -123,6 +132,7 @@ test('E2E-05 two people press join on the last seat at once: exactly one gets it
   const loser = results[0] === 'lost' ? racerA : racerB;
   await expect(loser.page.locator('[data-error-code="team_full"]')).toContainText('Someone took the last seat.');
   await expect(leader.page.getByText('4 of 4 seats taken').first()).toBeAttached();
+  for (const person of [leader, racerA, racerB]) await assertClean(person.page);
   for (const person of [leader, second, third, racerA, racerB]) await person.context.close();
 });
 
@@ -133,6 +143,7 @@ test('E2E-06 keyboard: the skip link is the first stop and moves focus to the ma
   await expect(skip).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('main')).toBeFocused();
+  await assertClean(page);
 });
 
 test('E2E-07 unknown routes show the 404 page and the API keeps JSON 404s', async ({ page, request }) => {
@@ -143,4 +154,59 @@ test('E2E-07 unknown routes show the 404 page and the API keeps JSON 404s', asyn
   const api = await request.get('/api/no-such-endpoint');
   expect(api.status()).toBe(404);
   expect((await api.json()).error.code).toBe('not_found');
+  await assertClean(page);
+});
+
+test('E2E-08 command palette: Ctrl+K, type a team name, Enter opens the team; Escape closes', async ({ browser, baseURL, viewport }) => {
+  const [leader, visitor] = await people(browser, baseURL ?? '', hid, viewport, ['Palette', 'Visitor']);
+  const teamName = `Kbd ${unique().slice(-5)}`;
+  await leader.page.goto(`/h/${hid}/teams/new`);
+  await leader.page.getByLabel('Team name').fill(teamName);
+  await leader.page.getByRole('button', { name: 'Create team' }).click();
+  await expect(leader.page.getByText('You lead this team')).toBeVisible();
+
+  await visitor.page.goto(`/h/${hid}?q=${encodeURIComponent(teamName)}`);
+  await expect(visitor.page.getByRole('heading', { name: teamName })).toBeVisible();
+  await visitor.page.keyboard.press('Control+k');
+  const palette = visitor.page.getByRole('dialog', { name: 'Command palette' });
+  await expect(palette).toBeVisible();
+  await visitor.page.keyboard.type(teamName);
+  await visitor.page.keyboard.press('Enter');
+  await expect(visitor.page.getByRole('heading', { level: 1, name: teamName })).toBeVisible();
+  await visitor.page.keyboard.press('Control+k');
+  await expect(palette).toBeVisible();
+  await visitor.page.keyboard.press('Escape');
+  await expect(palette).toBeHidden();
+  await assertClean(visitor.page);
+  await leader.context.close();
+  await visitor.context.close();
+});
+
+test('E2E-09 live feed, search and peek: a new team appears in the feed, search finds it, peek shows its leader', async ({ browser, baseURL, viewport }) => {
+  const [watcher, creator] = await people(browser, baseURL ?? '', hid, viewport, ['Watcher', 'Creator']);
+  await watcher.page.goto(`/h/${hid}`);
+  await expect(watcher.page.getByRole('tab', { name: 'Teams' })).toBeVisible();
+  await expect(watcher.page.getByText('Live', { exact: true }).first()).toBeVisible();
+  const teamName = `Feed ${unique().slice(-5)}`;
+  await creator.page.goto(`/h/${hid}/teams/new`);
+  await creator.page.getByLabel('Team name').fill(teamName);
+  await creator.page.getByRole('button', { name: 'Create team' }).click();
+  await expect(creator.page.getByText('You lead this team')).toBeVisible();
+
+  const liveTab = watcher.page.getByRole('tab', { name: 'Live' });
+  if (await liveTab.isVisible()) await liveTab.click();
+  await expect(watcher.page.getByRole('list', { name: 'Recent activity' }).getByText(`${teamName} was created`)).toBeVisible();
+  await watcher.page.getByRole('tab', { name: 'Teams' }).click();
+  await watcher.page.getByRole('searchbox', { name: 'Search teams by name' }).fill(teamName);
+  await expect.poll(() => new URL(watcher.page.url()).searchParams.get('q')).toBe(teamName);
+  const cards = watcher.page.getByRole('list', { name: 'Teams with open seats' }).getByRole('article');
+  await expect(cards).toHaveCount(1);
+  await watcher.page.getByRole('button', { name: `Peek at ${teamName}` }).click();
+  const sheet = watcher.page.getByRole('dialog', { name: teamName });
+  await expect(sheet.getByText(creator.name)).toBeVisible();
+  await watcher.page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await assertClean(watcher.page);
+  await watcher.context.close();
+  await creator.context.close();
 });

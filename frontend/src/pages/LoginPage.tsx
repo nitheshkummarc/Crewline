@@ -50,9 +50,9 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <h2 className="page-title">Log in</h2>
-      <p className="mt-2 text-room-ink2">
-        New here? <Link to={`/signup${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`} className="underline underline-offset-[3px]">Create an account</Link>.
+      <h2 className="display text-[28px] leading-8">Log in</h2>
+      <p className="mt-2 text-ink-2">
+        New here? <Link to={`/signup${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-semibold underline underline-offset-[3px]">Create an account</Link>.
       </p>
       <form noValidate onSubmit={submit} className="relative mt-6 flex flex-col gap-4">
         <TextField label="Email" type="email" autoComplete="email" inputMode="email" value={values.email}

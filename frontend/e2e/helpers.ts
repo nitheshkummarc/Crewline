@@ -48,7 +48,9 @@ export async function people<const N extends readonly string[]>(browser: Browser
     const state = await api.storageState();
     await api.dispose();
     const context = await browser.newContext({ storageState: state, baseURL, viewport: viewport ?? { width: 1280, height: 860 } });
-    return { name, email, context, page: await context.newPage() };
+    const page = await context.newPage();
+    watch(page);
+    return { name, email, context, page };
   }));
   return created as { [K in keyof N]: Person };
 }
@@ -57,4 +59,23 @@ export async function people<const N extends readonly string[]>(browser: Browser
 export async function inviteCode(page: Page): Promise<string> {
   const label = await page.getByLabel(/Invite code /).getAttribute('aria-label');
   return (label ?? '').replace('Invite code ', '').replace(/ /g, '');
+}
+
+const problems = new WeakMap<Page, string[]>();
+
+/** Record CSP violations and uncaught errors on a page (bug B-28); `assertClean` fails the test if any happened. */
+export function watch(page: Page): void {
+  const list: string[] = [];
+  problems.set(page, list);
+  page.on('console', (message) => {
+    if (message.text().includes('Content Security Policy')) list.push(`CSP: ${message.text().slice(0, 160)}`);
+  });
+  page.on('pageerror', (error) => list.push(`pageerror: ${error.message.slice(0, 160)}`));
+}
+
+/** Fail if the page logged a CSP violation or an uncaught error, or scrolls sideways at its viewport. */
+export async function assertClean(page: Page): Promise<void> {
+  expect(problems.get(page) ?? []).toEqual([]);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0);
 }

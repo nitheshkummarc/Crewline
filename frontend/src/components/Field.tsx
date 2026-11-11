@@ -2,8 +2,9 @@
 import clsx from 'clsx';
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 
-const CONTROL = 'block w-full rounded border bg-room-raised px-3 py-[10px] text-[16px] leading-6 text-room-ink '
-  + 'placeholder:text-room-ink2 border-room-control aria-[invalid=true]:border-room-red';
+const CONTROL = 'block w-full rounded border border-control bg-surface px-3 py-[10px] text-[16px] leading-6 text-ink '
+  + 'placeholder:text-ink-2 transition-shadow duration-150 focus:border-focus focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--focus)_22%,transparent)] '
+  + 'focus:outline-none aria-[invalid=true]:border-bad';
 
 interface FieldShellProps {
   label: string;
@@ -20,19 +21,19 @@ export function FieldShell({ label, hint, error, children }: FieldShellProps) {
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
   return (
     <div className="flex flex-col gap-[6px]">
-      <label htmlFor={id} className="text-sm font-semibold text-room-ink">{label}</label>
+      <label htmlFor={id} className="text-sm font-semibold text-ink">{label}</label>
       {children({ id, describedBy, invalid: Boolean(error) })}
-      {hint && <p id={hintId} className="text-sm text-room-ink2">{hint}</p>}
+      {hint && <p id={hintId} className="text-sm text-ink-2">{hint}</p>}
       {error && errorId && <FieldError id={errorId} message={error} />}
     </div>
   );
 }
 
-/** The error line under a field: red lamp and the message. */
+/** The error line under a field: a red mark and the message. */
 export function FieldError({ id, message }: { id: string; message: string }) {
   return (
-    <p id={id} className="flex items-start gap-2 text-sm text-room-red">
-      <span aria-hidden="true" className="mt-[6px] h-2 w-2 shrink-0 bg-current" />
+    <p id={id} className="flex items-start gap-2 text-sm font-medium text-bad">
+      <span aria-hidden="true" className="mt-[7px] h-[6px] w-[6px] shrink-0 rounded-avatar bg-current" />
       {message}
     </p>
   );
@@ -59,7 +60,7 @@ export function TextAreaField({ label, hint, error, className, ...rest }: AreaPr
     <FieldShell label={label} hint={hint} error={error}>
       {({ id, describedBy, invalid }) => (
         <textarea id={id} aria-describedby={describedBy} aria-invalid={invalid}
-          className={clsx(CONTROL, 'min-h-[88px] resize-y', className)} {...rest} />
+          className={clsx(CONTROL, 'min-h-[96px] resize-y', className)} {...rest} />
       )}
     </FieldShell>
   );

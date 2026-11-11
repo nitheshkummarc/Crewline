@@ -75,7 +75,7 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-44 | Suggestions for a caller without a team | `context.team_id` null; the time zone term compares against the caller; a candidate covering the caller's missing roles ranks first | passing |
 | T-API-46 | Form token minimum fill time | Fresh token from `GET /api/auth/form-token` used at once on signup and login: 400 `bot_check_failed`; same token after 2 s: 201; no token: 400 `validation_error`; token response is `no-store` | passing |
 | T-API-47 | Honeypot and forged tokens | Filled `company`, a token signed with another secret, an expired token, or a session JWT as form token: 400 `bot_check_failed`; a form token as the session cookie: 401 | passing |
-| T-API-48 | Security headers and web cache rules | CSP, HSTS, nosniff, Referrer-Policy on API, SPA shell, assets and API 404; shell `no-cache`, hashed asset `immutable`, API responses without a cache rule; client routes fall back to index.html | passing |
+| T-API-48 | Security headers and web cache rules | CSP (scripts from self only, no `'unsafe-*'` for scripts), HSTS, nosniff, Referrer-Policy on API, SPA shell, assets and API 404; shell `no-cache`, hashed asset `immutable`, API responses without a cache rule; client routes fall back to index.html | passing |
 | T-API-45 | Leave as the last member | `team_deleted` event has `team: null` and `version` = last version + 1 | passing |
 
 ## 3. Concurrency tests
@@ -139,21 +139,26 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-WEB-05 | Every route renders; every internal link targets a real route, every external link is a known real URL, `#` links have a target; exactly one primary action per page; no request URL with an empty segment (B-24); invite code shown as the API formats it (B-25) | passing |
 | T-WEB-06 | Form limits match the API: password 8 to 128, names 1 to 60, email, skills taxonomy, IANA zones (offsets refused), invite code normalization, API `validation_error` mapped to its field | passing |
 | T-WEB-07 | Event stream: one EventSource per hackathon, refetch on open, newer team events patch board and status and are announced, older ones ignored, deletions tombstoned, people and request events refresh their lists | passing |
-| T-WEB-08 | Content rules in every source file and index.html: no em dash, no banned marketing words, no `rounded-full`, no gradients, no AI badge, no secrets, only public `VITE_` env values | passing |
+| T-WEB-09 | Board filters: name search, skills a team needs or has, sort by open seats, URL round trip with defaults dropped, people search | passing |
+| T-WEB-10 | Activity feed: team events become readable items, non-news events skipped, deleted teams named from cache, newest first, duplicates ignored, capped at 30 | passing |
+| T-WEB-11 | Team colors are stable per id and spread over all 8 bands; initials from names | passing |
+| T-WEB-08 | Content rules in every frontend text file (source, configs, e2e, scripts, index.html, README; B-31): no em dash, no banned marketing words, no `rounded-full`, no gradients, no AI badge, no secrets, only public `VITE_` env values | passing |
 
 ## 5b. End-to-end tests (Playwright, real API and database, phone 360 px and laptop 1280 px)
 
-Run against a server started with relaxed signup and login limits (as the pytest server does) and seeded data: `npm --prefix frontend run e2e`.
+Run against a server started with relaxed signup and login limits (as the pytest server does) and seeded data: `npm --prefix frontend run e2e`. Every page used in a flow fails the test on a Content-Security-Policy violation, an uncaught error, or horizontal overflow at its viewport (B-28, B-29).
 
 | ID | Flow | Status |
 |---|---|---|
-| E2E-01 | Sign up in the UI (bot check, skills, agreement), register, create a team, see a well-formed invite code, no horizontal scroll | passing |
+| E2E-01 | Sign up in the UI (bot check, skills, agreement), register, create a team, see a well-formed invite code and its QR code | passing |
 | E2E-02 | Signup field errors appear next to the fields with `aria-invalid` and `aria-describedby` | passing |
 | E2E-03 | A join through a shared `?code=` link appears live on the leader's page without a reload | passing |
 | E2E-04 | Ask to join with a message, the leader sees it live and accepts, the asker sees their team; the leader leaves and leadership moves to the asker | passing |
 | E2E-05 | Two browsers press join on the last seat at the same moment: exactly one gets the team, the other sees `team_full` "Someone took the last seat." | passing |
 | E2E-06 | The skip link is the first tab stop and moves focus to main | passing |
 | E2E-07 | Unknown routes show the 404 page with a working link home; unknown `/api` paths keep the JSON 404 | passing |
+| E2E-08 | Command palette: Ctrl+K opens it, typing a team name and Enter opens that team, Escape closes it | passing |
+| E2E-09 | Live feed, search and peek: a team created by another user appears in the feed live, search narrows the board to it, peek shows its leader | passing |
 
 ## 6. Ops checks
 
@@ -230,7 +235,7 @@ Real bugs found during the build go to [bug-diary.md](bug-diary.md).
 | `api-tests` | Postgres 16 service, migrate, pytest `backend/tests/api backend/tests/unit`, invariants | Any failure or violation |
 | `race-tests` | Postgres 16 service, migrate, pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20`, invariants, deadlock check | Any failure, violation or deadlock |
 | `web-tests` | `npm ci`, typecheck, eslint, vitest, build | Any failure |
-| `e2e` | Postgres 16 service, migrate, seed, build web, start the API, Playwright E2E-01 to 07 | Any failure |
+| `e2e` | Postgres 16 service, migrate, seed, build web, start the API, Playwright E2E-01 to 09 | Any failure |
 | `compose-smoke` | `docker compose up -d`, wait for `/readyz`, one signup and create team | Non-200 |
 | `k6-smoke` | Seed small data, `k6 run` L-A1 for 20 s with thresholds | Threshold breach |
 
@@ -239,7 +244,7 @@ README shows the CI badge.
 ## 12. Submission acceptance checklist
 
 - [ ] All must-haves R1 to R19 show `passing` in requirements.md
-- [ ] 20+ API tests (target 48 API + 19 race + 4 guarantee + 8 unit + 8 web + 7 end-to-end) green in CI
+- [ ] 20+ API tests (target 48 API + 19 race + 4 guarantee + 8 unit + 11 web + 9 end-to-end) green in CI
 - [ ] T-RACE-01 and T-RACE-02 both behave as expected in CI logs
 - [ ] Invariants clean on seed, after tests, after L-B, after chaos
 - [ ] Load report filled with measured numbers, commands and hardware

@@ -5,7 +5,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 CSP = "; ".join([
     "default-src 'self'",
     "script-src 'self'",
-    "style-src 'self'",
+    # Inline styles only: Radix dialogs lock page scroll with a <style> element injected at runtime (bug B-28).
+    # Scripts stay 'self' only, which is what blocks injected code.
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
     "connect-src 'self'",

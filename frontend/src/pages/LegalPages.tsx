@@ -9,23 +9,23 @@ export const LEGAL_UPDATED = '11 November 2026';
 /** Reading layout for the legal pages, usable signed in or out. */
 function ReadingPage({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <a href="#main" className="sr-only z-50 rounded bg-paint px-4 py-3 text-board focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+    <div className="flex min-h-dvh flex-col bg-canvas">
+      <a href="#main" className="sr-only z-50 rounded bg-plate px-4 py-3 text-plate-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to main content
       </a>
-      <header className="border-b border-flap-seam bg-board">
-        <div className="mx-auto flex h-14 max-w-page items-center px-4">
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto flex h-16 max-w-page items-center px-4 md:px-8">
           <Link to="/" className="inline-flex min-h-touch items-center" aria-label="Crewline home"><Wordmark /></Link>
         </div>
       </header>
-      <main id="main" tabIndex={-1} className="mx-auto w-full max-w-read flex-1 px-4 py-8 outline-none">
-        <h1 className="page-title">{title}</h1>
-        <p className="mt-2 text-sm text-room-ink2">Last updated {LEGAL_UPDATED}</p>
-        <div className="mt-6 flex flex-col gap-6 [&_h2]:caps-heading [&_li]:ml-5 [&_li]:list-disc [&_p]:leading-7 [&_ul]:flex [&_ul]:flex-col [&_ul]:gap-2">
+      <main id="main" tabIndex={-1} className="mx-auto w-full max-w-read flex-1 px-4 py-10 outline-none">
+        <p className="label">Last updated {LEGAL_UPDATED}</p>
+        <h1 className="display mt-2 text-[36px] leading-[42px]">{title}</h1>
+        <div className="card mt-8 flex flex-col gap-8 p-6 md:p-8 [&_h2]:text-lg [&_h2]:font-bold [&_li]:ml-5 [&_li]:list-disc [&_p]:leading-7 [&_ul]:flex [&_ul]:flex-col [&_ul]:gap-2">
           {children}
         </div>
-        <p className="mt-10">
-          Questions or a request about your data: <a href={CONTACT_URL} className="underline underline-offset-[3px]">open an issue on GitHub</a>.
+        <p className="mt-8">
+          Questions or a request about your data: <a href={CONTACT_URL} className="font-semibold underline underline-offset-[3px]">open an issue on GitHub</a>.
         </p>
         <ButtonLink to="/" variant="primary" className="mt-6">Back to Crewline</ButtonLink>
       </main>
@@ -108,18 +108,21 @@ export function TermsPage() {
   );
 }
 
-/** The 404 page for unknown client routes: a cancelled row on the board. */
+/** The 404 page for unknown client routes: an empty seat with a way home. */
 export function NotFoundPage() {
   return (
-    <div className="flex min-h-dvh flex-col items-start justify-center gap-6 bg-board px-4 text-paint md:px-12">
-      <Wordmark />
-      <main id="main" className="flex flex-col gap-4">
-        <p className="cells flex items-center gap-3 text-[14px] text-lamp-red">
-          <span aria-hidden="true" className="h-2 w-2 bg-lamp-red" />Not found
-        </p>
-        <h1 className="cells text-[32px] leading-9 md:text-[44px] md:leading-[48px]">This page is not on the board</h1>
-        <p className="max-w-[48ch] text-paint-2">The link may be mistyped, or the team it pointed to was deleted.</p>
-        <ButtonLink to="/" variant="primary" className="self-start">Go to Crewline</ButtonLink>
+    <div className="flex min-h-dvh flex-col bg-canvas px-4 py-6 md:px-12">
+      <Link to="/" className="inline-flex min-h-touch items-center self-start" aria-label="Crewline home"><Wordmark /></Link>
+      <main id="main" className="m-auto flex max-w-[560px] flex-col items-start gap-5 py-12">
+        <span aria-hidden="true" className="flex items-end gap-2">
+          <span className="h-16 w-10 rounded-sm" style={{ background: 'var(--band-0)' }} />
+          <span className="h-16 w-10 rounded-sm" style={{ background: 'var(--band-1)' }} />
+          <span className="h-16 w-10 rounded-sm border-4 border-dashed border-control" />
+        </span>
+        <p className="label">Error 404</p>
+        <h1 className="display text-[36px] leading-[42px] md:text-[48px] md:leading-[54px]">This page is not on the board</h1>
+        <p className="text-ink-2">The link may be mistyped, or the team it pointed to was deleted.</p>
+        <ButtonLink to="/" variant="primary">Go to Crewline</ButtonLink>
       </main>
     </div>
   );

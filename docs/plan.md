@@ -4,7 +4,7 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Wed 11 Nov 2026, end of module 8. Backend: 101 tests pass, ruff and mypy clean. Web: typecheck and lint clean, 53 Vitest tests pass, 7 Playwright flows pass on phone (360 px) and laptop (1280 px). Bugs B-22 to B-27 fixed with regression tests. Chaos test last passed at the end of module 7.
+Last checkpoint: Wed 11 Nov 2026, end of module 8 plus a full frontend redesign (ADR-038 wristband team colors, live feed, filters, palette, peek, QR invites). Backend: 101 tests pass, ruff and mypy clean. Web: typecheck and lint clean, 63 Vitest tests pass, 9 Playwright flows pass on phone (360 px) and laptop (1280 px) with CSP, error and overflow guards. Bugs B-22 to B-31 fixed with regression tests. Chaos test last passed at the end of module 7.
 
 | Module | Scope | Status |
 |---|---|---|
@@ -15,7 +15,7 @@ Last checkpoint: Wed 11 Nov 2026, end of module 8. Backend: 101 tests pass, ruff
 | 5 Board and suggestions | Keyset board (teams, people), micro-cache + ETag, suggestions + scoring unit tests; guarantee tests T-GUAR-01 to 04 (overload, per-user limits, atomicity) | done |
 | 6 Realtime | Listener with reconnect, EventHub (team, people, request audience), SSE endpoint, cache invalidation on notify (B-2), metrics | done |
 | 7 Data and load | `database/seed.py` (0.9 s), EXPLAIN, latency probe of every endpoint, suggestions tuning (B-21), k6 scripts, chaos test (PASS). k6 runs move to module 9 CI (k6 not installable here) | done |
-| 8 Frontend | Bot checks (ADR-037), React app with every endpoint wired, concourse board visual system (ADR-038), security headers (ADR-039), Vitest T-WEB-01 to 08, Playwright E2E-01 to 07 | done |
+| 8 Frontend | Bot checks (ADR-037), React app with every endpoint wired, wristband visual system with live feed, filters, palette and peek (ADR-038), security headers (ADR-039), Vitest T-WEB-01 to 08, Playwright E2E-01 to 07 | done |
 | 9 Ops | Dockerfile (builds the web app), Compose, GitHub Actions (lint, API, race, web, e2e, k6 smoke), deploy (Render + Neon) with `CREWLINE_PUBLIC_URL`, reviewer accounts, k6 L-A/L-B/L-C runs, manual keyboard, screen reader and real phone checks, design doc numbers, video | next |
 
 How to resume: start the dev database (`uv run --project backend python database/dev_db.py start --name test` happens automatically in tests), run `uv run --project backend pytest backend/tests -q` from the repo root (about 2 minutes), then continue with the module marked next. Read docs/bug-diary.md (root causes of every bug so far) first.

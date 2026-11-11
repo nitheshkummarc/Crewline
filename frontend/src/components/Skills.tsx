@@ -1,32 +1,35 @@
-// Skill labels on flap tiles (color by family, code plus accessible name) and the skill picker.
+// Skill chips (family color dot), "needs" chips, and the toggle-button skill picker.
 import clsx from 'clsx';
+import { Check } from 'lucide-react';
 import type { Skill } from '../api/types';
-import { skillCode, skillFamily } from '../lib/skills';
+import { skillFamily, type SkillFamily } from '../lib/skills';
 import { FieldError } from './Field';
 
-const FAMILY_TEXT = {
-  build: 'text-skill-build',
-  data: 'text-skill-data',
-  ops: 'text-skill-ops',
-  people: 'text-skill-people',
-} as const;
+const FAMILY_DOT: Record<SkillFamily, string> = {
+  build: 'var(--band-6)',
+  data: 'var(--band-1)',
+  ops: 'var(--band-0)',
+  people: 'var(--band-4)',
+};
 
-/** One skill as a flap tile; `full` shows the whole name instead of the short code. */
-export function SkillLabel({ skill, full = false, dim = false }: { skill: Skill; full?: boolean; dim?: boolean }) {
+/** One skill as a chip; `need` shows it as a missing role (dashed). */
+export function SkillChip({ skill, need = false }: { skill: Skill; need?: boolean }) {
   return (
-    <span title={skill} className={clsx('flap-tile cells inline-flex h-6 items-center px-[6px] text-[12px] leading-4',
-      FAMILY_TEXT[skillFamily(skill)], dim && 'opacity-70')}>
-      {full ? skill : <><span aria-hidden="true">{skillCode(skill)}</span><span className="sr-only">{skill}</span></>}
+    <span className={clsx('inline-flex h-7 items-center gap-[6px] rounded-sm px-2 text-[13px] font-medium',
+      need ? 'border border-dashed border-control text-ink-2' : 'bg-surface-2 text-ink')}>
+      <span aria-hidden="true" className="h-2 w-2 rounded-avatar" style={{ background: FAMILY_DOT[skillFamily(skill)] }} />
+      {skill}
     </span>
   );
 }
 
-/** A row of skill labels; renders a dash when empty. */
-export function SkillList({ skills, full = false, label }: { skills: readonly Skill[]; full?: boolean; label?: string }) {
-  if (skills.length === 0) return <span className="text-sm text-paint-2">No skills listed</span>;
+/** A row of skill chips; a short note when empty. */
+export function SkillList({ skills, label, need = false, empty = 'No skills listed' }:
+  { skills: readonly Skill[]; label?: string; need?: boolean; empty?: string }) {
+  if (skills.length === 0) return <span className="text-sm text-ink-2">{empty}</span>;
   return (
-    <ul className="flex flex-wrap gap-1" aria-label={label}>
-      {skills.map((skill) => <li key={skill}><SkillLabel skill={skill} full={full} /></li>)}
+    <ul className="flex flex-wrap gap-[6px]" aria-label={label}>
+      {skills.map((skill) => <li key={skill}><SkillChip skill={skill} need={need} /></li>)}
     </ul>
   );
 }
@@ -37,24 +40,27 @@ interface PickerProps {
   onChange: (next: Skill[]) => void;
   legend: string;
   error?: string | undefined;
+  compact?: boolean;
 }
 
 /** Toggle buttons for skills (aria-pressed), grouped in a fieldset with an error line. */
-export function SkillPicker({ options, value, onChange, legend, error }: PickerProps) {
+export function SkillPicker({ options, value, onChange, legend, error, compact = false }: PickerProps) {
   const selected = new Set(value);
   const toggle = (skill: Skill) =>
     onChange(selected.has(skill) ? value.filter((s) => s !== skill) : options.filter((s) => s === skill || selected.has(s)));
   return (
-    <fieldset className="flex flex-col gap-[6px]" aria-describedby={error ? 'skills-error' : undefined}>
-      <legend className="mb-[6px] text-sm font-semibold">{legend}</legend>
+    <fieldset className="flex flex-col gap-2" aria-describedby={error ? 'skills-error' : undefined}>
+      <legend className={clsx('mb-2', compact ? 'label' : 'text-sm font-semibold')}>{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((skill) => {
           const on = selected.has(skill);
           return (
             <button key={skill} type="button" aria-pressed={on} onClick={() => toggle(skill)}
-              className={clsx('press cells min-h-touch rounded border px-3 text-[13px]',
-                on ? 'border-paint bg-board text-paint' : 'border-room-control text-room-ink2 hover:text-room-ink')}>
-              <span aria-hidden="true" className={clsx('mr-2 inline-block h-2 w-2 align-middle', on ? 'bg-lamp-green' : 'bg-room-line')} />
+              className={clsx('press inline-flex min-h-touch items-center gap-2 rounded border px-3 text-sm font-medium',
+                on ? 'border-plate bg-plate text-plate-ink' : 'border-control bg-surface text-ink hover:border-ink')}>
+              {on
+                ? <Check size={14} aria-hidden="true" />
+                : <span aria-hidden="true" className="h-2 w-2 rounded-avatar" style={{ background: FAMILY_DOT[skillFamily(skill)] }} />}
               {skill}
             </button>
           );
