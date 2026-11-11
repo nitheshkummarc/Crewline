@@ -11,7 +11,7 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:8000',
-    // Local runs use the installed Chrome; CI installs Playwright's Chromium and sets PW_CHANNEL=chromium.
+    // Local runs and CI use the installed Chrome (preinstalled on GitHub's Ubuntu runners); PW_CHANNEL=chromium selects Playwright's Chromium.
     channel: process.env.PW_CHANNEL ?? 'chrome',
     trace: 'retain-on-failure',
   },

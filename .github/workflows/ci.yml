@@ -130,7 +130,6 @@ jobs:
       RATE_CODE_PER_IP_MIN: "100000"
       RATE_LAB_PER_MIN: "100000"
       RATE_LAB_GLOBAL_PER_HOUR: "100000"
-      PW_CHANNEL: chromium
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
@@ -153,17 +152,9 @@ jobs:
           uv run --project backend python database/seed.py --users 300 --teams 40
       - name: Build web
         run: npm --prefix frontend run build
-      - name: Install Chromium
-        working-directory: frontend
-        # The tail of the install output goes into an annotation so a failure is readable on the run page.
-        run: |
-          code=0
-          npx playwright install --with-deps chromium > pw-install.log 2>&1 || code=$?
-          tail -n 40 pw-install.log
-          if [ "$code" -ne 0 ]; then
-            echo "::error title=Playwright install (exit $code)::$(tail -n 15 pw-install.log | tr '\n' ' ')"
-          fi
-          exit "$code"
+      - name: Chrome version (preinstalled on the runner image; Playwright channel "chrome")
+        # Using the runner's Chrome skips `playwright install --with-deps`, whose apt step took minutes.
+        run: echo "::notice title=Browser::$(google-chrome --version)"
       - name: Start API
         run: bash .github/scripts/start-api.sh
       - name: Playwright E2E-01 to 10 (360 px and 1280 px)

@@ -244,7 +244,7 @@ Runs on every push (any branch), every pull request and on demand. Every job tha
 | `api-tests` | PostgreSQL 16, pytest `backend/tests/api backend/tests/unit` (migrations applied by the fixture), invariants on the test database | Any failure or violation |
 | `race-tests` | PostgreSQL 16, pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20` (races, negative control, guarantees, deadlock counter check), invariants | Any failure, violation or deadlock |
 | `web-tests` | `npm ci`, vitest, contrast check, production build | Any failure |
-| `e2e` | PostgreSQL 16, migrate, seed 300 users and 40 teams, build web, Playwright Chromium, start the API with the pytest server's relaxed rate limits (bot check on), E2E-01 to 10 on 360 px and 1280 px, invariants | Any failure or violation |
+| `e2e` | PostgreSQL 16, migrate, seed 300 users and 40 teams, build web, start the API with the pytest server's relaxed rate limits (bot check on), E2E-01 to 10 on 360 px and 1280 px in the runner's preinstalled Chrome (no browser download), invariants | Any failure or violation |
 | `compose-smoke` | `docker compose up -d`, wait for `/readyz`, one signup and create team | planned with the Dockerfile |
 | `k6-smoke` | PostgreSQL 16, migrate, seed 10,000 users and 2,000 teams with tokens, start the API with default pools and limits, `k6 run` L-A1 (100 VUs, 5 s ramp, 15 s steady) with its thresholds, invariants | Threshold breach or violation |
 
