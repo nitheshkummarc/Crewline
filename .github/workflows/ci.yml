@@ -13,6 +13,11 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # Explicit bash adds -o pipefail, so a failing command piped into tee still fails the step.
+    shell: bash
+
 env:
   # Test-only values; the deployed service gets its own secret from the host.
   DATABASE_URL: postgresql://postgres@127.0.0.1:5432/crewline
@@ -27,7 +32,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
           enable-cache: true
@@ -55,7 +60,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
           enable-cache: true
@@ -64,7 +69,9 @@ jobs:
       - name: Start PostgreSQL 16
         run: bash .github/scripts/start-postgres.sh
       - name: pytest api + unit
-        run: uv run --project backend pytest backend/tests/api backend/tests/unit -v
+        run: |
+          uv run --project backend pytest backend/tests/api backend/tests/unit -v | tee pytest.log
+          echo "::notice title=API and unit tests::$(tail -n 1 pytest.log)"
       - name: Invariants on the test database
         run: uv run --project backend python database/invariants.py --url "$TEST_DB_URL"
 
@@ -76,7 +83,7 @@ jobs:
       RACE_ITERATIONS: "20"
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
           enable-cache: true
@@ -85,7 +92,9 @@ jobs:
       - name: Start PostgreSQL 16
         run: bash .github/scripts/start-postgres.sh
       - name: pytest concurrency (races, negative control, guarantees, deadlock check)
-        run: uv run --project backend pytest backend/tests/concurrency -v
+        run: |
+          uv run --project backend pytest backend/tests/concurrency -v | tee pytest.log
+          echo "::notice title=Race and guarantee tests (RACE_ITERATIONS=$RACE_ITERATIONS)::$(tail -n 1 pytest.log)"
       - name: Invariants on the test database
         run: uv run --project backend python database/invariants.py --url "$TEST_DB_URL"
 
@@ -124,7 +133,7 @@ jobs:
       PW_CHANNEL: chromium
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
           enable-cache: true
@@ -146,16 +155,26 @@ jobs:
         run: npm --prefix frontend run build
       - name: Install Chromium
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        # The tail of the install output goes into an annotation so a failure is readable on the run page.
+        run: |
+          code=0
+          npx playwright install --with-deps chromium > pw-install.log 2>&1 || code=$?
+          tail -n 40 pw-install.log
+          if [ "$code" -ne 0 ]; then
+            echo "::error title=Playwright install (exit $code)::$(tail -n 15 pw-install.log | tr '\n' ' ')"
+          fi
+          exit "$code"
       - name: Start API
         run: bash .github/scripts/start-api.sh
       - name: Playwright E2E-01 to 10 (360 px and 1280 px)
-        run: npm --prefix frontend run e2e
+        run: |
+          npm --prefix frontend run e2e | tee e2e.log
+          echo "::notice title=Playwright::$(grep -E '^ *[0-9]+ (passed|failed|flaky|skipped)' e2e.log | tr -s ' \n' ' ')"
       - name: Invariants
         run: uv run --project backend python database/invariants.py
       - name: Upload API log and traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-output
           path: |
@@ -169,7 +188,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
           enable-cache: true
@@ -185,12 +204,21 @@ jobs:
         run: bash .github/scripts/start-api.sh
       - uses: grafana/setup-k6-action@v1
       - name: k6 board.js, 100 VUs, 5 s ramp, 15 s steady (thresholds fail the job)
-        run: k6 run -e RAMP=5s -e DURATION=15s loadtest/board.js
+        run: |
+          k6 run -e RAMP=5s -e DURATION=15s --summary-trend-stats "avg,min,med,max,p(90),p(95),p(99)" \
+            --summary-export k6-summary.json loadtest/board.js
+          python3 - <<'EOF'
+          import json
+          m = json.load(open("k6-summary.json"))["metrics"]
+          d, r = m["http_req_duration{route:board_teams}"], m["http_reqs"]
+          print(f"::notice title=k6 board_teams::p50 {d['med']:.1f} ms, p95 {d['p(95)']:.1f} ms, "
+                f"p99 {d['p(99)']:.1f} ms, max {d['max']:.1f} ms, {r['rate']:.0f} req/s, {r['count']} requests")
+          EOF
       - name: Invariants
         run: uv run --project backend python database/invariants.py
       - name: Upload API log
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: k6-output
           path: api.log

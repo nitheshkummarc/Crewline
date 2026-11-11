@@ -236,7 +236,7 @@ Real bugs found during the build go to [bug-diary.md](bug-diary.md).
 
 ## 11. CI pipeline (.github/workflows/ci.yml)
 
-Runs on every push (any branch), every pull request and on demand. Every job that needs a database starts `postgres:16` with `max_connections=300` through `.github/scripts/start-postgres.sh` (a service container cannot pass server flags, and the concurrency tests run several servers at once, like `dev_db.py` locally). Jobs that need a running API start it with `.github/scripts/start-api.sh` and upload its log on failure.
+Runs on every push (any branch), every pull request and on demand. Every job that needs a database starts `postgres:16` with `max_connections=300` through `.github/scripts/start-postgres.sh` (a service container cannot pass server flags, and the concurrency tests run several servers at once, like `dev_db.py` locally). Jobs that need a running API start it with `.github/scripts/start-api.sh` and upload its log on failure. The pytest, Playwright and k6 jobs post their result line (test counts; board p50, p95, p99, max and req/s) as an annotation on the run page. All steps run in bash with `pipefail`, so piping into `tee` cannot hide a failure.
 
 | Job | Steps | Fails when |
 |---|---|---|
