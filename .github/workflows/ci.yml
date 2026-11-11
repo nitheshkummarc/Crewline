@@ -37,6 +37,8 @@ jobs:
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+          # Only one job saves the shared cache; parallel saves of one key fail with a warning.
+          save-cache: ${{ github.job == 'lint' }}
       - run: uv sync --project backend --locked
       - name: ruff
         run: uv run --project backend ruff check backend database
@@ -67,12 +69,17 @@ jobs:
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+          # Only one job saves the shared cache; parallel saves of one key fail with a warning.
+          save-cache: ${{ github.job == 'lint' }}
       - run: uv sync --project backend --locked
       - name: Start PostgreSQL 16
         run: bash .github/scripts/start-postgres.sh
       - name: pytest api + unit
         run: |
-          uv run --project backend pytest backend/tests/api backend/tests/unit -v | tee pytest.log
+          if ! uv run --project backend pytest backend/tests/api backend/tests/unit -v | tee pytest.log; then
+            echo "::error title=API and unit tests failed::$(grep -E '^(FAILED|ERROR) ' pytest.log | cut -c1-200 | tr '\n' ' ')"
+            exit 1
+          fi
           echo "::notice title=API and unit tests::$(tail -n 1 pytest.log)"
       - name: Invariants on the test database
         run: uv run --project backend python database/invariants.py --url "$TEST_DB_URL"
@@ -90,12 +97,17 @@ jobs:
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+          # Only one job saves the shared cache; parallel saves of one key fail with a warning.
+          save-cache: ${{ github.job == 'lint' }}
       - run: uv sync --project backend --locked
       - name: Start PostgreSQL 16
         run: bash .github/scripts/start-postgres.sh
       - name: pytest concurrency (races, negative control, guarantees, deadlock check)
         run: |
-          uv run --project backend pytest backend/tests/concurrency -v | tee pytest.log
+          if ! uv run --project backend pytest backend/tests/concurrency -v | tee pytest.log; then
+            echo "::error title=Race and guarantee tests failed::$(grep -E '^(FAILED|ERROR) ' pytest.log | cut -c1-200 | tr '\n' ' ')"
+            exit 1
+          fi
           echo "::notice title=Race and guarantee tests (RACE_ITERATIONS=$RACE_ITERATIONS)::$(tail -n 1 pytest.log)"
       - name: Invariants on the test database
         run: uv run --project backend python database/invariants.py --url "$TEST_DB_URL"
@@ -141,6 +153,8 @@ jobs:
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+          # Only one job saves the shared cache; parallel saves of one key fail with a warning.
+          save-cache: ${{ github.job == 'lint' }}
       - run: uv sync --project backend --locked
       - uses: actions/setup-node@v5
         with:
@@ -188,6 +202,8 @@ jobs:
           python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
+          # Only one job saves the shared cache; parallel saves of one key fail with a warning.
+          save-cache: ${{ github.job == 'lint' }}
       - run: uv sync --project backend --locked
       - name: Start PostgreSQL 16
         run: bash .github/scripts/start-postgres.sh
