@@ -4,7 +4,7 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Wed 11 Nov 2026, module 8 in progress. Step 8a (signup and login bot checks, ADR-037) done: all 99 backend tests pass, ruff and mypy clean, pushed to `main`. Chaos test last passed at the end of module 7.
+Last checkpoint: Wed 11 Nov 2026, end of module 8. Backend: 101 tests pass, ruff and mypy clean. Web: typecheck and lint clean, 53 Vitest tests pass, 7 Playwright flows pass on phone (360 px) and laptop (1280 px). Bugs B-22 to B-27 fixed with regression tests. Chaos test last passed at the end of module 7.
 
 | Module | Scope | Status |
 |---|---|---|
@@ -15,8 +15,8 @@ Last checkpoint: Wed 11 Nov 2026, module 8 in progress. Step 8a (signup and logi
 | 5 Board and suggestions | Keyset board (teams, people), micro-cache + ETag, suggestions + scoring unit tests; guarantee tests T-GUAR-01 to 04 (overload, per-user limits, atomicity) | done |
 | 6 Realtime | Listener with reconnect, EventHub (team, people, request audience), SSE endpoint, cache invalidation on notify (B-2), metrics | done |
 | 7 Data and load | `database/seed.py` (0.9 s), EXPLAIN, latency probe of every endpoint, suggestions tuning (B-21), k6 scripts, chaos test (PASS). k6 runs move to module 9 CI (k6 not installable here) | done |
-| 8 Frontend | 8a bot checks (form token, honeypot) done; 8b `frontend/` React app (PRODUCT.md and DESIGN.md first), 8c end-to-end tests | in progress |
-| 9 Ops | Dockerfile, Compose, GitHub Actions, deploy (Render + Neon), README, design doc numbers, video | planned |
+| 8 Frontend | Bot checks (ADR-037), React app with every endpoint wired, concourse board visual system (ADR-038), security headers (ADR-039), Vitest T-WEB-01 to 08, Playwright E2E-01 to 07 | done |
+| 9 Ops | Dockerfile (builds the web app), Compose, GitHub Actions (lint, API, race, web, e2e, k6 smoke), deploy (Render + Neon) with `CREWLINE_PUBLIC_URL`, reviewer accounts, k6 L-A/L-B/L-C runs, manual keyboard, screen reader and real phone checks, design doc numbers, video | next |
 
 How to resume: start the dev database (`uv run --project backend python database/dev_db.py start --name test` happens automatically in tests), run `uv run --project backend pytest backend/tests -q` from the repo root (about 2 minutes), then continue with the module marked next. Read docs/bug-diary.md (root causes of every bug so far) first.
 
@@ -37,7 +37,7 @@ Cut order if behind: Tier 3, then optimistic UI, then UI polish. Never cut: race
 |---|---|---|---|
 | Tue 10 | 5 | Register on Hack4Hack and read the submission form. Min/max team size rule confirmed (ADR-010). Repo, `pyproject`, Compose, `0001_init.sql`, `migrate.py`, `db/pools.py`, `db/tx.py`, `db/errors.py`. Create team, join by code. T-RACE-01, 02, 03, 16 | Race test, negative control and same-key race pass locally |
 | Wed 11 | 8 | Auth, hackathons, requests (create, accept, decline, withdraw), leave, remove, finalize, reopen, regenerate. Audit `record`. Replay fast path and explanation reads. Rate limits. API tests T-API-01 to 30. CI with Postgres | 30+ tests green in CI |
-| Thu 12 | 8 | Listener, EventHub (team, people, request audience), SSE endpoint. Participant and profile events. Board + cache + ETag. Suggestions + unit tests. Metrics. Remaining race tests (04 to 13, 15, 17 to 19). Web: run `/impeccable init` to write PRODUCT.md and DESIGN.md, then client, auth pages, board, team page | Two browsers see live updates, including the People board |
+| Thu 12 | 8 | Listener, EventHub (team, people, request audience), SSE endpoint. Participant and profile events. Board + cache + ETag. Suggestions + unit tests. Metrics. Remaining race tests (04 to 13, 15, 17 to 19). Web: visual system (ADR-038), client, auth pages, board, team page | Two browsers see live updates, including the People board |
 | Fri 13 | 8 | Seed script, EXPLAIN check, k6 L-A1, L-A2, L-B, tuning with before/after numbers. Rest of web (requests, invite, suggestions, profile). First deploy to Render + Neon, test SSE and cold start on the host | Live URL works; load report has first numbers |
 | Sat 14 | 8 | Chaos test. Accessibility pass (keyboard, phone). Optimistic UI. `/impeccable audit` and `/impeccable polish` on the main pages; `emil-design-eng` review of transitions. README, design doc, load report final numbers, bug diary. Video script. Tier 3 only if everything above is green | All checklist items except video |
 | Sun 15 | 4 | Record the video. Verify everything on the live URL from a clean browser. Tag and submit | Submitted by 6 PM IST |

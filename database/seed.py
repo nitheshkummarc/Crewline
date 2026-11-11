@@ -33,7 +33,7 @@ def build(users: int, teams: int, max_size: int, min_size: int, rng: random.Rand
     now = datetime.now(UTC)
     hackathon_id = uuid.uuid4()
     user_ids = [uuid.uuid4() for _ in range(users)]
-    user_rows = [(uid, f"user{i:05d}@crewline.test", f"User {i:05d}",
+    user_rows = [(uid, f"user{i:05d}@example.com", f"User {i:05d}",
                   rng.sample(SKILLS, rng.randint(1, 4)), rng.choice(ZONES), now - timedelta(minutes=users - i))
                  for i, uid in enumerate(user_ids)]
     participants = [(hackathon_id, uid, True, now - timedelta(minutes=users - i)) for i, uid in enumerate(user_ids)]

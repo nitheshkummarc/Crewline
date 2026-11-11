@@ -1,0 +1,136 @@
+/* Global styles: tokens, font, browser surfaces, flap and row motion, reduced motion. */
+@import '@fontsource-variable/archivo/wdth.css';
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background: var(--room);
+    color: var(--room-ink);
+    font-family: 'Archivo Variable', system-ui, sans-serif;
+    font-variation-settings: 'wdth' 100;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 420;
+    caret-color: var(--focus);
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--lamp-amber) 35%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  * {
+    scrollbar-color: var(--room-line) transparent;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  /* Inside a board surface the plate is always light, whatever the room theme. */
+  .bg-board {
+    --plate: var(--paint);
+    --plate-ink: var(--board);
+  }
+}
+
+@layer components {
+  /* Condensed caps used on every board cell. */
+  .cells {
+    font-variation-settings: 'wdth' 75;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .caps-heading {
+    font-variation-settings: 'wdth' 85;
+    font-weight: 650;
+    font-size: 13px;
+    line-height: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--room-ink-2);
+  }
+  .page-title {
+    font-variation-settings: 'wdth' 85;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 24px;
+    line-height: 28px;
+    letter-spacing: 0.02em;
+  }
+  @media (min-width: 768px) {
+    .page-title {
+      font-size: 28px;
+      line-height: 32px;
+    }
+  }
+  /* One flap tile with the split seam through its middle. */
+  .flap-tile {
+    position: relative;
+    isolation: isolate;
+    background: var(--flap);
+    border-radius: 3px;
+  }
+  /* The seam sits above the tile background and behind the letters (z-index -1 inside the isolated tile). */
+  .flap-tile::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    z-index: -1;
+    background: var(--flap-seam);
+    pointer-events: none;
+  }
+  .flap-char {
+    display: inline-block;
+    transform-origin: 50% 50%;
+    animation: flap-turn 140ms var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 12ms);
+  }
+  .press {
+    transition: transform 100ms var(--ease-out), background-color 120ms var(--ease-out),
+      border-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+@keyframes flap-turn {
+  from {
+    transform: perspective(240px) rotateX(-88deg);
+    opacity: 0.2;
+  }
+  to {
+    transform: perspective(240px) rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}

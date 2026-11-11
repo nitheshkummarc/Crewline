@@ -13,6 +13,7 @@ Transactions behind each write are in [architecture.md](architecture.md) section
 | Pagination | `?limit=` (default 20, max 50) and `?cursor=` (opaque). Responses: `{"items": [...], "next_cursor": "..." | null}` |
 | Caching | Board responses carry `ETag`; send `If-None-Match` to get 304 |
 | Errors | `{"error": {"code": "team_full", "message": "Team is full", "request_id": "..."}}` |
+| Headers | Every response carries the security headers in architecture.md section 10 (CSP, HSTS, nosniff, Referrer-Policy) |
 
 ## Error codes
 

@@ -31,7 +31,7 @@ App factory: lifespan (pools, listener, purge task), middleware, routers, health
 |---|---|---|
 | `lifespan(app)` | Open pools, start the LISTEN listener and the idempotency purge task; stop them on shutdown | done |
 | `mount_web(app, dist_dir)` | Serve the built SPA at / with index.html as the fallback for client routes | done |
-| `create_app(settings)` | Build the app: rate limits, cache, event hub, middleware, routers, /healthz, /readyz, /metrics, SPA | done |
+| `create_app(settings)` | Build the app: rate limits, cache, event hub, middleware (security headers, request id), routers, /healthz, /readyz, /metrics, SPA | done |
 
 ### backend/app/config.py
 Settings loaded from environment variables.
@@ -68,6 +68,14 @@ Bot checks for signup and login: a signed form token with a minimum fill time, p
 | `AUDIENCE`, `MIN_FILL_MS`, `TOKEN_TTL_S` | Token audience `crewline-form`, 2000 ms minimum fill time, 2 h lifetime | done |
 | `issue_form_token()` | Return a signed token that records when the form was rendered | done |
 | `check_form(token, honeypot)` | Raise BotCheckFailed for a filled honeypot, a bad or expired token, or a submit under 2 s after render | done |
+
+### backend/app/core/headers.py
+Security headers on every response and cache rules for the built web app (pure ASGI, safe for streaming).
+| Name | Purpose | Status |
+|---|---|---|
+| `CSP`, `SECURITY_HEADERS` | Strict Content-Security-Policy (self only, no inline script or style), HSTS, nosniff, Referrer-Policy, X-Frame-Options, Permissions-Policy | done |
+| `cache_control(path, headers)` | Return `no-cache` for HTML, `immutable` for hashed `/assets/`, nothing for `/api/` | done |
+| `SecurityHeadersMiddleware` | Add the security headers to every HTTP response and cache rules to web app files | done |
 
 ### backend/app/core/deps.py
 FastAPI dependencies shared by routers.
@@ -528,7 +536,8 @@ Fixtures for the test database, a real API server and per-test cleanup.
 | `admin_url()` | Return a server URL from TEST_DATABASE_URL, or start the local test instance | done |
 | `server_url` | The PostgreSQL server URL used by the test session | done |
 | `db_url` | Create a fresh test database with all migrations applied | done |
-| `server` | Run one real API server for the whole session and return its base URL | done |
+| `fake_web_build(root)` | Write a minimal built web app (index.html and one hashed asset) so SPA serving is tested without npm | done |
+| `server` | Run one real API server for the whole session (serving a small fake web build) and return its base URL | done |
 | `users` | Factory for signed-up users; closes their clients after the test | done |
 | `truncate(db_url)` | Remove all rows from every application table | done |
 | `clean_db` | Empty the database before a test and assert the invariants after it | done |
@@ -573,7 +582,7 @@ Test helper: read a server-sent event stream in the background and wait for even
 | `SseReader.nothing(kind, seconds)` | True if no event of this kind arrives in time | done |
 
 ### frontend/README.md
-Placeholder describing the planned React app (module 8).
+How to run, test and build the web app.
 | Name | Purpose | Status |
 |---|---|---|
 
@@ -707,88 +716,203 @@ Scenario L-C.
 
 ## Web
 
-### frontend/src/api/client.ts
-Fetch wrapper.
+Tooling files: `frontend/package.json` (scripts: dev, build, typecheck, lint, test, e2e), `vite.config.ts` (build, `/api` dev proxy, Vitest settings, `publicUrlPlugin` that fills `%PUBLIC_URL%` in index.html from `CREWLINE_PUBLIC_URL`), `tsconfig*.json` (strict), `tailwind.config.ts` (theme from tokens; no `full` radius, so pill buttons cannot be built), `postcss.config.js`, `eslint.config.js` (typescript-eslint strict, react-hooks, jsx-a11y, no raw `fetch`, no em dash literals), `playwright.config.ts` (phone 360 px and laptop 1280 px projects), `index.html` (favicons, Open Graph and Twitter tags).
+
+### frontend/public/
+| File | Purpose | Status |
+|---|---|---|
+| `favicon.svg` | Three seat tiles, the last one amber | done |
+| `favicon-32.png`, `apple-touch-icon.png`, `og-image.png` | Rendered by `scripts/make-images.mjs` (32 px, 180 px, 1200x630) | done |
+
+### frontend/scripts/
+| File | Purpose | Status |
+|---|---|---|
+| `contrast.mjs` | Print WCAG contrast ratios for every token pair; exit 1 if a pair is below its floor | done |
+| `make-images.mjs` | Render the PNG favicons and the social preview image with Playwright (font embedded as a data URL) | done |
+
+### frontend/src/main.tsx
+Browser entry: mount the app.
+
+### frontend/src/App.tsx
+App root: query client with the session rule, live region, motion settings and the router.
 | Name | Purpose | Status |
 |---|---|---|
-| `request(method, path, body?, opts?)` | Same-origin fetch with credentials, error envelope parsing, 503 retry with the same key | planned |
-| `ApiError` | Error with status and code | planned |
-| `newIdempotencyKey()` | Return a random key for one user action | planned |
+| `createQueryClient()` | Build the query client; any 401 refetches the session so the app shell sends the user to login | done |
+| `App` | The whole app (query client, LazyMotion, MotionConfig reduced motion, live region, router, dev-only devtools) | done |
+
+### frontend/src/routes.tsx
+Route table: the single list of client routes, used by the app and by the link checker test.
+| Name | Purpose | Status |
+|---|---|---|
+| `routes` | `/login`, `/signup`, `/privacy`, `/terms`, signed-in `/`, `/h/:hid`, `/h/:hid/teams/new`, `/h/:hid/join`, `/teams/:tid`, `/me`, and the `*` 404 | done |
+| `isKnownRoute(path)` | True if a path is served by a real route (not the 404 catch-all) | done |
+
+### frontend/src/api/client.ts
+Fetch wrapper: same-origin credentials, Idempotency-Key on mutations, error envelope, retry of 503 and network errors.
+| Name | Purpose | Status |
+|---|---|---|
+| `ApiError` | Error with the HTTP status, the API error code, request id and Retry-After | done |
+| `newIdempotencyKey()` | Return a random key for one user action (32 hex characters) | done |
+| `timing` | Waits used between retries; tests replace `sleep` | done |
+| `retryDelay(attempt, retryAfter)` | Return the delay before a retry, honoring Retry-After in seconds, else 200, 400, 800 ms, plus jitter | done |
+| `toApiError(response)` | Parse the error envelope into an ApiError | done |
+| `request(method, path, body?, options?)` | Send one API request; retry network errors and 503 up to 3 times with the same Idempotency-Key | done |
 
 ### frontend/src/api/endpoints.ts
-One function per endpoint in api.md.
+One typed function per endpoint in docs/api.md.
 | Name | Purpose | Status |
 |---|---|---|
-| `signup`, `login`, `logout`, `me`, `updateMe`, `listHackathons`, `getHackathon`, `register`, `myStatus`, `setLooking`, `teamsBoard`, `peopleBoard`, `createTeam`, `getTeam`, `updateTeam`, `joinByCode`, `leaveTeam`, `removeMember`, `finalizeTeam`, `reopenTeam`, `getInvite`, `regenerateInvite`, `teamAudit`, `createRequest`, `teamRequests`, `myRequests`, `acceptRequest`, `declineRequest`, `withdrawRequest`, `suggestions`, `meta` | Typed endpoint calls | planned |
+| `meta`, `formToken`, `signup`, `login`, `logout`, `me`, `updateMe`, `listHackathons`, `getHackathon`, `register`, `myStatus`, `setLooking`, `teamsBoard`, `peopleBoard`, `createTeam`, `getTeam`, `updateTeam`, `joinByCode`, `leaveTeam`, `removeMember`, `finalizeTeam`, `reopenTeam`, `getInvite`, `regenerateInvite`, `teamAudit`, `createRequest`, `teamRequests`, `myRequests`, `acceptRequest`, `declineRequest`, `withdrawRequest`, `suggestions` | Typed endpoint calls (every `/api` route) | done |
+| `eventsUrl(hid)` | URL of the event stream for one hackathon | done |
 
 ### frontend/src/api/types.ts
-API payload types matching api.md.
+API payload types matching docs/api.md.
 | Name | Purpose | Status |
 |---|---|---|
-| `Skill`, `User`, `PublicUser`, `TeamSummary`, `TeamDetail`, `Member`, `JoinRequest`, `Hackathon`, `Suggestion`, `AuditEvent`, `Page<T>`, `ErrorCode` | Types | planned |
-
-### frontend/src/hooks/useEventStream.ts
-SSE subscription that patches the query cache.
-| Name | Purpose | Status |
-|---|---|---|
-| `useEventStream(hackathonId)` | Open the stream, refetch on open, merge team events and tombstones, refetch people and request lists, handle resync | planned |
+| `Skill`, `User`, `PublicUser`, `TeamSummary`, `Member`, `TeamDetail`, `JoinRequest`, `Hackathon`, `Suggestion`, `SuggestionsResponse`, `AuditEvent`, `Page<T>`, `Meta`, `MyStatus`, `RegisterResult`, `Invite`, `LeaveResult`, `FormToken`, `BotFields`, `SignupBody`, `LoginBody`, `ProfilePatch`, `TeamPatch`, `ErrorCode`, `TeamEvent`, `RequestEvent` | Types | done |
 
 ### frontend/src/hooks/queries.ts
-Query hooks.
+Query hooks: one per read endpoint, keyed by lib/keys.ts; board and team data merge by version.
 | Name | Purpose | Status |
 |---|---|---|
-| `useMe()`, `useHackathons()`, `useMyStatus(hid)`, `useTeamsBoard(hid)`, `usePeopleBoard(hid)`, `useTeam(tid)`, `useTeamRequests(tid)`, `useSuggestions(hid)`, `useTeamAudit(tid)` | Data hooks with query keys from `lib/keys.ts` | planned |
+| `mergeBoardData(old, fresh)` | Merge a refetched teams board with the cached one so an older snapshot never overwrites a newer event | done |
+| `mergeTeamDetail(old, fresh)` | Keep a cached team detail when it is newer than the refetched one | done |
+| `useMe`, `useMeta`, `useFormToken`, `useHackathons`, `useHackathon`, `useMyStatus`, `useTeamsBoard`, `usePeopleBoard`, `useSuggestions`, `useMyRequests`, `useTeam`, `useTeamRequests`, `useInvite`, `useTeamAudit` | Data hooks; hackathon-scoped hooks stay idle while the id is empty (bug B-24) | done |
 
 ### frontend/src/hooks/mutations.ts
-Mutation hooks with optimistic updates.
+Mutation hooks: one Idempotency-Key per user action, optimistic accept and leave with rollback, one error path.
 | Name | Purpose | Status |
 |---|---|---|
-| `useJoinByCode()`, `useCreateTeam()`, `useLeaveTeam()`, `useAcceptRequest()`, `useDeclineRequest()`, `useWithdrawRequest()`, `useRemoveMember()`, `useFinalizeTeam()`, `useReopenTeam()`, `useRegenerateInvite()`, `useCreateRequest()` | One idempotency key per action, optimistic patch, rollback on error | planned |
+| `useApiMutation(options)` | useMutation with no mutation retries, every error announced once, `refresh` keys invalidated after the server answers | done |
+| `snapshot(client, keys)`, `restore(client, saved)` | Save and roll back query data around an optimistic patch | done |
+| `useRegister`, `useSetLooking`, `useCreateTeam`, `useJoinByCode`, `useCreateRequest`, `useWithdrawRequest`, `useAcceptRequest`, `useDeclineRequest`, `useLeaveTeam`, `useRemoveMember`, `useFinalizeTeam`, `useReopenTeam`, `useUpdateTeam`, `useRegenerateInvite`, `useUpdateProfile`, `useLogout` | One hook per mutating endpoint; accept and leave are optimistic | done |
+
+### frontend/src/hooks/useEventStream.ts
+Event stream hook: patches cached board and team data from SSE events, refetches on every (re)connect.
+| Name | Purpose | Status |
+|---|---|---|
+| `refetchAll(client, hid)` | Refetch everything that belongs to one hackathon and every open team page | done |
+| `applyTeamEvent(client, hid, event)` | Apply one `team` event to the board pages, the team detail and the caller's status; return an announcement | done |
+| `applyRequestEvent(client, hid, event)` | Refresh that team's request list and the caller's own requests | done |
+| `useEventStream(hid)` | Open one EventSource; refetch on open, merge team events, handle people, request and resync; reconnect with backoff; return the stream status | done |
+
+### frontend/src/hooks/useBotCheckedSubmit.ts
+Bot-checked form submit for login and signup: form token per render, honeypot, minimum fill time.
+| Name | Purpose | Status |
+|---|---|---|
+| `useBotCheckedSubmit(form)` | Return the honeypot state and a `send` that waits out the 2 s minimum before calling the endpoint; a `bot_check_failed` fetches a new token | done |
 
 ### frontend/src/lib/merge.ts
-Version-based merging of events and snapshots.
+Version-based merging of live events and refetched snapshots, with tombstones for deleted teams.
 | Name | Purpose | Status |
 |---|---|---|
-| `mergeTeam(cached, incoming)` | Keep the higher version | planned |
-| `mergeBoardPage(page, incoming)` | Patch, insert or remove one team in a board page | planned |
-| `tombstones` | Map of deleted team id to deletion version | planned |
-| `isTombstoned(teamId, version)` | True if a snapshot is older than the team's deletion | planned |
+| `tombstones`, `recordTombstone(id, version)`, `isTombstoned(id, version)`, `clearTombstones()` | Deletion versions of teams; a snapshot at or below one is never shown | done |
+| `mergeTeam(cached, incoming)` | Keep the higher version | done |
+| `onBoard(team)` | True if a team belongs on the teams board (forming, looking, not full) | done |
+| `mergeBoardPage(items, teamId, incoming, isFirstPage, isLastPage)` | Patch in place, remove, or insert one team inside the page's range (bug B-26) | done |
+| `mergeFetchedPage(fresh, cached)` | Merge a refetched page: higher version wins, tombstoned and off-board teams dropped | done |
 
 ### frontend/src/lib/keys.ts
 Query key factory.
 | Name | Purpose | Status |
 |---|---|---|
-| `keys` | Query keys for every resource | planned |
+| `keys` | Query keys for every resource, scoped by hackathon or team | done |
 
 ### frontend/src/lib/time.ts
-Time zone helpers.
+Time zone and time display helpers.
 | Name | Purpose | Status |
 |---|---|---|
-| `formatZone(timezone)` | Return `Asia/Kolkata (UTC+05:30)` using the current offset | planned |
-| `browserTimeZone()` | Return the browser's IANA time zone | planned |
+| `browserTimeZone()` | Return the browser's IANA time zone, or UTC | done |
+| `allTimeZones()` | Return every IANA zone the browser knows, UTC first | done |
+| `zoneOffset(timezone, at)` | Return the current offset as `UTC+05:30`, or null for an unknown zone | done |
+| `formatZone(timezone, at)` | Return `Asia/Kolkata (UTC+05:30)` using the current offset | done |
+| `relativeTime(iso, now)` | Return "just now", "5 min ago", "3 h ago" or a date | done |
+| `timeUntil(iso, now)` | Return how long until an instant ("47 h", "12 min") | done |
 
-### frontend/src/pages/*
+### frontend/src/lib/validation.ts
+Form schemas (zod) with the same limits as the API models.
+| Name | Purpose | Status |
+|---|---|---|
+| `LIMITS` | Password 8 to 128, names 1 to 60, 12 skills, zone 64, message 280, code 10 | done |
+| `normalizeCode(raw)` | Normalize an invite code like the server; null if malformed | done |
+| `isTimeZone(value)` | True for an IANA name the browser knows; offsets refused | done |
+| `signupSchema`, `loginSchema`, `profileSchema`, `teamNameSchema`, `joinCodeSchema`, `requestMessageSchema` | Form schemas | done |
+| `validate(schema, values)` | Return the parsed data or the first error per field | done |
+| `apiFieldError(message)` | Map an API `validation_error` message to the field it names | done |
+
+### frontend/src/lib/errors.ts
+UI messages for API error codes.
+| Name | Purpose | Status |
+|---|---|---|
+| `MESSAGES` | One plain line per error code in docs/api.md, plus `network_error` | done |
+| `errorCode(error)` | Return the error code of any thrown value | done |
+| `messageFor(error)` | Return the message to show; validation errors keep the server's text | done |
+
+### frontend/src/lib/skills.ts
+Skill taxonomy, short codes and color families.
+| Name | Purpose | Status |
+|---|---|---|
+| `SKILLS`, `CORE_ROLES` | The 12 skills and 6 core roles (same as backend/app/core/skills.py) | done |
+| `skillFamily(skill)`, `skillCode(skill)`, `isSkill(value)` | Family color, short board code, type guard | done |
+| `missingRoles(skills)` | Return the core roles not covered | done |
+
+### frontend/src/styles/
 | File | Purpose | Status |
 |---|---|---|
-| `LoginPage.tsx` | Login form | planned |
-| `SignupPage.tsx` | Signup form with skills and time zone | planned |
-| `HackathonsPage.tsx` | List hackathons and register | planned |
-| `BoardPage.tsx` | Teams and People tabs with live updates | planned |
-| `CreateTeamPage.tsx` | Create team form | planned |
-| `JoinPage.tsx` | Enter or paste an invite code | planned |
-| `TeamPage.tsx` | Members, requests, invite, leave, finalize, audit | planned |
-| `ProfilePage.tsx` | Edit name, skills, time zone | planned |
+| `tokens.css` | Color tokens: the room follows the system theme, the board is always dark, the primary plate flips per theme | done |
+| `index.css` | Font, browser surfaces (selection, caret, focus, scrollbars), board cell type, flap tile and seam, flap turn keyframes, reduced motion | done |
 
-### frontend/src/components/*
+### frontend/src/components/
+Presentational components (no data fetching).
+| File | Exports | Status |
+|---|---|---|
+| `Board.tsx` | `Lamp` (square lamp with text), `FlapText` (characters turn over when the value changes; words never split), `SeatStrip` (one tile per seat) | done |
+| `Button.tsx` | `Button` (primary, secondary, board, danger, quiet; busy state; `data-variant`), `ButtonLink`, `buttonClass` | done |
+| `Field.tsx` | `FieldShell`, `TextField`, `TextAreaField`, `SelectField`, `FieldError` (the one field error line), `Honeypot` | done |
+| `ErrorNotice.tsx` | `ErrorNotice`: the one error display (red lamp, exact error code, one-line message, request id for 5xx) | done |
+| `LiveRegion.tsx` | `LiveRegionProvider` (the page's single polite live region), `useAnnounce` | done |
+| `LoadState.tsx` | `SkeletonRows`, `LoadError`, `EmptyState` | done |
+| `Layout.tsx` | `Layout` (skip link, top bar, main, footer), `Wordmark`, `ActionBar` (bottom bar on phones), `CONTACT_URL`, `SOURCE_URL` | done |
+| `AuthShell.tsx` | `AuthShell` (headline beside the form, above it on phones), `HEADLINE` | done |
+| `TeamBoard.tsx` | `TeamBoard`, `TeamRow`, `seatLamp` | done |
+| `People.tsx` | `PersonRow`, `PeopleBoard`, `SuggestionList` (score, reasons, weighted parts) | done |
+| `TeamParts.tsx` | `MemberList`, `RequestList`, `InviteCodeBox`, `AuditList` | done |
+| `Skills.tsx` | `SkillLabel`, `SkillList`, `SkillPicker` (aria-pressed toggles) | done |
+| `TimeZoneField.tsx` | `TimeZoneField` (IANA select with current offsets, labels built once) | done |
+| `ConfirmDialog.tsx` | `ConfirmDialog` for leave, remove, regenerate, finalize, reopen | done |
+| `RequestDialog.tsx` | `RequestDialog` to ask to join with an optional message | done |
+
+### frontend/src/pages/
+One file per route (sections that own their data live in `TeamSections.tsx`).
+| File | Exports | Status |
+|---|---|---|
+| `LoginPage.tsx` | Login form; `safeNext(next)` keeps redirects in the app | done |
+| `SignupPage.tsx` | Signup with skills, time zone and agreement to terms and privacy | done |
+| `AppShell.tsx` | Session gate for signed-in routes and the layout | done |
+| `HackathonsPage.tsx` | Hackathon list | done |
+| `BoardPage.tsx` | Status, one primary action, live Teams and People tabs (everyone or ranked), your requests | done |
+| `CreateTeamPage.tsx` | Create a team | done |
+| `JoinPage.tsx` | Join with a code (also from `?code=`) | done |
+| `TeamPage.tsx` | Team header, members, member and leader actions, ask to join | done |
+| `TeamSections.tsx` | `Section`, `RequestsSection`, `InviteSection`, `SettingsSection`, `SuggestionsSection`, `AuditSection` | done |
+| `ProfilePage.tsx` | Edit name, skills, time zone; `profileChanges(user, values)` sends only changed fields | done |
+| `LegalPages.tsx` | `PrivacyPage`, `TermsPage`, `NotFoundPage`, `LEGAL_UPDATED` | done |
+
+### frontend/src/test/ and tests
 | File | Purpose | Status |
 |---|---|---|
-| `TeamCard.tsx` | One team on the board | planned |
-| `PersonCard.tsx` | One person on the board or in suggestions | planned |
-| `MemberList.tsx` | Team members with leader badge and remove buttons | planned |
-| `RequestList.tsx` | Pending requests with accept and decline | planned |
-| `InviteCodeBox.tsx` | Show, copy and regenerate the invite code | planned |
-| `SkillPicker.tsx` | Accessible multi-select for skills | planned |
-| `LiveRegion.tsx` | aria-live region and a hook to announce messages | planned |
-| `Layout.tsx` | Header, skip link, main landmark | planned |
-| `SuggestionList.tsx` | Ranked suggestions with score breakdown | planned |
-| `AuditList.tsx` | Team audit events | planned |
+| `test/setup.ts` | DOM matchers, `FakeEventSource`, cleanup, fresh tombstones | done |
+| `test/fixtures.ts` | API payload fixtures and `stubFetch(routes)` | done |
+| `api/client.test.ts` | T-WEB-02 | done |
+| `lib/merge.test.ts` | T-WEB-03, T-WEB-04 | done |
+| `hooks/mutations.test.tsx` | T-WEB-01 | done |
+| `lib/validation.test.ts` | T-WEB-06 | done |
+| `routes.test.tsx` | T-WEB-05 (+ B-24, B-25 regressions, one primary action per page) | done |
+| `hooks/useEventStream.test.tsx` | T-WEB-07 | done |
+| `content.test.ts` | T-WEB-08 | done |
+
+### frontend/e2e/
+| File | Purpose | Status |
+|---|---|---|
+| `helpers.ts` | `unique`, `hackathonId`, `people` (real signups with the bot check, registered, one signed-in page each), `inviteCode` | done |
+| `crewline.spec.ts` | E2E-01 to E2E-07 | done |

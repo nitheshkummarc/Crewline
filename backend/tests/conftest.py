@@ -3,6 +3,7 @@
 import asyncio
 import os
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 
 import asyncpg
 import pytest
@@ -37,11 +38,19 @@ def db_url(server_url: str) -> str:
     return asyncio.run(create_database(server_url, TEST_DB))
 
 
+def fake_web_build(root: Path) -> Path:
+    """Write a minimal built web app (index.html and one hashed asset) so SPA serving is tested without npm."""
+    (root / "assets").mkdir()
+    (root / "index.html").write_text("<!doctype html><title>Crewline</title><div id=root></div>", encoding="utf-8")
+    (root / "assets" / "index-abc123.js").write_text("console.log(1)", encoding="utf-8")
+    return root
+
+
 @pytest.fixture(scope="session")
 def server(db_url: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
-    """Run one real API server for the whole session and return its base URL."""
+    """Run one real API server for the whole session (serving a small fake web build) and return its base URL."""
     log_path = tmp_path_factory.mktemp("server") / "server.log"
-    proc, base = start_server(db_url, log_path)
+    proc, base = start_server(db_url, log_path, {"WEB_DIST_DIR": str(fake_web_build(tmp_path_factory.mktemp("web")))})
     yield base
     stop_server(proc)
 

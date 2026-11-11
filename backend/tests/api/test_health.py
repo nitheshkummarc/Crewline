@@ -26,3 +26,23 @@ async def test_unknown_api_route_uses_error_envelope(server: str) -> None:
     body = response.json()
     assert body["error"]["code"] == "not_found"
     assert body["error"]["request_id"]
+
+
+async def test_api_48_security_headers_and_web_cache_rules(server: str) -> None:
+    """T-API-48: every response carries the security headers; the SPA shell revalidates, hashed assets are immutable."""
+    async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
+        api = await client.get("/api/meta")
+        shell = await client.get("/teams/any-client-route")
+        asset = await client.get("/assets/index-abc123.js")
+        missing_api = await client.get("/api/does-not-exist")
+    for response in (api, shell, asset, missing_api):
+        assert "script-src 'self'" in response.headers["content-security-policy"]
+        assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["referrer-policy"] == "same-origin"
+        assert response.headers["strict-transport-security"].startswith("max-age=")
+    assert shell.status_code == 200 and "<div id=root>" in shell.text
+    assert shell.headers["cache-control"] == "no-cache"
+    assert asset.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert "cache-control" not in api.headers
+    assert missing_api.status_code == 404 and missing_api.json()["error"]["code"] == "not_found"

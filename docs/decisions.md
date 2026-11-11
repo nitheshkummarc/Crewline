@@ -4,7 +4,7 @@ Each record: the decision, why, what was rejected, and the consequences. Status 
 When a decision changes, edit its record, set the date, and note what changed. Do not delete records.
 
 Index:
-[001 PS1](#adr-001) · [002 FastAPI](#adr-002) · [003 PostgreSQL](#adr-003) · [004 asyncpg, no ORM](#adr-004) · [005 Conditional UPDATE](#adr-005) · [006 READ COMMITTED](#adr-006) · [007 Lock order](#adr-007) · [008 Denormalized count](#adr-008) · [009 Composite FKs](#adr-009) · [010 Team lifecycle](#adr-010) · [011 Leader handover](#adr-011) · [012 Delete on last leave](#adr-012) · [013 Idempotency](#adr-013) · [014 Lazy stale requests](#adr-014) · [015 Invite codes](#adr-015) · [016 Auth](#adr-016) · [017 SSE](#adr-017) · [018 Events as hints](#adr-018) · [019 Audit log](#adr-019) · [020 Pools](#adr-020) · [021 Board](#adr-021) · [022 No Redis](#adr-022) · [023 Suggestions](#adr-023) · [024 Participants](#adr-024) · [025 Error contract](#adr-025) · [026 Deployment](#adr-026) · [027 Testing](#adr-027) · [028 Chaos](#adr-028) · [029 No organizer UI](#adr-029) · [030 Rejected ideas](#adr-030) · [031 Frontend](#adr-031) · [032 Rate limits in memory](#adr-032) · [033 IANA time zones](#adr-033) · [034 Participant and profile events](#adr-034) · [035 Request event audience](#adr-035) · [036 Design skills](#adr-036) · [037 Bot checks](#adr-037)
+[001 PS1](#adr-001) · [002 FastAPI](#adr-002) · [003 PostgreSQL](#adr-003) · [004 asyncpg, no ORM](#adr-004) · [005 Conditional UPDATE](#adr-005) · [006 READ COMMITTED](#adr-006) · [007 Lock order](#adr-007) · [008 Denormalized count](#adr-008) · [009 Composite FKs](#adr-009) · [010 Team lifecycle](#adr-010) · [011 Leader handover](#adr-011) · [012 Delete on last leave](#adr-012) · [013 Idempotency](#adr-013) · [014 Lazy stale requests](#adr-014) · [015 Invite codes](#adr-015) · [016 Auth](#adr-016) · [017 SSE](#adr-017) · [018 Events as hints](#adr-018) · [019 Audit log](#adr-019) · [020 Pools](#adr-020) · [021 Board](#adr-021) · [022 No Redis](#adr-022) · [023 Suggestions](#adr-023) · [024 Participants](#adr-024) · [025 Error contract](#adr-025) · [026 Deployment](#adr-026) · [027 Testing](#adr-027) · [028 Chaos](#adr-028) · [029 No organizer UI](#adr-029) · [030 Rejected ideas](#adr-030) · [031 Frontend](#adr-031) · [032 Rate limits in memory](#adr-032) · [033 IANA time zones](#adr-033) · [034 Participant and profile events](#adr-034) · [035 Request event audience](#adr-035) · [036 Design skills](#adr-036) · [037 Bot checks](#adr-037) · [038 Visual system](#adr-038) · [039 Security headers](#adr-039)
 
 ---
 
@@ -229,8 +229,9 @@ Index:
 
 ## ADR-031 Frontend stack {#adr-031}
 
-**Decision.** Vite, React 18, TypeScript strict, React Router v6, TanStack Query v5, Tailwind CSS, Vitest. No component library.
-**Why.** TanStack Query gives caching, optimistic updates and rollback with little code. Tailwind is fast to write and keeps focus styles consistent.
+**Decision.** Vite, React 18, TypeScript strict, React Router v6, TanStack Query v5, Tailwind CSS, Vitest. Changed 11 Nov 2026: added headless Radix primitives (dialog, tabs, dropdown menu, switch), `motion`, `lucide-react`, `zod`, the self-hosted Archivo font, Testing Library, eslint-plugin-jsx-a11y and Playwright. Still no styled component library.
+**Why.** TanStack Query gives caching, optimistic updates and rollback with little code. Tailwind is fast to write and keeps focus styles consistent. Radix gives correct focus trapping, keyboard handling and ARIA for dialogs, tabs and menus without imposing a look. `motion` animates rows entering and leaving the live board and honors reduced motion. `zod` keeps the client form limits in one place next to the API limits. Playwright runs the real flows on phone and laptop sizes against the real API.
+**Measured cost.** Production bundle 473 kB raw, 151 kB gzip for the main chunk (React DOM 127 kB, motion 73 kB, zod 52 kB, TanStack Query 34 kB raw); pages are split into lazy chunks of 2 to 24 kB.
 
 ## ADR-032 Rate limits in process memory {#adr-032}
 
@@ -269,3 +270,16 @@ Index:
 **Why.** Required by the product rules. A signed token needs no storage, so it works across workers and restarts, like the session. The audience claim means a form token never verifies as a session and a session token never passes as a form token. Checking before the rate limit keeps scripted posts from using up the signup quota of a shared campus IP.
 **Rejected.** A third-party CAPTCHA (external script, privacy cost, breaks the strict CSP), storing issued tokens in the database (a write per page view), a client-only check (a script skips it).
 **Consequences.** A token can be reused until it expires; the per-IP and per-email rate limits bound that. A headless browser that waits 2 s passes; stated as a gap. Tests mint aged tokens with the test secret instead of sleeping.
+
+## ADR-038 Visual system: the concourse board {#adr-038}
+
+**Decision.** The teams board looks and behaves like a station departure board: rows are live entities, columns never move, only their content changes, and a changed value turns over like a flap. Board surfaces are always dark; the page around them follows the system light or dark theme. Lamps carry state (amber attention, green confirmation, red conflict), always with a text label. One plate-style primary action per page. Archivo in condensed caps for board cells.
+**Why.** The core promise is a live, trustworthy seat count. A board where values change in place, without rows jumping under the pointer, makes live updates readable and keeps the button the user is about to press where it is. Chosen by the project owner from three directions (draft board, concourse board, event wristband) plus the plain category standard.
+**Rejected.** A grid of identical team cards (the category default; every update reflows the grid), dark-only theme (heavy on phones in daylight; the room theme follows the system instead).
+**Consequences.** Every color pair is measured by `frontend/scripts/contrast.mjs`. Buttons on board surfaces use the `board` variant instead of class overrides (bug B-27).
+
+## ADR-039 Security headers and a strict CSP {#adr-039}
+
+**Decision.** `core/headers.py` adds a Content-Security-Policy with `default-src 'self'` and no `'unsafe-inline'` for scripts or styles, plus HSTS, nosniff, Referrer-Policy, X-Frame-Options and Permissions-Policy, to every response. The SPA shell is served `no-cache`; hashed assets `immutable`.
+**Why.** Architecture section 10 promised these headers but none were sent (bug B-23). A same-origin app with a self-hosted font needs nothing from other origins. `'unsafe-inline'` for styles was not added on a guess: a browser run of every page at both sizes showed no CSP violations with the strict policy (React and Radix set styles through the DOM, which CSP allows).
+**Consequences.** No third-party scripts, fonts or analytics can be added without changing the policy on purpose. `no-cache` on the shell means a deploy is picked up on the next load.

@@ -11,7 +11,7 @@ Status: in development. CI badge and live URL are added once available.
 |---|---|
 | `backend/` | FastAPI service (`app/`), tests (`tests/api`, `tests/concurrency`, `tests/unit`) |
 | `database/` | SQL migrations, migration runner, invariant checker, local dev PostgreSQL |
-| `frontend/` | React + TypeScript app (in progress) |
+| `frontend/` | React + TypeScript app (`src/`), Playwright flows (`e2e/`), see [frontend/README.md](frontend/README.md) |
 | `docs/` | Architecture, decisions, API, verification, plan, bug diary |
 
 ## Run it
@@ -38,13 +38,16 @@ On Windows without make, run the raw commands (uv is installed with `pip install
 | All backend tests | `uv run --project backend pytest backend/tests` |
 | Race and guarantee tests only | `uv run --project backend pytest backend/tests/concurrency -q` |
 | Invariant checker | `uv run --project backend python database/invariants.py` |
-| Lint and types | `uv run --project backend ruff check backend database && uv run --project backend mypy backend/app` |
+| Lint and types | `uv run --project backend ruff check backend database` and, inside `backend/`, `uv run mypy app` (mypy reads its settings from backend/pyproject.toml) |
 | Seed 10k users / 2k teams | `JWT_SECRET=... uv run --project backend python database/seed.py --url <db> --tokens loadtest/tokens.json` |
 | Latency of every endpoint | `uv run --project backend python backend/scripts/latency_probe.py --base <api> --server-log <api log>` |
 | Chaos test (kills the API 3 times) | `uv run --project backend python backend/scripts/chaos.py` |
 | Load tests (k6) | `k6 run -e BASE_URL=<api> loadtest/board.js` (also `mixed.js`, `soak.js`) |
+| Web: install, dev server | `npm --prefix frontend ci`, `npm --prefix frontend run dev` |
+| Web: type check, lint, tests, build | `npm --prefix frontend run typecheck`, `npm --prefix frontend run lint`, `npm --prefix frontend test`, `npm --prefix frontend run build` |
+| Web: end-to-end (needs a running API, see frontend/README.md) | `npm --prefix frontend run e2e` |
 
-Web commands are added with the frontend (see docs/plan.md).
+Run `npm --prefix frontend run build` before starting the API to serve the web app at `/`.
 
 ## What to look at
 
@@ -68,4 +71,4 @@ TBD after deploy.
 
 ## Known gaps
 
-No CAPTCHA at signup · logout does not revoke a token before expiry · rate limits are per worker · no organizer UI.
+No CAPTCHA at signup (a form token and a honeypot stop simple scripts) · logout does not revoke a token before expiry · rate limits are per worker · no organizer UI.

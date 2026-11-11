@@ -1,0 +1,54 @@
+/* Design tokens: the room follows the system theme, the board is always dark. */
+
+:root {
+  color-scheme: dark;
+  --room: #111315;
+  --room-raised: #1a1d20;
+  --room-line: #343a3f;
+  --room-control: #6f767d;
+  --room-ink: #eceae4;
+  --room-ink-2: #a3a8ad;
+  --room-amber: #ffb21e;
+  --room-green: #4fd67e;
+  --room-red: #ff6a5c;
+  --focus: #ffb21e;
+  /* The primary action plate: light on dark grounds, dark on the light room. */
+  --plate: #f4f2ec;
+  --plate-ink: #0b0c0d;
+
+  --board: #0b0c0d;
+  --flap: #181a1c;
+  --flap-seam: #050606;
+  --flap-edge: #6f767d;
+  --paint: #f4f2ec;
+  --paint-2: #9ea3a8;
+  --lamp-amber: #ffb21e;
+  --lamp-green: #4fd67e;
+  --lamp-red: #ff6a5c;
+
+  --skill-build: #f4f2ec;
+  --skill-data: #7fd3e6;
+  --skill-ops: #e3cf9a;
+  --skill-people: #f2a7b8;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --room: #e6e8e9;
+    --room-raised: #f6f7f7;
+    --room-line: #c9cdd0;
+    --room-control: #7a8086;
+    --room-ink: #151719;
+    --room-ink-2: #4c5257;
+    /* Darker lamp values on the light room keep text contrast at 4.5:1. */
+    --room-amber: #8a5200;
+    --room-green: #17693a;
+    --room-red: #b3261e;
+    --focus: #8a5200;
+    --plate: #151719;
+    --plate-ink: #f4f2ec;
+  }
+}

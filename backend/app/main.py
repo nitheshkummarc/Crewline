@@ -13,6 +13,7 @@ from starlette.responses import Response
 from app.config import Settings, get_settings
 from app.core import cache, events, idempotency, metrics, ratelimit
 from app.core.errors import Busy, NotFound, install_error_handlers
+from app.core.headers import SecurityHeadersMiddleware
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.core.responses import JsonResponse
@@ -76,6 +77,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ratelimit.configure(settings)
     cache.configure(settings.board_cache_ttl_ms)
     events.configure(settings.sse_max_streams_per_user)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
     for router in (auth_router, hackathons_router, teams_router, requests_router, board_router,

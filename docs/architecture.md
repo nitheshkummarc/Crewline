@@ -74,7 +74,9 @@ Crewline/
     mixed.js                      scenario B (board + stampedes + churn)
     soak.js                       scenario C (10 minutes)
   frontend/                       React + TypeScript app (Vite)
-    src/api, hooks, pages, components, lib
+    src/api, hooks, pages, components, lib, styles, test
+    e2e/                          Playwright flows against a running server (phone and laptop)
+    scripts/                      contrast checker, favicon and preview image renderer
   docs/                           this folder
 ```
 
@@ -711,7 +713,7 @@ Three event kinds, built by `public_projection` (no emails, no invite codes):
 | Brute-force math | 2,000 live codes in 2^50 ≈ 1.13e15 space. At 20,000 guesses per minute (1,000 IPs at the cap), expected time to the first hit is about 2.8e7 minutes ≈ 53 years, while each code lives 48 h |
 | Abuse caps | 5 pending requests per user, page size ≤ 50, request message ≤ 280 chars, 3 SSE streams per user |
 | Input validation | pydantic models with explicit limits; skills from a fixed taxonomy; IANA time zones checked against `zoneinfo`; UUID path params. A custom `RequestValidationError` handler returns 400 `validation_error` (FastAPI's default is 422, which the contract reserves for idempotency key mismatch) |
-| Headers | `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, a strict `Content-Security-Policy` for the SPA |
+| Headers | `core/headers.py` on every response: `Content-Security-Policy` (`default-src 'self'`, no inline script or style, `frame-ancestors 'none'`), `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: DENY`, `Permissions-Policy`. The SPA shell is `Cache-Control: no-cache`; hashed `/assets/` are `immutable` (ADR-039) |
 | Data exposure | Board and events never include emails or invite codes; request events go only to the team's members and the requester |
 
 Known gaps (stated in the design doc): no CAPTCHA at signup (the bot checks stop simple form-filling scripts, not a headless browser that waits 2 s), logout does not revoke a token before expiry, rate limits are per worker.
@@ -750,7 +752,8 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 
 ## 13. Frontend
 
-- Vite + React 18 + TypeScript strict + React Router v6 + TanStack Query v5 + Tailwind CSS. No component library.
+- Vite + React 18 + TypeScript strict + React Router v6 + TanStack Query v5 + Tailwind CSS (ADR-031). Headless Radix primitives (dialog, tabs, dropdown menu, switch) for accessible behavior, `motion` for row enter and leave, `lucide-react` icons, `zod` for form schemas, Archivo variable font self-hosted. No styled component library.
+- Tests: Vitest with Testing Library (T-WEB-01 to 08) and Playwright end-to-end flows against a running server at 360 px and 1280 px (E2E-01 to 07).
 - Routes: `/login`, `/signup`, `/` (hackathon list), `/h/:hid` (board with Teams and People tabs), `/h/:hid/teams/new`, `/h/:hid/join` (enter code, also accepts `?code=`), `/teams/:tid` (members, requests, invite code, leave, finalize, audit), `/me` (profile: name, skills, time zone).
 - Public pages: `/privacy` (what is stored and why, retention, the single session cookie, contact) and `/terms` (acceptable use, accounts, invite codes and requests, no warranty). Signup links to both and requires agreeing. A custom 404 page handles unknown routes.
 - Head: SVG and PNG favicons, apple-touch-icon, Open Graph and Twitter card tags with a 1200x630 preview image.
@@ -762,8 +765,9 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 - `hooks/useEventStream.ts`: one EventSource per hackathon, refetch on open, merge `team` events by version, keep tombstones, refetch People board on `people` events, refresh request lists on `request` events, handle `resync`.
 - `lib/merge.ts`: `mergeTeam`, `mergeBoardPage` and the tombstone map, shared by event and refetch paths.
 - Time zone: signup and profile default to the browser's `Intl.DateTimeFormat().resolvedOptions().timeZone`; shown as the current offset.
-- Visual design: `PRODUCT.md` (who uses the app and for what) and `DESIGN.md` (tokens, type, spacing, components) are written before UI work.
-- Optimistic updates for join, accept, leave with rollback on error. 409 messages in an `aria-live` region.
+- Visual system (ADR-038): the concourse board. Board rows, team headers and seat tiles are always dark flap tiles with white letters; the page around them follows the system light or dark theme. Amber lamp = attention (last seat, reconnecting), green = confirmation (live, your team), red = conflict or finalized, the plate = the one primary action. Tokens live in `frontend/src/styles/tokens.css` and `tailwind.config.ts`; every text and control pair is measured by `frontend/scripts/contrast.mjs` (4.5:1 text, 3:1 borders and focus).
+- Errors: one display everywhere (`ErrorNotice`): red lamp, the exact API error code, one plain line from `lib/errors.ts`; 5xx also show the request id. Field errors use one `FieldError` line under the field.
+- Optimistic updates for accept (a join through a request) and leave, with rollback on error. Join by code waits for the server: the target team is unknown until the code is resolved. 409 messages go to the page's single `aria-live` region and inline next to the action.
 - Accessibility: real buttons, links and labels; visible focus; logical tab order and a skip link; 44 px touch targets; works at 360 px; one `aria-live="polite"` region per page; focus moves sensibly after accept, decline or remove.
 
 ## 14. Configuration (environment variables)
@@ -786,6 +790,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 | `IDEMPOTENCY_TTL_H` | `24` | Key retention |
 | `LOG_LEVEL` | `INFO` | Logging |
 | `WEB_DIST_DIR` | `frontend/dist` | Built SPA served at `/` |
+| `CREWLINE_PUBLIC_URL` (web build only) | `http://localhost:8000` | Absolute site URL written into `og:url` and `og:image` at build time |
 
 ## 15. Deployment
 

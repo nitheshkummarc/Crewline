@@ -20,7 +20,6 @@ __pycache__/
 
 # Node / web
 node_modules/
-web/dist/
 
 # Load test artifacts
 loadtest/tokens.json
@@ -36,3 +35,16 @@ CLAUDE.md
 Thumbs.db
 .vscode/
 .idea/
+
+# Local design notes and design tool state (never pushed)
+/PRODUCT.md
+/DESIGN.md
+.impeccable/
+design.md
+PRODUCT.md
+
+# Web build and test output
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/coverage/
