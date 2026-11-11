@@ -59,9 +59,9 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-28 | Mutation without `Idempotency-Key` | 400 `idempotency_key_required` | passing |
 | T-API-29 | Validation: bad UUID, name too long, limit 500, message 281 chars, unknown IANA time zone | 400 `validation_error` each (never FastAPI's default 422) | passing |
 | T-API-30 | 6 wrong codes in a minute from one user | 6th gets 429 `rate_limited` with `Retry-After` | passing |
-| T-API-31 | Board pagination | Pages do not overlap, full and finalized teams excluded, `next_cursor` null at end | planned |
-| T-API-32 | Board ETag | Second request with `If-None-Match` gets 304 | planned |
-| T-API-33 | Suggestions | Candidate covering missing roles ranks above a duplicate-skill candidate; breakdown and reasons present; deterministic order | planned |
+| T-API-31 | Board pagination | Pages do not overlap, full and finalized teams excluded, `next_cursor` null at end | passing |
+| T-API-32 | Board ETag | Second request with `If-None-Match` gets 304 | passing |
+| T-API-33 | Suggestions | Candidate covering missing roles ranks above a duplicate-skill candidate; breakdown and reasons present; deterministic order | passing |
 | T-API-34 | Audit append-only | Direct `UPDATE audit_events` and `DELETE` raise | passing |
 | T-API-35 | SSE event after commit | Subscriber receives `team` event with new version within 1 s of a join | planned |
 | T-API-36 | No SSE event after rollback | A rejected join (409) produces no event | planned |
@@ -72,7 +72,7 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-41 | Team member changes skills | Team `version` increases; a `team` event carries the new skills; board shows them | planned |
 | T-API-42 | Request event privacy | A non-member subscriber receives no `request` events; the leader and the requester do | partial (audience in payload passes; SSE delivery in module 6) |
 | T-API-43 | Create a request for a full team | 409 `team_full`, no request row | passing |
-| T-API-44 | Suggestions for a caller without a team | `context.team_id` null; the time zone term compares against the caller; a candidate covering the caller's missing roles ranks first | planned |
+| T-API-44 | Suggestions for a caller without a team | `context.team_id` null; the time zone term compares against the caller; a candidate covering the caller's missing roles ranks first | passing |
 | T-API-45 | Leave as the last member | `team_deleted` event has `team: null` and `version` = last version + 1 | passing |
 
 ## 3. Concurrency tests
@@ -101,14 +101,26 @@ Setup rules are in [.claude/rules/testing.md](../.claude/rules/testing.md): real
 | T-RACE-18 | One user fires 8 create-request calls to 8 teams at once | Exactly 5 pending, 3 × 409 `too_many_pending_requests` | passing |
 | T-RACE-19 | Profile update while 10 users join the same team | No deadlock; final snapshot version is the highest; invariants clean | planned |
 
+## 3b. Guarantee tests (dedicated servers)
+
+`backend/tests/concurrency/test_guarantees.py`. Each starts its own server with special settings; the fault tests use a separate database (`crewline_faults`) with a trigger that makes the audit insert fail for listed users. Mapping to guarantees: architecture.md section 17.
+
+| ID | Guarantee | Scenario | Assertions | Status |
+|---|---|---|---|---|
+| T-GUAR-01 | Queue wait under overload | Server with write pool 2, acquire timeout 0.2 s, in-flight cap 4; 40 joins at once for the last seat, no retry; then the same with retries | First pass: some `503 busy` with `Retry-After: 1`, each in under 2 s, no 500, at most one 200. After retries: no 503 or 500, team has exactly 4 members | passing |
+| T-GUAR-02 | Per-user request limits | Server with 5 mutations/min, 3 logins/min, 2 signups/hour | 6th mutation of one user is 429 `rate_limited` with `Retry-After`; another user still gets 200; 4th login 429; 3rd signup 429 | passing |
+| T-GUAR-03 | Atomicity of join | Audit insert fails for the joining user | 500; seat count, membership and idempotency key all unchanged; same key succeeds after the fault is removed; invariants clean | passing |
+| T-GUAR-04 | Atomicity of accept | Audit insert fails for the requester | 500; request still pending, count unchanged; accept succeeds after the fault is removed; invariants clean | passing |
+
 ## 4. Unit tests
 
 | ID | Test | Status |
 |---|---|---|
-| T-UNIT-01 | Scoring: circular hour distance (`Pacific/Kiritimati` vs `Pacific/Pago_Pago`), DST (`America/New_York` vs `Europe/London` in March and November give different offsets), overlap, complement with empty `M`, redundancy, clamp, tie order, one-person group | planned |
-| T-UNIT-06 | Time zone validation: valid IANA names pass, offsets like `+05:30` and unknown names fail | planned |
-| T-UNIT-02 | Invite codes: alphabet, length, normalization (`o`→`0`, `l`→`1`, dashes), format regex matches the DB CHECK | planned |
-| T-UNIT-03 | Cursor encode and decode round trip; tampered cursor → 400 | planned |
+| T-UNIT-01 | Scoring: circular hour distance (`Pacific/Kiritimati` vs `Pacific/Pago_Pago`), DST (`America/New_York` vs `Europe/London` in March and November give different offsets), overlap, complement with empty `M`, redundancy, clamp, tie order, one-person group | passing |
+| T-UNIT-06 | Time zone validation: valid IANA names pass, offsets like `+05:30` and unknown names fail | passing |
+| T-UNIT-07 | Sliding-window limiter: allows `limit` events per window per key, then returns a positive wait | passing |
+| T-UNIT-02 | Invite codes: alphabet, length, normalization (`o`→`0`, `l`→`1`, dashes), format regex matches the DB CHECK | passing |
+| T-UNIT-03 | Cursor encode and decode round trip; tampered cursor → 400 | passing |
 | T-UNIT-04 | Request hash: key order and whitespace do not change the hash; body change does | passing |
 | T-UNIT-05 | Error mapping: each constraint name maps to the right error code | passing |
 
@@ -202,7 +214,7 @@ README shows the CI badge.
 ## 12. Submission acceptance checklist
 
 - [ ] All must-haves R1 to R19 show `passing` in requirements.md
-- [ ] 20+ API tests (target 45 API + 19 race + 6 unit + 4 web) green in CI
+- [ ] 20+ API tests (target 45 API + 19 race + 4 guarantee + 7 unit + 4 web) green in CI
 - [ ] T-RACE-01 and T-RACE-02 both behave as expected in CI logs
 - [ ] Invariants clean on seed, after tests, after L-B, after chaos
 - [ ] Load report filled with measured numbers, commands and hardware

@@ -807,3 +807,18 @@ Two options, same schema and tests:
 - `postgres:16` with a health check, `max_connections=200`, data on a named volume.
 - `api` built from the Dockerfile, `depends_on: postgres (healthy)`, 2 uvicorn workers, `restart: unless-stopped`.
 - The chaos test runs uvicorn as a host subprocess against the Compose Postgres (see verification.md), so it can hard-kill the process portably.
+
+## 17. Guarantees and their proof
+
+Every guarantee the system makes, the mechanism that provides it, and the test that proves it through a real server and a real PostgreSQL.
+
+| Guarantee | Mechanism | Proof |
+|---|---|---|
+| **Atomicity (all or nothing)** | One transaction per write (`run_write`); any rejection raises and rolls back; unexpected errors roll back too. The seat increment, membership, request transition, audit row and idempotency response commit together or not at all | T-GUAR-03 and T-GUAR-04 inject a failure into the last statement (audit insert) of a real join and accept: no seat, no member, request still pending, no stored key; the same key then succeeds. T-RACE-12, T-API-18 |
+| **Consistency** | CHECK, UNIQUE and composite FK constraints (section 4); conditional UPDATE predicates; denormalized count updated in the same transaction | Invariant checker (I1 to I9) after every API and concurrency test, and on the fault database; T-RACE-03 shows the predicate holds even without the CHECK backstop |
+| **Concurrency (isolation)** | READ COMMITTED with predicate re-check on the team row; one lock order (section 6.12); unique indexes for one team per hackathon and one pending request | T-RACE-01 to 19: 50-way last seat, negative control, overlaps, double accept, accept vs withdraw, requests while filling; `pg_stat_database.deadlocks` unchanged (T-RACE-15) |
+| **Idempotency (retries)** | Key claimed first inside the transaction; success stored as exact JSON text in the same commit; no business pre-checks before the claim | T-API-26, 27, 28; T-RACE-10, 11, 12, 16 |
+| **Queue wait under overload (fail fast, never hang)** | Write in-flight cap per worker (immediate 503); pool acquire timeout 1 s; `lock_timeout` 1 s; `statement_timeout` 3 s; all map to `503 busy` with `Retry-After: 1`; clients retry with the same key | T-GUAR-01: a 2-connection pool with a 4-request cap under a 40-request burst returns 503s in under 2 s, never 500; retries finish with exactly the right membership |
+| **Per-user request limits** | Sliding windows per worker: mutations 60/min per user, failed invite codes 5/min per user and 20/min per IP, login 5/min per IP+email, signup 10/hour per IP; `429` with `Retry-After` | T-GUAR-02 (one user limited, another unaffected; login and signup limits), T-API-30, T-UNIT-07 |
+| **Durability and crash safety** | PostgreSQL commit; an interrupted transaction is aborted by the server; nothing is held in process memory for correctness | T-CHAOS-01 (module 7) |
+| **Fresh reads** | Board micro-cache 1 s, cleared on every change notification (module 6); ETag for unchanged pages | T-API-32; T-API-35 and B-2 regression in module 6 |

@@ -111,12 +111,14 @@ In-process sliding-window rate limiter (per worker; abuse protection, not correc
 | `get()` | Return the configured limiters | done |
 
 ### backend/app/core/cache.py
-Micro-cache with single-flight loading for board pages.
+Micro-cache with single-flight loading for board pages (per worker; never a source of truth).
 | Name | Purpose | Status |
 |---|---|---|
-| `MicroCache(ttl_ms)` | Hold `(etag, bytes)` per key for a short TTL | planned |
-| `MicroCache.get_or_load(key, loader)` | Return a cached value or run one loader for all concurrent callers | planned |
-| `MicroCache.invalidate_hackathon(hackathon_id)` | Drop every entry for one hackathon | planned |
+| `MicroCache(ttl_ms)` | Hold (etag, bytes) per key for a short TTL; concurrent misses for one key share one load | done |
+| `MicroCache.get_or_load(key, loader)` | Return a cached entry or run one loader for all concurrent callers of the same key | done |
+| `MicroCache.invalidate_hackathon(hackathon_id)` | Drop every entry for one hackathon | done |
+| `board_cache` | The process-wide board cache instance | done |
+| `configure(ttl_ms)` | Replace the board cache with one using the configured TTL | done |
 
 ### backend/app/core/events.py
 SSE hub: subscriptions per hackathon and event fan-out.
@@ -415,63 +417,72 @@ Join request SQL.
 | `list_pending_for_team(conn, tid)` | Pending requests for a team, oldest first, hiding users already in a team | done |
 
 ### backend/app/modules/board/router.py
-Board endpoints.
+Board endpoints with ETag and 304 support.
 | Name | Purpose | Status |
 |---|---|---|
-| `teams_board(hid, limit, cursor, if_none_match)` | GET /api/hackathons/{hid}/board/teams | planned |
-| `people_board(hid, limit, cursor, if_none_match)` | GET /api/hackathons/{hid}/board/people | planned |
+| `_cached(etag, body, if_none_match)` | Return 304 when the client already has this ETag, else the cached bytes | done |
+| `teams_board(hid, user_id, limit, cursor, if_none_match)` | GET /api/hackathons/{hid}/board/teams | done |
+| `people_board(hid, user_id, limit, cursor, if_none_match)` | GET /api/hackathons/{hid}/board/people | done |
 
 ### backend/app/modules/board/service.py
-Board pages through the micro-cache.
+Board pages through the micro-cache, rendered once to bytes.
 | Name | Purpose | Status |
 |---|---|---|
-| `teams_page(hid, limit, cursor)` | Return `(etag, bytes)` for a teams page | planned |
-| `people_page(hid, limit, cursor)` | Return `(etag, bytes)` for a people page | planned |
+| `_page(items, limit, next_key)` | Serialize a board page with its next cursor | done |
+| `teams_page(hid, limit, cursor)` | Return (etag, bytes) for a teams board page | done |
+| `people_page(hid, limit, cursor)` | Return (etag, bytes) for a people board page | done |
 
 ### backend/app/modules/board/repo.py
-Board SQL.
+Board SQL: keyset pages served by the teams_board and participants_board partial indexes.
 | Name | Purpose | Status |
 |---|---|---|
-| `teams_page(conn, hid, after, limit)` | Keyset page of open teams as snapshots | planned |
-| `people_page(conn, hid, after, limit)` | Keyset page of looking participants without a team | planned |
+| `teams_page(conn, hid, after, limit)` | Keyset page of open teams as snapshots, newest first; fetches limit + 1 rows | done |
+| `people_page(conn, hid, after, limit)` | Keyset page of looking participants without a team, newest first; fetches limit + 1 rows | done |
+| `hackathon_exists(conn, hid)` | True if the hackathon exists | done |
 
 ### backend/app/modules/board/cursor.py
-Opaque keyset cursors.
+Opaque keyset cursors: base64url of '<iso timestamp>|<uuid>'.
 | Name | Purpose | Status |
 |---|---|---|
-| `encode_cursor(ts, id)` | Return a base64url cursor | planned |
-| `decode_cursor(cursor)` | Return `(ts, id)` or raise validation_error | planned |
+| `encode_cursor(ts, row_id)` | Return a base64url cursor for a (timestamp, id) position | done |
+| `decode_cursor(cursor)` | Return (timestamp, id) from a cursor or raise validation_error | done |
 
 ### backend/app/modules/suggestions/router.py
 Suggestions endpoint.
 | Name | Purpose | Status |
 |---|---|---|
-| `suggestions(hid, limit, user_id)` | GET /api/hackathons/{hid}/suggestions | planned |
+| `suggestions(hid, user_id, limit)` | GET /api/hackathons/{hid}/suggestions | done |
 
 ### backend/app/modules/suggestions/service.py
-Build the team context, fetch candidates, rank.
+Build the caller's group, fetch candidates, rank them.
 | Name | Purpose | Status |
 |---|---|---|
-| `suggest(hid, user_id, limit)` | Return context and ranked candidates | planned |
+| `suggest(hid, user_id, limit)` | Return the context (team id, missing roles) and ranked candidates for the caller | done |
 
 ### backend/app/modules/suggestions/repo.py
 Suggestions SQL.
 | Name | Purpose | Status |
 |---|---|---|
-| `group_context(conn, hid, user_id)` | Return the caller's team id (or None) and the group's skills and time zones; the caller alone when teamless | planned |
-| `candidates(conn, hid, exclude_ids, missing)` | Looking participants without a team, ordered by missing-skill overlap then recency (max 500) | planned |
+| `MAX_CANDIDATES` | Candidate rows fetched before scoring (500) | done |
+| `is_registered(conn, hid, user_id)` | True if the user is a participant of the hackathon | done |
+| `group_members(conn, hid, user_id)` | Return the caller's team id and its members' (id, skills, timezone); the caller alone when teamless | done |
+| `candidates(conn, hid, exclude_ids, missing)` | Looking participants without a team, ordered by missing-skill overlap then recency (max 500) | done |
 
 ### backend/app/modules/suggestions/scoring.py
-Pure scoring functions.
+Pure scoring functions for teammate suggestions (formula in architecture.md section 11).
 | Name | Purpose | Status |
 |---|---|---|
-| `circular_hours(a_hours, b_hours)` | Hour distance between two UTC offsets on a 24 h circle | planned |
-| `tz_overlap(group_zones, cand_zone, at)` | Worst-case working-window overlap with the group at an instant, 0 to 1 | planned |
-| `complement(team_skills, cand_skills)` | Share of missing core roles the candidate covers | planned |
-| `redundancy(team_skills, cand_skills)` | Share of candidate skills the team already has | planned |
-| `completeness(cand_skills)` | Profile completeness, 0 to 1 | planned |
-| `score_candidate(team, cand)` | Weighted score, breakdown and reasons | planned |
-| `rank(team, cands, limit)` | Sort by score, timezone, user id and cut to limit | planned |
+| `WORK_HOURS`, `WEIGHTS` | Working window (9 h) and score weights | done |
+| `Group` | The caller's team, or the caller alone: union of skills and each member's time zone | done |
+| `circular_hours(a_hours, b_hours)` | Hour distance between two UTC offsets on a 24 h circle | done |
+| `overlap_hours(group_zones, cand_zone, at)` | Worst-case shared working hours with any group member at an instant | done |
+| `tz_overlap(group_zones, cand_zone, at)` | Worst-case working-window overlap with the group at an instant, 0 to 1 | done |
+| `missing_roles(team_skills)` | Core roles the group does not cover yet, in taxonomy order | done |
+| `complement(team_skills, cand_skills)` | Share of missing core roles the candidate covers; half credit for new skills when none are missing | done |
+| `redundancy(team_skills, cand_skills)` | Share of candidate skills the group already has | done |
+| `completeness(cand_skills)` | Profile completeness, 0 to 1 | done |
+| `score_candidate(group, cand, at)` | Weighted score, breakdown and plain-language reasons for one candidate | done |
+| `rank(group, cands, at, limit)` | Sort by score, time zone overlap, user id and cut to limit | done |
 
 ### backend/app/modules/audit/repo.py
 Audit SQL.
@@ -561,6 +572,15 @@ Concurrency test fixtures.
 | `_deadlocks(db_url)` | Return the deadlock counter of the test database | done |
 | `_clean` | Apply clean_db to every concurrency test | done |
 | `no_deadlocks` | T-RACE-15: the deadlock counter must not increase during the concurrency suite | done |
+
+### backend/tests/concurrency/test_guarantees.py
+Guarantee tests through dedicated servers (T-GUAR-01 to 04).
+| Name | Purpose | Status |
+|---|---|---|
+| `FAULT_SQL` | Fault table and audit trigger that fails inserts for listed users | done |
+| `tight_server` | Server with a 2-connection write pool, 0.2 s acquire timeout and in-flight cap 4 | done |
+| `limited_server` | Server with small mutation, login and signup limits | done |
+| `fault_db`, `fault_server` | Database with the fault trigger and a server on it | done |
 
 ## Scripts
 

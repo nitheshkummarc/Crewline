@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
 from app.config import Settings, get_settings
-from app.core import idempotency, ratelimit
+from app.core import cache, idempotency, ratelimit
 from app.core.errors import Busy, NotFound, install_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
@@ -18,8 +18,10 @@ from app.core.responses import JsonResponse
 from app.db import pools as db_pools
 from app.db import tx
 from app.modules.auth.router import router as auth_router
+from app.modules.board.router import router as board_router
 from app.modules.hackathons.router import router as hackathons_router
 from app.modules.requests.router import router as requests_router
+from app.modules.suggestions.router import router as suggestions_router
 from app.modules.teams.router import router as teams_router
 
 
@@ -65,9 +67,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Crewline API", default_response_class=JsonResponse, lifespan=lifespan)
     app.state.settings = settings
     ratelimit.configure(settings)
+    cache.configure(settings.board_cache_ttl_ms)
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
-    for router in (auth_router, hackathons_router, teams_router, requests_router):
+    for router in (auth_router, hackathons_router, teams_router, requests_router, board_router, suggestions_router):
         app.include_router(router)
 
     @app.get("/healthz", include_in_schema=False)
