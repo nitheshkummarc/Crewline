@@ -1,0 +1,22 @@
+# Render Blueprint: one Docker web service in Singapore serving the API and the web app (ADR-026).
+services:
+  - type: web
+    name: crewline
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # Neon direct connection string (not the -pooler host; LISTEN needs a direct session). Entered in the dashboard.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Passed to the Docker build as a build argument; must match the service URL Render assigns.
+      - key: CREWLINE_PUBLIC_URL
+        value: https://crewline.onrender.com
+      - key: LAB_ENABLED
+        value: "true"

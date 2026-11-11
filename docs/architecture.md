@@ -37,6 +37,7 @@ Crewline/
   Makefile                        task shortcuts (raw commands in README)
   docker-compose.yml              postgres:16 + api service (backend serving the frontend build)
   Dockerfile                      multi-stage: build frontend, install backend, run uvicorn
+  render.yaml                     Render Blueprint for the deploy (Singapore, Docker, free plan)
   .github/workflows/ci.yml        lint, API tests, race tests, web tests, e2e, k6 smoke, invariants
   .github/scripts/                start-postgres.sh (postgres:16, max_connections=300), start-api.sh (background API, waits for /readyz)
   database/                       everything that owns the schema and data
@@ -810,7 +811,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 
 | Piece | Choice |
 |---|---|
-| API + web | Render free web service, region Singapore, Docker image from the repo `Dockerfile`, 1 uvicorn worker |
+| API + web | Render free web service, region Singapore, Docker image from the repo `Dockerfile`, 1 uvicorn worker; defined in `render.yaml` (Blueprint: health check `/healthz`, generated `JWT_SECRET`, `DATABASE_URL` entered in the dashboard, `CREWLINE_PUBLIC_URL` as a build argument) |
 | Database | Neon free Postgres 16, region AWS ap-southeast-1 (Singapore), direct connection string |
 | Migrations | `database/migrate.py` runs at container start before uvicorn |
 | Demo data | Small seed on the live DB: 1 hackathon, about 300 users, about 40 teams, 2 reviewer accounts (in README) |
