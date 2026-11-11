@@ -43,6 +43,7 @@ On Windows without make, run the raw commands (uv is installed with `pip install
 | Latency of every endpoint | `uv run --project backend python backend/scripts/latency_probe.py --base <api> --server-log <api log>` |
 | Chaos test (kills the API 3 times) | `uv run --project backend python backend/scripts/chaos.py` |
 | Load tests (k6) | `k6 run -e BASE_URL=<api> loadtest/board.js` (also `mixed.js`, `soak.js`) |
+| Web contrast check | `node frontend/scripts/contrast.mjs` |
 | Web: install, dev server | `npm --prefix frontend ci`, `npm --prefix frontend run dev` |
 | Web: type check, lint, tests, build | `npm --prefix frontend run typecheck`, `npm --prefix frontend run lint`, `npm --prefix frontend test`, `npm --prefix frontend run build` |
 | Web: end-to-end (needs a running API, see frontend/README.md) | `npm --prefix frontend run e2e` |
@@ -60,6 +61,7 @@ Run `npm --prefix frontend run build` before starting the API to serve the web a
 | How each claim is proven | [docs/verification.md](docs/verification.md) |
 | Load test results | [docs/load-report.md](docs/load-report.md) |
 | Bugs found and fixed | [docs/bug-diary.md](docs/bug-diary.md) |
+| See the guarantees live | Sign in and open `/lab` (Race lab): a traced join statement by statement, N people racing for the last seat, one person spamming join, the request queue, measured latency |
 
 ## Stack
 

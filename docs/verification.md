@@ -242,7 +242,7 @@ Real bugs found during the build go to [bug-diary.md](bug-diary.md).
 | `api-tests` | Postgres 16 service, migrate, pytest `backend/tests/api backend/tests/unit`, invariants | Any failure or violation |
 | `race-tests` | Postgres 16 service, migrate, pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20`, invariants, deadlock check | Any failure, violation or deadlock |
 | `web-tests` | `npm ci`, typecheck, eslint, vitest, build | Any failure |
-| `e2e` | Postgres 16 service, migrate, seed, build web, start the API, Playwright E2E-01 to 09 | Any failure |
+| `e2e` | Postgres 16 service, migrate, seed, build web, start the API, Playwright E2E-01 to 10 | Any failure |
 | `compose-smoke` | `docker compose up -d`, wait for `/readyz`, one signup and create team | Non-200 |
 | `k6-smoke` | Seed small data, `k6 run` L-A1 for 20 s with thresholds | Threshold breach |
 

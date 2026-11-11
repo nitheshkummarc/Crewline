@@ -16,6 +16,8 @@ Under READ COMMITTED, the 49 losers wait on the row lock, then re-check the pred
 
 **Latency.** Board: keyset pagination on a partial index, a 1 s single-flight cache of serialized bytes (cleared on every change), ETag. Separate read and write pools so a stampede cannot starve reads; 1 s lock and acquire timeouts return 503 + `Retry-After` instead of hanging. Results (10k users, 2k teams, 100 concurrent users): board p95 **TBD ms** local, **TBD ms** live; mixed load with stampedes p95 **TBD ms**; 0 deadlocks; max **TBD** connections.
 
+**See it in the app.** The Race lab page (`/lab`) runs these guarantees live against the real database: every SQL statement of a traced join, N people racing for the last seat (one winner, the rest `team_full`, read back from the database), one person spamming join (one membership), and the order requests reach a leader (ADR-040).
+
 **Guarantees, each proven by a test through a real server.** Atomicity: a failure injected into the last statement of a join or accept leaves no seat, member, request change or stored key. Overload: a burst over a 2-connection pool gets `503 busy` with `Retry-After` in under 2 s, never a hang or 500, and retries still end with exactly one winner. Per-user limits: 429 with `Retry-After` for mutations, login and signup. Consistency: 9 invariant queries clean after every test. Mapping in architecture.md section 17.
 
 **Security.** argon2id; JWT in an httpOnly SameSite cookie; leader checks inside the SQL predicate; 50-bit invite codes (about 53 years to a hit at 20k guesses/min) with per-user and per-IP limits; identical 404 for unknown and expired codes; no codes or emails in events.
