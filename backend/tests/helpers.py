@@ -90,7 +90,7 @@ class Users:
         client = self.client()
         response = await client.post("/api/auth/signup", json={
             "email": email, "password": "correct-horse-1", "display_name": name[:60],
-            "skills": list(skills), "timezone": timezone})
+            "skills": list(skills), "timezone": timezone, **form_fields()})
         assert response.status_code == 201, response.text
         user = User(client=client, id=response.json()["id"], email=email, name=name)
         if hackathon:
@@ -123,6 +123,13 @@ class Users:
         """Close every client."""
         for client in self.clients:
             await client.aclose()
+
+
+def form_fields(age_s: float = 3.0) -> dict:
+    """Return signup/login bot-check fields: a form token rendered age_s ago and an empty honeypot."""
+    issued = int((time.time() - age_s) * 1000)
+    claims = {"aud": "crewline-form", "iat_ms": issued, "exp": int(time.time()) + 3600}
+    return {"form_token": jwt.encode(claims, TEST_JWT_SECRET, algorithm="HS256"), "company": ""}
 
 
 def session_token(user_id: str) -> str:

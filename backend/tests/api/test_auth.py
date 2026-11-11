@@ -5,7 +5,7 @@ import time
 import httpx
 import jwt
 import pytest
-from helpers import SHARED_TLS, TEST_JWT_SECRET, Users, key, make_hackathon, query
+from helpers import SHARED_TLS, TEST_JWT_SECRET, Users, form_fields, key, make_hackathon, query
 
 
 async def test_api_01_signup_creates_user_and_session(users: Users) -> None:
@@ -28,7 +28,7 @@ async def test_api_01_signup_creates_user_and_session(users: Users) -> None:
 ])
 async def test_api_01_signup_validation(server: str, patch: dict) -> None:
     """T-API-01 / T-API-29: invalid signup bodies return 400 validation_error, never 422."""
-    body = {"email": "v@example.com", "password": "long-enough-1", "display_name": "V", **patch}
+    body = {"email": "v@example.com", "password": "long-enough-1", "display_name": "V", **form_fields(), **patch}
     async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
         response = await client.post("/api/auth/signup", json=body)
     assert response.status_code == 400, response.text
@@ -39,9 +39,9 @@ async def test_api_02_duplicate_email_is_case_insensitive(server: str) -> None:
     """T-API-02: the same email in another case returns 409 email_taken."""
     async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
         first = await client.post("/api/auth/signup", json={
-            "email": "Bob@Example.com", "password": "long-enough-1", "display_name": "Bob"})
+            "email": "Bob@Example.com", "password": "long-enough-1", "display_name": "Bob", **form_fields()})
         second = await client.post("/api/auth/signup", json={
-            "email": "bob@example.com", "password": "long-enough-2", "display_name": "Bob2"})
+            "email": "bob@example.com", "password": "long-enough-2", "display_name": "Bob2", **form_fields()})
     assert first.status_code == 201
     assert second.status_code == 409
     assert second.json()["error"]["code"] == "email_taken"
@@ -51,9 +51,11 @@ async def test_api_03_login(users: Users, server: str) -> None:
     """T-API-03: wrong password and unknown email both return 401 invalid_credentials; right one logs in."""
     user = await users.new("carol")
     async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
-        wrong = await client.post("/api/auth/login", json={"email": user.email, "password": "nope-nope-1"})
-        unknown = await client.post("/api/auth/login", json={"email": "ghost@example.com", "password": "x" * 10})
-        right = await client.post("/api/auth/login", json={"email": user.email.upper(), "password": "correct-horse-1"})
+        bot = form_fields()
+        wrong = await client.post("/api/auth/login", json={"email": user.email, "password": "nope-nope-1", **bot})
+        unknown = await client.post("/api/auth/login", json={"email": "ghost@example.com", "password": "x" * 10, **bot})
+        right = await client.post("/api/auth/login", json={"email": user.email.upper(), "password": "correct-horse-1",
+                                                           **bot})
         me = await client.get("/api/auth/me")
     assert wrong.status_code == unknown.status_code == 401
     assert wrong.json()["error"]["code"] == unknown.json()["error"]["code"] == "invalid_credentials"

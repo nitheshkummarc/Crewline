@@ -46,7 +46,7 @@ Domain error types and the HTTP error envelope.
 | Name | Purpose | Status |
 |---|---|---|
 | `DomainError` | Base error with `status`, `code`, `message`, optional `retry_after` | done |
-| `ValidationFailed`, `IdempotencyKeyRequired`, `Unauthenticated`, `InvalidCredentials`, `NotLeader`, `MembersOnly`, `NotFound`, `InviteInvalid`, `EmailTaken`, `NotRegistered`, `AlreadyInTeam`, `TeamFull`, `TeamFinalized`, `NotFinalized`, `BelowMinSize`, `RequestNotPending`, `NotAMember`, `CannotRemoveSelf`, `TooManyPendingRequests`, `IdempotencyKeyMismatch`, `RateLimited`, `Busy` | One subclass per error code in api.md | done |
+| `ValidationFailed`, `BotCheckFailed`, `IdempotencyKeyRequired`, `Unauthenticated`, `InvalidCredentials`, `NotLeader`, `MembersOnly`, `NotFound`, `InviteInvalid`, `EmailTaken`, `NotRegistered`, `AlreadyInTeam`, `TeamFull`, `TeamFinalized`, `NotFinalized`, `BelowMinSize`, `RequestNotPending`, `NotAMember`, `CannotRemoveSelf`, `TooManyPendingRequests`, `IdempotencyKeyMismatch`, `RateLimited`, `Busy` | One subclass per error code in api.md | done |
 | `error_response(request, status, code, message, retry_after)` | Build the error envelope response with the request id | done |
 | `install_error_handlers(app)` | Register handlers that render DomainError as the envelope and validation errors as 400 `validation_error` | done |
 
@@ -60,6 +60,14 @@ Password hashing and JWT session tokens (cookie `crewline_session`).
 | `decode_token(token)` | Verify a JWT and return the user id, or None if invalid or expired | done |
 | `set_session_cookie(response, token)` | Set the httpOnly session cookie | done |
 | `clear_session_cookie(response)` | Remove the session cookie | done |
+
+### backend/app/core/formguard.py
+Bot checks for signup and login: a signed form token with a minimum fill time, plus a honeypot field (ADR-037).
+| Name | Purpose | Status |
+|---|---|---|
+| `AUDIENCE`, `MIN_FILL_MS`, `TOKEN_TTL_S` | Token audience `crewline-form`, 2000 ms minimum fill time, 2 h lifetime | done |
+| `issue_form_token()` | Return a signed token that records when the form was rendered | done |
+| `check_form(token, honeypot)` | Raise BotCheckFailed for a filled honeypot, a bad or expired token, or a submit under 2 s after render | done |
 
 ### backend/app/core/deps.py
 FastAPI dependencies shared by routers.
@@ -231,6 +239,7 @@ Dedicated LISTEN connection with reconnect; clears the board cache and feeds the
 Auth and profile endpoints.
 | Name | Purpose | Status |
 |---|---|---|
+| `form_token()` | GET /api/auth/form-token (no-store) | done |
 | `signup(body, response, ip)` | POST /api/auth/signup | done |
 | `login(body, response, ip)` | POST /api/auth/login | done |
 | `logout(response)` | POST /api/auth/logout | done |
@@ -242,15 +251,15 @@ Auth request and response models.
 | Name | Purpose | Status |
 |---|---|---|
 | `_unique_skills(skills)` | Return the skills without duplicates, keeping order | done |
-| `SignupIn`, `LoginIn`, `UpdateMeIn`, `UserOut` | Validated models with limits from api.md (extra fields rejected) | done |
+| `SignupIn`, `LoginIn`, `UpdateMeIn`, `UserOut` | Validated models with limits from api.md (extra fields rejected); signup and login carry `form_token` and the honeypot `company` | done |
 
 ### backend/app/modules/auth/service.py
 Signup, login and profile rules.
 | Name | Purpose | Status |
 |---|---|---|
 | `_user(row)` | Return the public user fields of a row | done |
-| `signup(data, ip)` | Rate-limit, hash the password, create the user | done |
-| `login(data, ip)` | Rate-limit, verify the password, return the user | done |
+| `signup(data, ip)` | Check the form, rate-limit, hash the password, create the user | done |
+| `login(data, ip)` | Check the form, rate-limit, verify the password, return the user | done |
 | `me(user_id)` | Return the signed-in user, or 401 if the account no longer exists | done |
 | `update_profile(ctx, data)` | Update name, skills and time zone; bump the user's team versions; audit and publish | done |
 
@@ -548,6 +557,7 @@ Test helpers: users with their own HTTP client, hackathons, teams, keys and raw 
 | `key()` | Return a fresh idempotency key | done |
 | `User` | A signed-up user with an authenticated client; `get`, `send`, `post`, `patch`, `delete` | done |
 | `Users` | Factory: `new` signs up (optionally registers), `bulk` inserts registered users with minted cookies, `close` | done |
+| `form_fields(age_s)` | Return signup/login bot-check fields: a form token rendered age_s ago and an empty honeypot | done |
 | `session_token(user_id)` | Mint a session JWT for a user with the test secret | done |
 | `create_team(user, hid, name)` | Create a team as the user and return (team id, invite code) | done |
 | `join(user, code)` | Join a team by invite code | done |

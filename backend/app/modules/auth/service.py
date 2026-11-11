@@ -6,6 +6,7 @@ import asyncpg
 
 from app.core import ratelimit
 from app.core.errors import EmailTaken, InvalidCredentials, RateLimited, Unauthenticated
+from app.core.formguard import check_form
 from app.core.security import hash_password, verify_password
 from app.db.pools import read_conn, write_conn
 from app.db.tx import Outcome, WriteContext, run_write
@@ -20,7 +21,9 @@ def _user(row: asyncpg.Record) -> dict:
 
 
 async def signup(data: SignupIn, ip: str) -> dict:
-    """Rate-limit, hash the password, create the user."""
+    """Check the form, rate-limit, hash the password, create the user."""
+    # Bot check first: it is stateless, so failed bot posts do not use up a shared IP's signup quota.
+    check_form(data.form_token, data.company)
     wait = ratelimit.get().signup.hit(ip)
     if wait:
         raise RateLimited(retry_after=wait)
@@ -35,7 +38,8 @@ async def signup(data: SignupIn, ip: str) -> dict:
 
 
 async def login(data: LoginIn, ip: str) -> dict:
-    """Rate-limit, verify the password, return the user."""
+    """Check the form, rate-limit, verify the password, return the user."""
+    check_form(data.form_token, data.company)
     email = data.email.lower()
     wait = ratelimit.get().login.hit(f"{ip}|{email}")
     if wait:

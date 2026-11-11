@@ -706,6 +706,7 @@ Three event kinds, built by `public_projection` (no emails, no invite codes):
 | CSRF | SameSite=Lax blocks cross-site POST with the cookie; every mutation also requires the custom `Idempotency-Key` header, which a cross-site form cannot send without a CORS preflight that the API does not allow |
 | Authorization | Leader checks inside the SQL predicate or under the team row lock |
 | Invite codes | 50 bits from `secrets.choice`; expiry in SQL with the database clock; same 404 for unknown and expired |
+| Bot checks | Signup and login carry a form token (HS256 JWT, audience `crewline-form`, issue time in ms, 2 h expiry) fetched from `GET /api/auth/form-token` when the form renders, and a hidden honeypot field `company`. `core/formguard.py` rejects a filled honeypot, a bad or expired token, or a submit under 2 s with 400 `bot_check_failed`. The audience keeps form and session tokens apart (ADR-037) |
 | Brute force | Failed code attempts limited per user (5/min) and per IP (20/min); login limited per IP+email (5/min); signup per IP (10/hour); all mutations per user (60/min). In-process sliding windows (per worker; documented) |
 | Brute-force math | 2,000 live codes in 2^50 ≈ 1.13e15 space. At 20,000 guesses per minute (1,000 IPs at the cap), expected time to the first hit is about 2.8e7 minutes ≈ 53 years, while each code lives 48 h |
 | Abuse caps | 5 pending requests per user, page size ≤ 50, request message ≤ 280 chars, 3 SSE streams per user |
@@ -713,7 +714,7 @@ Three event kinds, built by `public_projection` (no emails, no invite codes):
 | Headers | `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, a strict `Content-Security-Policy` for the SPA |
 | Data exposure | Board and events never include emails or invite codes; request events go only to the team's members and the requester |
 
-Known gaps (stated in the design doc): no CAPTCHA at signup, logout does not revoke a token before expiry, rate limits are per worker.
+Known gaps (stated in the design doc): no CAPTCHA at signup (the bot checks stop simple form-filling scripts, not a headless browser that waits 2 s), logout does not revoke a token before expiry, rate limits are per worker.
 
 ## 11. Teammate suggestions
 

@@ -73,6 +73,8 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-42 | Request event privacy | A non-member subscriber receives no `request` events; the leader and the requester do | passing |
 | T-API-43 | Create a request for a full team | 409 `team_full`, no request row | passing |
 | T-API-44 | Suggestions for a caller without a team | `context.team_id` null; the time zone term compares against the caller; a candidate covering the caller's missing roles ranks first | passing |
+| T-API-46 | Form token minimum fill time | Fresh token from `GET /api/auth/form-token` used at once on signup and login: 400 `bot_check_failed`; same token after 2 s: 201; no token: 400 `validation_error`; token response is `no-store` | passing |
+| T-API-47 | Honeypot and forged tokens | Filled `company`, a token signed with another secret, an expired token, or a session JWT as form token: 400 `bot_check_failed`; a form token as the session cookie: 401 | passing |
 | T-API-45 | Leave as the last member | `team_deleted` event has `team: null` and `version` = last version + 1 | passing |
 
 ## 3. Concurrency tests

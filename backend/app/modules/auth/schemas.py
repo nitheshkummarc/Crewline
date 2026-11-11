@@ -22,6 +22,8 @@ class SignupIn(BaseModel):
     display_name: str = Field(min_length=1, max_length=60)
     skills: list[Skill] = Field(default_factory=list, max_length=12)
     timezone: str = Field(default="UTC", max_length=64)
+    form_token: str = Field(min_length=1, max_length=1024)
+    company: str = Field(default="", max_length=200)
 
     _skills = field_validator("skills")(_unique_skills)
     _tz = field_validator("timezone")(validate_timezone)
@@ -33,6 +35,8 @@ class LoginIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    form_token: str = Field(min_length=1, max_length=1024)
+    company: str = Field(default="", max_length=200)
 
 
 class UpdateMeIn(BaseModel):

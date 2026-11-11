@@ -32,6 +32,10 @@ class IdempotencyKeyRequired(DomainError):
     status, code, message = 400, "idempotency_key_required", "Idempotency-Key header is required"
 
 
+class BotCheckFailed(DomainError):
+    status, code, message = 400, "bot_check_failed", "Form check failed. Wait a moment and submit again"
+
+
 class Unauthenticated(DomainError):
     status, code, message = 401, "unauthenticated", "Log in to continue"
 

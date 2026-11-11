@@ -5,12 +5,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.core.deps import client_ip, current_user_id, idempotency_key, write_context
+from app.core.formguard import issue_form_token
 from app.core.responses import JsonResponse
 from app.core.security import clear_session_cookie, issue_token, set_session_cookie
 from app.modules.auth import service
 from app.modules.auth.schemas import LoginIn, SignupIn, UpdateMeIn
 
 router = APIRouter(prefix="/api", tags=["auth"])
+
+
+@router.get("/auth/form-token")
+async def form_token() -> JsonResponse:
+    """GET /api/auth/form-token."""
+    return JsonResponse({"token": issue_form_token()}, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/auth/signup", status_code=201)

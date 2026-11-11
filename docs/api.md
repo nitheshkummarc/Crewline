@@ -19,6 +19,7 @@ Transactions behind each write are in [architecture.md](architecture.md) section
 | Status | Code | When | Client retries? |
 |---|---|---|---|
 | 400 | `validation_error` | Body, query or path fails validation (custom handler; FastAPI's default 422 is not used) | No |
+| 400 | `bot_check_failed` | Signup or login with a filled honeypot, a missing, forged or expired form token, or submitted under 2 s after the token was issued | No (fetch a new form token) |
 | 400 | `idempotency_key_required` | Mutation without a valid `Idempotency-Key` | No |
 | 401 | `unauthenticated` | Missing, invalid or expired session | No (log in) |
 | 401 | `invalid_credentials` | Wrong email or password | No |
@@ -90,11 +91,14 @@ interface AuditEvent { seq: number; action: string; actor_id: string | null; cre
 
 | Method | Path | Body | Success | Errors |
 |---|---|---|---|---|
-| POST | `/api/auth/signup` | `{email, password (8..128), display_name, skills?, timezone?}` (IANA; default `UTC`) | 201 `User`, sets cookie | 400, 409 `email_taken`, 429 |
-| POST | `/api/auth/login` | `{email, password}` | 200 `User`, sets cookie | 400, 401 `invalid_credentials`, 429 |
+| GET | `/api/auth/form-token` | - | 200 `{token}` (`Cache-Control: no-store`) | - |
+| POST | `/api/auth/signup` | `{email, password (8..128), display_name (1..60), skills? (max 12), timezone? (IANA; default `UTC`), form_token, company?}` | 201 `User`, sets cookie | 400 `validation_error` / `bot_check_failed`, 409 `email_taken`, 429 |
+| POST | `/api/auth/login` | `{email, password, form_token, company?}` | 200 `User`, sets cookie | 400 `validation_error` / `bot_check_failed`, 401 `invalid_credentials`, 429 |
 | POST | `/api/auth/logout` | - | 204, clears cookie | - |
 | GET | `/api/auth/me` | - | 200 `User` | 401 |
 | PATCH | `/api/users/me` | `{display_name?, skills?, timezone?}` | 200 `User`; bumps the version of the user's teams and publishes `team` and `people` events | 400, 401, 422, 503 |
+
+Bot check on signup and login (ADR-037): the form fetches `form_token` when it renders. The server rejects the submit with 400 `bot_check_failed` when the token has a bad signature, is older than 2 hours or younger than 2 seconds, or when the hidden honeypot field `company` is not empty. The check runs before the rate limits, so failed bot posts do not use up a shared IP's quota.
 
 ## Hackathons
 

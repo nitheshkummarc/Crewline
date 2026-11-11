@@ -21,8 +21,8 @@ import asyncpg
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.core.invite_codes import generate_code  # noqa: E402
-from app.core.skills import SKILLS  # noqa: E402
+from app.core.invite_codes import generate_code
+from app.core.skills import SKILLS
 
 ZONES = ["Asia/Kolkata", "Asia/Singapore", "Europe/London", "Europe/Berlin", "America/New_York",
          "America/Los_Angeles", "America/Sao_Paulo", "Africa/Lagos", "Asia/Tokyo", "Australia/Sydney"]

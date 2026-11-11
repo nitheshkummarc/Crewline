@@ -10,7 +10,7 @@ from collections.abc import Iterator
 import asyncpg
 import pytest
 from barrier import fire_together, keyed, warm
-from helpers import Users, create_team, join, key, make_hackathon, query
+from helpers import Users, create_team, form_fields, join, key, make_hackathon, query
 from invariants import run_checks
 from serverctl import create_database, start_server, stop_server
 
@@ -120,13 +120,13 @@ async def test_guar_02_per_user_limits(limited_server: str, users: Users, clean_
 
         known = await users.new("login-target")
         client = limited.client()
-        logins = [(await client.post("/api/auth/login", json={"email": known.email, "password": "wrong-pass-1"}))
-                  .status_code for _ in range(4)]
+        wrong = {"email": known.email, "password": "wrong-pass-1", **form_fields()}
+        logins = [(await client.post("/api/auth/login", json=wrong)).status_code for _ in range(4)]
         assert logins == [401, 401, 401, 429]
 
         signups = [(await client.post("/api/auth/signup", json={
             "email": f"s{i}-{uuid.uuid4().hex[:6]}@example.com", "password": "long-enough-1",
-            "display_name": "S"})).status_code for i in range(3)]
+            "display_name": "S", **form_fields()})).status_code for i in range(3)]
         assert signups == [201, 201, 429]
     finally:
         await limited.close()
