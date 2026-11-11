@@ -1,0 +1,40 @@
+# Local stack: PostgreSQL 16 and the API (serving the built web app) on http://localhost:8000.
+services:
+  postgres:
+    image: postgres:16
+    command: ["postgres", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_DB: crewline
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    # TCP check: the entrypoint's first (init) server listens only on a socket.
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "crewline"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      args:
+        CREWLINE_PUBLIC_URL: http://localhost:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/crewline
+      # Local only; a deploy sets its own secret.
+      JWT_SECRET: ${JWT_SECRET:-compose-local-only-secret-replace-for-any-deploy}
+      COOKIE_SECURE: "false"
+      WEB_CONCURRENCY: "2"
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

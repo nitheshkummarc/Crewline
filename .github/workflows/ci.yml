@@ -1,4 +1,4 @@
-# CI: lint, API tests, race tests, web tests, end-to-end flows and a k6 smoke run, each against a real PostgreSQL 16.
+# CI: lint, API tests, race tests, web tests, end-to-end flows, a k6 smoke run and a Docker Compose smoke run.
 name: CI
 
 on:
@@ -46,7 +46,7 @@ jobs:
         working-directory: backend
         run: uv run mypy app
       - name: Makefile targets parse (dry run)
-        run: make -n devdb migrate api web test race invariants seed load-a load-b load-c chaos lint > /dev/null
+        run: make -n up down devdb migrate api web test race invariants seed load-a load-b load-c chaos lint > /dev/null
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -236,3 +236,19 @@ jobs:
           name: k6-output
           path: api.log
           retention-days: 7
+
+  compose-smoke:
+    name: Docker Compose smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: docker compose up (build the image, postgres healthy, API started)
+        run: docker compose up -d --build --wait
+      - name: Image size
+        run: echo "::notice title=Docker image::$(docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep -i api | head -1)"
+      - name: readyz, seed in the container, signup, register, create team, web app
+        run: bash .github/scripts/compose-smoke.sh
+      - name: Compose logs
+        if: failure()
+        run: docker compose logs --no-color

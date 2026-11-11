@@ -802,7 +802,9 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 | `WEB_DIST_DIR` | `frontend/dist` | Built SPA served at `/` |
 | `LAB_ENABLED` / `LAB_MAX_ATTEMPTS` | `true` / `200` | Race lab on or off; largest race or queue per run |
 | `RATE_LAB_PER_MIN` / `RATE_LAB_GLOBAL_PER_HOUR` | `6` / `120` | Lab runs per user per minute and in total per hour |
-| `CREWLINE_PUBLIC_URL` (web build only) | `http://localhost:8000` | Absolute site URL written into `og:url` and `og:image` at build time |
+| `CREWLINE_PUBLIC_URL` (web build only) | `http://localhost:8000` | Absolute site URL written into `og:url` and `og:image` at build time (Docker build argument) |
+| `PORT` (container only) | `8000` | Port uvicorn listens on in the image; Render sets it |
+| `WEB_CONCURRENCY` (container only) | `1` | uvicorn worker count, read by uvicorn itself; Compose sets `2` |
 
 ## 15. Deployment
 
@@ -826,8 +828,9 @@ Two options, same schema and tests:
 - **Without Docker (dev machine default):** `database/dev_db.py start` runs PostgreSQL 16 from the `pgserver` package (bundled binaries, data in `.devdb/`, git-ignored) and prints its `DATABASE_URL`. `database/dev_db.py stop` stops it.
 - **Docker Compose (machines with Docker, and the CI compose smoke job):**
 
-- `postgres:16` with a health check, `max_connections=200`, data on a named volume.
-- `api` built from the Dockerfile, `depends_on: postgres (healthy)`, 2 uvicorn workers, `restart: unless-stopped`.
+- `postgres:16` with a TCP `pg_isready` health check, `max_connections=200`, data on a named volume, port bound to `127.0.0.1:5432`.
+- `api` built from the Dockerfile, `depends_on: postgres (healthy)`, 2 uvicorn workers (`WEB_CONCURRENCY=2`), `COOKIE_SECURE=false` for plain HTTP, `restart: unless-stopped`, port `127.0.0.1:8000`.
+- The `Dockerfile` has two stages: `node:22-slim` runs `npm ci` and `npm run build` (build argument `CREWLINE_PUBLIC_URL`); `python:3.11-slim` installs the locked runtime dependencies with uv (no dev group), copies `backend/app`, `database/` and the web build, and runs as a non-root user. The container command applies migrations, then starts uvicorn on `$PORT`.
 - The chaos test runs uvicorn as a host subprocess against the Compose Postgres (see verification.md), so it can hard-kill the process portably.
 
 ## 17. Guarantees and their proof

@@ -3,7 +3,13 @@ UV ?= uv
 K6 ?= k6
 PY := $(UV) run --project backend python
 
-.PHONY: devdb migrate api web test race invariants seed load-a load-b load-c chaos lint
+.PHONY: up down devdb migrate api web test race invariants seed load-a load-b load-c chaos lint
+
+up:               ## PostgreSQL 16 and the API (serving the web app) on http://localhost:8000
+	docker compose up -d --build
+
+down:             ## Stop the Compose stack (data stays in the pgdata volume)
+	docker compose down
 
 devdb:            ## Local PostgreSQL 16 without Docker; prints DATABASE_URL
 	$(PY) database/dev_db.py start

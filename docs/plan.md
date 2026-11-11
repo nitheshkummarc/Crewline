@@ -4,7 +4,7 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Wed 11 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Light, Dark or System theme and the hackathon-event look. Backend: 106 tests pass (73 API, 13 unit, 20 concurrency), ruff and mypy clean. Web: 65 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Module 9 step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven. Next: Dockerfile and Compose, deploy, k6 runs, manual checks, video.
+Last checkpoint: Wed 11 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Light, Dark or System theme and the hackathon-event look. Backend: 106 tests pass (73 API, 13 unit, 20 concurrency), ruff and mypy clean. Web: 65 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Module 9 step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven. Step 2 (Dockerfile, Compose, CI compose smoke) in progress; then deploy, k6 runs, manual checks, video.
 
 | Module | Scope | Status |
 |---|---|---|

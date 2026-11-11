@@ -1,0 +1,23 @@
+# Files kept out of the Docker build context.
+.git
+.github
+.devdb
+**/__pycache__
+**/.venv
+.mypy_cache
+.ruff_cache
+.pytest_cache
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+loadtest
+docs
+.env
+.env.*
+CLAUDE.md
+.claude
+PRODUCT.md
+DESIGN.md
+.impeccable
+.taste-skill

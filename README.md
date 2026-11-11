@@ -26,7 +26,7 @@ uv run --project backend pytest backend/tests -q        # starts the test databa
 uv run --project backend python database/dev_db.py start  # local dev database, prints DATABASE_URL
 ```
 
-With Docker (planned): `docker compose up -d --build`.
+With Docker: `docker compose up -d --build` (or `make up`) starts PostgreSQL 16 and the API, which applies migrations and serves the web app at http://localhost:8000. A fresh database has no hackathon; add demo data with `docker compose exec api python database/seed.py --users 300 --teams 40` (password `crewline-demo-1`, users `user00000@example.com` and up).
 
 ## Commands
 
@@ -34,6 +34,7 @@ On Windows without make, run the raw commands (uv is installed with `pip install
 
 | Task | Raw command |
 |---|---|
+| PostgreSQL + API with Docker (`make up`, `make down`) | `docker compose up -d --build`, `docker compose down` |
 | Local Postgres without Docker | `uv run --project backend python database/dev_db.py start` (prints `DATABASE_URL`; `stop` to stop) |
 | Apply migrations | `uv run --project backend python database/migrate.py` |
 | API dev server | `uv run --project backend uvicorn --factory app.main:create_app --reload --app-dir backend` |
