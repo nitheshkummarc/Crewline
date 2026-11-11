@@ -3,7 +3,9 @@
 Race-proof team formation service for a 10,000-participant hackathon. Hack4Hack Crew Hiring Challenge 2026, Problem Statement 1.
 When 50 people race for the last seat, exactly one gets it, and retries, crashes and overlapping operations never leave the data invalid.
 
-Status: in development. CI badge and live URL are added once available.
+[![CI](https://github.com/nitheshkummarc/Crewline/actions/workflows/ci.yml/badge.svg)](https://github.com/nitheshkummarc/Crewline/actions/workflows/ci.yml)
+
+Status: in development. The live URL is added after deploy. CI runs lint, API tests, the race tests (20 rounds), web tests, Playwright flows and a k6 smoke run against a real PostgreSQL 16 on every push.
 
 ## Project layout
 

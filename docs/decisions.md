@@ -195,7 +195,7 @@ Index:
 
 ## ADR-027 Tests against real PostgreSQL through a real server {#adr-027}
 
-**Decision.** pytest with a real Postgres (Compose locally, service container in CI). Race tests send real HTTP to a uvicorn subprocess with a 60-connection write pool, release with a barrier, repeat 20 times. A naive check-then-insert implementation must fail the same test.
+**Decision.** pytest with a real Postgres (`dev_db.py` or Compose locally; in CI `postgres:16` started with `docker run ... -c max_connections=300`, because a service container cannot pass server flags and the concurrency tests run several servers at once; changed 11 Nov 2026). Race tests send real HTTP to a uvicorn subprocess with a 60-connection write pool, release with a barrier, repeat 20 times. A naive check-then-insert implementation must fail the same test.
 **Why.** A race test that cannot fail proves nothing. In-process transports and small pools can serialize requests and hide races.
 
 ## ADR-028 Chaos test by hard-killing the API process {#adr-028}

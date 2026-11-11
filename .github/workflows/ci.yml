@@ -1,0 +1,197 @@
+# CI: lint, API tests, race tests, web tests, end-to-end flows and a k6 smoke run, each against a real PostgreSQL 16.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Test-only values; the deployed service gets its own secret from the host.
+  DATABASE_URL: postgresql://postgres@127.0.0.1:5432/crewline
+  TEST_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/postgres
+  TEST_DB_URL: postgresql://postgres@127.0.0.1:5432/crewline_test
+  JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
+
+jobs:
+  lint:
+    name: Lint and types
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --project backend --locked
+      - name: ruff
+        run: uv run --project backend ruff check backend database
+      - name: mypy
+        working-directory: backend
+        run: uv run mypy app
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci
+      - name: tsc
+        run: npm --prefix frontend run typecheck
+      - name: eslint
+        run: npm --prefix frontend run lint
+
+  api-tests:
+    name: API and unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --project backend --locked
+      - name: Start PostgreSQL 16
+        run: bash .github/scripts/start-postgres.sh
+      - name: pytest api + unit
+        run: uv run --project backend pytest backend/tests/api backend/tests/unit -v
+      - name: Invariants on the test database
+        run: uv run --project backend python database/invariants.py --url "$TEST_DB_URL"
+
+  race-tests:
+    name: Race and guarantee tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RACE_ITERATIONS: "20"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --project backend --locked
+      - name: Start PostgreSQL 16
+        run: bash .github/scripts/start-postgres.sh
+      - name: pytest concurrency (races, negative control, guarantees, deadlock check)
+        run: uv run --project backend pytest backend/tests/concurrency -v
+      - name: Invariants on the test database
+        run: uv run --project backend python database/invariants.py --url "$TEST_DB_URL"
+
+  web-tests:
+    name: Web tests and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci
+      - name: vitest
+        run: npm --prefix frontend test
+      - name: Contrast of color tokens
+        run: node frontend/scripts/contrast.mjs
+      - name: Build
+        run: npm --prefix frontend run build
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # Same relaxed limits as the pytest server; the 2 s bot check stays on.
+      COOKIE_SECURE: "false"
+      RATE_SIGNUP_PER_HOUR: "100000"
+      RATE_LOGIN_PER_MIN: "100000"
+      RATE_MUTATIONS_PER_MIN: "100000"
+      RATE_CODE_PER_IP_MIN: "100000"
+      RATE_LAB_PER_MIN: "100000"
+      RATE_LAB_GLOBAL_PER_HOUR: "100000"
+      PW_CHANNEL: chromium
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --project backend --locked
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci
+      - name: Start PostgreSQL 16
+        run: bash .github/scripts/start-postgres.sh
+      - name: Migrate and seed (300 users, 40 teams)
+        run: |
+          uv run --project backend python database/migrate.py
+          uv run --project backend python database/seed.py --users 300 --teams 40
+      - name: Build web
+        run: npm --prefix frontend run build
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Start API
+        run: bash .github/scripts/start-api.sh
+      - name: Playwright E2E-01 to 10 (360 px and 1280 px)
+        run: npm --prefix frontend run e2e
+      - name: Invariants
+        run: uv run --project backend python database/invariants.py
+      - name: Upload API log and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-output
+          path: |
+            api.log
+            frontend/test-results/
+          retention-days: 7
+
+  k6-smoke:
+    name: k6 smoke (L-A1, 20 s)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --project backend --locked
+      - name: Start PostgreSQL 16
+        run: bash .github/scripts/start-postgres.sh
+      - name: Migrate and seed (10,000 users, 2,000 teams, k6 tokens)
+        run: |
+          uv run --project backend python database/migrate.py
+          uv run --project backend python database/seed.py --users 10000 --teams 2000 --tokens loadtest/tokens.json
+      - name: Start API (default pools and limits)
+        run: bash .github/scripts/start-api.sh
+      - uses: grafana/setup-k6-action@v1
+      - name: k6 board.js, 100 VUs, 5 s ramp, 15 s steady (thresholds fail the job)
+        run: k6 run -e RAMP=5s -e DURATION=15s loadtest/board.js
+      - name: Invariants
+        run: uv run --project backend python database/invariants.py
+      - name: Upload API log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-output
+          path: api.log
+          retention-days: 7

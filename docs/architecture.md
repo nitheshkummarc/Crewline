@@ -37,7 +37,8 @@ Crewline/
   Makefile                        task shortcuts (raw commands in README)
   docker-compose.yml              postgres:16 + api service (backend serving the frontend build)
   Dockerfile                      multi-stage: build frontend, install backend, run uvicorn
-  .github/workflows/ci.yml        lint, tests, race tests, invariants, compose smoke, k6 smoke
+  .github/workflows/ci.yml        lint, API tests, race tests, web tests, e2e, k6 smoke, invariants
+  .github/scripts/                start-postgres.sh (postgres:16, max_connections=300), start-api.sh (background API, waits for /readyz)
   database/                       everything that owns the schema and data
     migrations/0001_init.sql      full schema below
     migrate.py                    apply migrations
@@ -823,7 +824,7 @@ Verify on Friday: SSE is not buffered by the Render proxy, heartbeat keeps strea
 Two options, same schema and tests:
 
 - **Without Docker (dev machine default):** `database/dev_db.py start` runs PostgreSQL 16 from the `pgserver` package (bundled binaries, data in `.devdb/`, git-ignored) and prints its `DATABASE_URL`. `database/dev_db.py stop` stops it.
-- **Docker Compose (CI and machines with Docker):**
+- **Docker Compose (machines with Docker, and the CI compose smoke job):**
 
 - `postgres:16` with a health check, `max_connections=200`, data on a named volume.
 - `api` built from the Dockerfile, `depends_on: postgres (healthy)`, 2 uvicorn workers, `restart: unless-stopped`.
