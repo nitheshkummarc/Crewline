@@ -23,6 +23,11 @@ Initial schema: tables, constraints, indexes, `team_snapshot()`, audit triggers.
 | `audit_events_block_change()` | Trigger function that rejects UPDATE and DELETE on audit_events | done |
 | `audit_events_publish()` | Trigger function that sends pg_notify for each new audit event | done |
 
+### database/migrations/0003_lab_hackathon.sql
+`hackathons.is_lab` and the partial unique index `hackathons_one_lab` (at most one hidden Race lab hackathon).
+| Name | Purpose | Status |
+|---|---|---|
+
 ## API core
 
 ### backend/app/main.py
@@ -158,7 +163,10 @@ Prometheus metrics: request durations per route plus pool, transaction, cache an
 | Name | Purpose | Status |
 |---|---|---|
 | `registry`, `REQUEST_DURATION`, `POOL_SIZE`, `POOL_IDLE`, `TX_EVENTS`, `CACHE`, `SSE_CONNECTIONS`, `SSE_DROPPED`, `LISTENER_RECONNECTS` | Metric objects | done |
-| `observe_request(method, route, status, seconds)` | Record one request duration (status grouped as 2xx, 4xx, 5xx) | done |
+| `observe_request(method, route, status, seconds)` | Record one request duration (status grouped as 2xx, 4xx, 5xx) and keep it for percentiles | done |
+| `RECENT_LIMIT` | Durations kept per route for exact percentiles (1,000) | done |
+| `percentile(sorted_ms, fraction)` | Return the nearest-rank percentile of sorted values | done |
+| `latency_summary()` | Return count, p50, p95, p99 and max in ms per route over its last requests, busiest first | done |
 | `collect(pools, tx_stats, cache, hub, listener)` | Update the gauges from live objects right before a scrape | done |
 | `render()` | Return the Prometheus text exposition and its content type | done |
 
@@ -229,6 +237,15 @@ Map PostgreSQL errors to domain errors by constraint name and SQLSTATE.
 | `to_domain_error(exc)` | Convert an asyncpg integrity error to a DomainError, or return None | done |
 | `is_retryable(exc)` | True for 40P01 and 40001 | done |
 | `is_busy(exc)` | True for lock timeouts, statement timeouts and connection exhaustion | done |
+
+### backend/app/db/trace.py
+Statement tracing for the Race lab: records each SQL statement a traced call runs, in order, with its time.
+| Name | Purpose | Status |
+|---|---|---|
+| `Step`, `Trace` | One executed statement (end time, pool, SQL, duration, error); the statements of one traced call | done |
+| `tracing()` | Record every statement run by connections acquired inside this block (same asyncio task only) | done |
+| `attach(conn, pool)` | Add a query logger to a connection when a trace is active; return it | done |
+| `detach(conn, logger)` | Remove a query logger added by attach | done |
 
 ### backend/app/db/listener.py
 Dedicated LISTEN connection with reconnect; clears the board cache and feeds the event hub.
@@ -313,7 +330,7 @@ Participant registration and status.
 Hackathon and participant SQL.
 | Name | Purpose | Status |
 |---|---|---|
-| `list_all(conn)` | Return all hackathons, newest first | done |
+| `list_all(conn)` | Return all real hackathons (the hidden Race lab one excluded), newest first | done |
 | `get(conn, hid)` | Return one hackathon | done |
 | `insert_participant(conn, hid, user_id)` | Insert participant ON CONFLICT DO NOTHING; return the row if inserted | done |
 | `get_participant(conn, hid, user_id)` | Return the participant row | done |
@@ -527,6 +544,49 @@ SSE endpoint: one stream per browser tab, events for one hackathon.
 |---|---|---|
 | `stream(hackathon_id, user_id)` | GET /api/events: check the hackathon, subscribe, yield events with heartbeats; no database connection held | done |
 
+### backend/app/modules/lab/repo.py
+Race lab SQL: the hidden lab hackathon, synthetic participants, and the facts read back after an experiment.
+| Name | Purpose | Status |
+|---|---|---|
+| `ensure_lab_hackathon(conn)` | Return the lab hackathon id, creating it once | done |
+| `create_participants(conn, hackathon_id, count, label)` | Insert synthetic users that cannot log in and register them | done |
+| `team_facts(conn, team_id)` | Read member_count, max_size, membership rows and join audit events of a team | done |
+| `user_facts(conn, hackathon_id, team_id, user_id)` | Read one user's memberships, join events and stored keys | done |
+
+### backend/app/modules/lab/schemas.py
+Race lab request models.
+| Name | Purpose | Status |
+|---|---|---|
+| `RaceIn`, `SpamIn`, `QueueIn` | Attempts, clicks or requests to fire (cap checked against settings) | done |
+
+### backend/app/modules/lab/service.py
+Race lab experiments: real concurrent writes through run_write in the hidden lab hackathon, and their results.
+| Name | Purpose | Status |
+|---|---|---|
+| `context(user_id, route, body, key)` | Build the WriteContext a real request would carry | done |
+| `since(t0)` | Milliseconds since t0 | done |
+| `call(run, t0)` | Run one write like the web client (retry 503 with the same key); report status, code, timing | done |
+| `guarded(user_id, size, experiment)` | Check the lab is on, the size cap and the rate limits; one experiment at a time per worker | done |
+| `lab_hackathon()`, `new_people(hid, count, label)`, `make_team(hid, filled)`, `facts(team_id)` | Lab setup through the real services and read-back | done |
+| `join_call`, `request_call`, `accept_call` | Calls that join by code, request to join, or accept, for `fire_together` | done |
+| `fire_together(calls)` | Start every call at the same moment behind one asyncio event | done |
+| `run_race(attempts)`, `run_spam(clicks)`, `run_queue(requests)` | The three experiments | done |
+
+### backend/app/modules/lab/explain.py
+Race lab walkthrough: trace the SQL of one real join (success, retry, full team) and report measured latency.
+| Name | Purpose | Status |
+|---|---|---|
+| `STEP_NOTES`, `describe(sql)` | Label and guarantee for each statement on the join path | done |
+| `traced_join(user_id, code, key)` | Run one real join with statement tracing | done |
+| `run_walkthrough()` | Trace a free seat, the same click retried, and a full team | done |
+| `latency()` | Latency per route, pool state and transaction counters | done |
+
+### backend/app/modules/lab/router.py
+Race lab endpoints.
+| Name | Purpose | Status |
+|---|---|---|
+| `info`, `race`, `spam`, `queue`, `walkthrough`, `latency` | GET /api/lab, POST race, spam, queue, walkthrough, GET latency | done |
+
 ## Tests
 
 ### backend/tests/conftest.py
@@ -561,7 +621,7 @@ Start and stop real API servers and create databases for tests.
 Test helpers: users with their own HTTP client, hackathons, teams, keys and raw queries.
 | Name | Purpose | Status |
 |---|---|---|
-| `TEST_JWT_SECRET`, `SERVER_ENV` | Settings for the test server (large pools, relaxed signup/login/mutation/per-IP code limits) | done |
+| `TEST_JWT_SECRET`, `SERVER_ENV` | Settings for the test server (large pools, relaxed signup/login/mutation/per-IP code and lab limits) | done |
 | `SHARED_TLS` | One TLS context for every test client (bug B-19) | done |
 | `key()` | Return a fresh idempotency key | done |
 | `User` | A signed-up user with an authenticated client; `get`, `send`, `post`, `patch`, `delete` | done |
@@ -722,6 +782,7 @@ Tooling files: `frontend/package.json` (scripts: dev, build, typecheck, lint, te
 | File | Purpose | Status |
 |---|---|---|
 | `favicon.svg` | Two seat tabs in band colors and one open (dashed) seat, like the wordmark | done |
+| `theme-init.js` | Apply the saved theme before first paint (external file, allowed by the CSP) | done |
 | `favicon-32.png`, `apple-touch-icon.png`, `og-image.png` | Rendered by `scripts/make-images.mjs` (32 px, 180 px, 1200x630) | done |
 
 ### frontend/scripts/
@@ -744,7 +805,7 @@ App root: query client with the session rule, live region, motion settings and t
 Route table: the single list of client routes, used by the app and by the link checker test.
 | Name | Purpose | Status |
 |---|---|---|
-| `routes` | `/login`, `/signup`, `/privacy`, `/terms`, signed-in `/`, `/h/:hid`, `/h/:hid/teams/new`, `/h/:hid/join`, `/teams/:tid`, `/me`, and the `*` 404 | done |
+| `routes` | `/login`, `/signup`, `/privacy`, `/terms`, signed-in `/`, `/h/:hid`, `/h/:hid/teams/new`, `/h/:hid/join`, `/teams/:tid`, `/me`, `/lab`, and the `*` 404 | done |
 | `isKnownRoute(path)` | True if a path is served by a real route (not the 404 catch-all) | done |
 
 ### frontend/src/api/client.ts
@@ -804,6 +865,29 @@ Shell context shared by signed-in pages.
 | `ShellContext`, `ShellState` | Current hackathon id and setter, live stream status, palette opener | done |
 | `useShell()` | Return the shell state | done |
 | `useCurrentHackathon(hid)` | Make a hackathon the current one (its stream opens in the shell) once its id is known | done |
+
+### frontend/src/hooks/lab.ts
+Race lab hooks.
+| Name | Purpose | Status |
+|---|---|---|
+| `useLabInfo()`, `useLabLatency(enabled)` | Lab settings; latency refreshed every 5 s while shown | done |
+| `useLabRun(run, done)` | Run one experiment; announce the result or the error | done |
+
+### frontend/src/lib/theme.ts
+Theme preference: light, dark or system, stored per browser.
+| Name | Purpose | Status |
+|---|---|---|
+| `savedTheme()`, `applyTheme(mode)`, `useTheme()` | Read, apply and track the theme mode | done |
+
+### frontend/src/components/lab/
+Race lab views (presentational).
+| File | Exports | Status |
+|---|---|---|
+| `WalkthroughView.tsx` | `WalkthroughView`: three traced joins as numbered statement timelines with timing, purpose and SQL | done |
+| `RaceView.tsx` | `RaceView` (stats, dots in finish order with replay, finish timeline, database proof), `Stat`, `Proof` | done |
+| `SpamView.tsx` | `SpamView`: every click's answer for one key and for new keys, with database proof | done |
+| `QueueView.tsx` | `QueueView`: the leader's queue oldest first and the two decisions | done |
+| `LatencyView.tsx` | `LatencyView` (server percentiles, pools, transactions, browser measurement), `BrowserSample` | done |
 
 ### frontend/src/hooks/useActivity.ts
 | Name | Purpose | Status |
@@ -911,6 +995,8 @@ Presentational components (no data fetching).
 | `Avatar.tsx` | `Avatar`: initials in the person's band color | done |
 | `BoardToolbar.tsx` | `BoardToolbar` (search, skill filter popover with needs or has, sort, removable filter chips), `SearchBox` | done |
 | `Button.tsx` | `Button` (primary, secondary, ghost, danger; md and sm; busy spinner; `data-variant`), `ButtonLink`, `buttonClass` | done |
+| `HeroBanner.tsx` | `HeroBanner`: page header on the navy brand field | done |
+| `ThemeToggle.tsx` | `ThemeToggle`: Light, Dark or System radio group | done |
 | `CommandPalette.tsx` | `CommandPalette` (cmdk list in a dialog: groups of items, arrow keys, Enter, Escape) | done |
 | `ConfirmDialog.tsx` | `ConfirmDialog`, `DIALOG_CLASS` | done |
 | `ErrorNotice.tsx` | `ErrorNotice`: the one error display (code tag, one-line message, request id for 5xx) | done |
@@ -945,6 +1031,7 @@ One file per route; files without a route hold sections or helpers of one page.
 | `teamConfirm.ts` | `teamConfirmCopy(args)`: text and action for leave, finalize, reopen and remove dialogs; `Confirm` | done |
 | `ProfilePage.tsx` | Edit name, skills, time zone with a live preview card; `profileChanges(user, values)` | done |
 | `LegalPages.tsx` | `PrivacyPage`, `TermsPage`, `NotFoundPage`, `LEGAL_UPDATED` | done |
+| `LabPage.tsx` | Race lab: five tabs, size slider, one Run button per tab; `percentile(sorted, fraction)` | done |
 
 ### frontend/src/test/ and tests
 | File | Purpose | Status |
@@ -955,7 +1042,7 @@ One file per route; files without a route hold sections or helpers of one page.
 | `lib/merge.test.ts` | T-WEB-03, T-WEB-04 | done |
 | `hooks/mutations.test.tsx` | T-WEB-01 | done |
 | `lib/validation.test.ts` | T-WEB-06 | done |
-| `routes.test.tsx` | T-WEB-05 (+ B-24, B-25 regressions, one primary action per page) | done |
+| `routes.test.tsx` | T-WEB-05 (every page incl. /lab, B-24 and B-25 regressions, one primary action per page) | done |
 | `lib/filter.test.ts` | T-WEB-09 | done |
 | `lib/activity.test.ts` | T-WEB-10, T-WEB-11 | done |
 | `hooks/useEventStream.test.tsx` | T-WEB-07 | done |
@@ -965,4 +1052,4 @@ One file per route; files without a route hold sections or helpers of one page.
 | File | Purpose | Status |
 |---|---|---|
 | `helpers.ts` | `unique`, `hackathonId`, `people` (real signups with the bot check, registered, one signed-in page each), `inviteCode`, `watch` and `assertClean` (CSP violations, page errors, horizontal overflow) | done |
-| `crewline.spec.ts` | E2E-01 to E2E-09 | done |
+| `crewline.spec.ts` | E2E-01 to E2E-10 | done |

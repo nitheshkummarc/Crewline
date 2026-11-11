@@ -8,7 +8,7 @@ Transactions behind each write are in [architecture.md](architecture.md) section
 | Item | Rule |
 |---|---|
 | Auth | Cookie `crewline_session` (httpOnly JWT). Endpoints marked "auth" return 401 `unauthenticated` without it |
-| Idempotency | Every `POST`, `PATCH`, `DELETE` requires `Idempotency-Key` (16 to 64 chars, `[A-Za-z0-9_-]`) except signup, login, logout |
+| Idempotency | Every `POST`, `PATCH`, `DELETE` requires `Idempotency-Key` (16 to 64 chars, `[A-Za-z0-9_-]`) except signup, login, logout and the Race lab runs (each run is a new experiment) |
 | Request ID | `X-Request-ID` accepted or generated; echoed in the response header and error body |
 | Pagination | `?limit=` (default 20, max 50) and `?cursor=` (opaque). Responses: `{"items": [...], "next_cursor": "..." | null}` |
 | Caching | Board responses carry `ETag`; send `If-None-Match` to get 304 |
@@ -105,7 +105,7 @@ Bot check on signup and login (ADR-037): the form fetches `form_token` when it r
 
 | Method | Path | Body | Success | Errors |
 |---|---|---|---|---|
-| GET | `/api/hackathons` | - | 200 `Hackathon[]` | 401 |
+| GET | `/api/hackathons` | - | 200 `Hackathon[]` (the hidden Race lab hackathon is not listed) | 401 |
 | GET | `/api/hackathons/{hid}` | - | 200 `Hackathon` | 401, 404 |
 | POST | `/api/hackathons/{hid}/register` | - | 200 `{registered: true, looking}` (idempotent); publishes a `people` event when newly registered | 401, 404 |
 | GET | `/api/hackathons/{hid}/me` | - | 200 `{registered, looking, team: TeamSummary \| null, pending_requests: JoinRequest[]}` | 401, 404 |
@@ -187,6 +187,21 @@ Client rules:
 - `request`: refresh the request list of that team and the caller's own requests.
 - `resync`: invalidate everything for the hackathon.
 
+## Race lab
+
+Real concurrent experiments in a hidden lab hackathon, for showing the guarantees (ADR-040). Auth required; off when `LAB_ENABLED=false` (404). One experiment at a time per worker (503 `busy` otherwise); 6 runs per user per minute and 120 per hour in total (429). Sizes above `LAB_MAX_ATTEMPTS` (default 200) return 400.
+
+| Method | Path | Body | Success |
+|---|---|---|---|
+| GET | `/api/lab` | - | 200 `{enabled, hackathon_id, max_attempts}` |
+| POST | `/api/lab/race` | `{attempts}` (2 to max) | 200: a team with 3 of 4 seats taken, `attempts` people join by code at the same instant. Per attempt `{racer, status, code, replayed, started_ms, finished_ms, retries}`, `summary {winners, team_full, other, busy_retries}`, `facts {member_count, max_size, memberships, join_events}`, `elapsed_ms` |
+| POST | `/api/lab/spam` | `{clicks}` (2 to 50) | 200: one person joins `clicks` times at once with one key (`same_key`), another with a new key per click (`new_keys`). Per click `{status, replayed, same_body, ...}` and per person `facts {memberships, join_events, stored_keys}` |
+| POST | `/api/lab/queue` | `{requests}` (2 to max) | 200: `requests` people ask to join a 3 of 4 team at once; `queue` in the order the leader sees it (`position`, `after_first_ms`), `decisions` for accepting the first two (200, then 409 `team_full`), `facts` |
+| POST | `/api/lab/walkthrough` | - | 200: three traced joins (`join`, `retry` with the same key, `full`), each `{status, code, replayed, server_ms, steps[]}` with every SQL statement run: `{label, why, sql, pool, at_ms, gap_ms}` |
+| GET | `/api/lab/latency` | - | 200 `{routes: [{route, count, p50_ms, p95_ms, p99_ms, max_ms}], window, pools, transactions}` from the last 1,000 requests per route |
+
+Synthetic lab users cannot log in (no valid password hash) and are never listed outside the lab.
+
 ## Rate limits
 
 | Limit | Value | Key |
@@ -197,3 +212,4 @@ Client rules:
 | Signup | 10/hour | IP |
 | All mutations | 60/min | user |
 | SSE streams | 3 concurrent | user |
+| Race lab runs | 6/min per user, 120/hour in total, one at a time per worker | user, global |

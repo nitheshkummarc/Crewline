@@ -14,7 +14,7 @@ Run from the repository root (or drop `--prefix frontend` inside this folder).
 | Lint (typescript-eslint strict, react-hooks, jsx-a11y) | `npm --prefix frontend run lint` |
 | Unit and component tests (Vitest, T-WEB-01 to 11) | `npm --prefix frontend test` |
 | Production build (set `CREWLINE_PUBLIC_URL` for the preview image URLs) | `npm --prefix frontend run build` |
-| End-to-end tests (Playwright, E2E-01 to 09) | `npm --prefix frontend run e2e` |
+| End-to-end tests (Playwright, E2E-01 to 10) | `npm --prefix frontend run e2e` |
 | Contrast check of the color tokens | `node frontend/scripts/contrast.mjs` |
 | Re-render favicons and the preview image | `node frontend/scripts/make-images.mjs` |
 

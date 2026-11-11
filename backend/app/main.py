@@ -24,6 +24,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.board.router import router as board_router
 from app.modules.events.router import router as events_router
 from app.modules.hackathons.router import router as hackathons_router
+from app.modules.lab.router import router as lab_router
 from app.modules.requests.router import router as requests_router
 from app.modules.suggestions.router import router as suggestions_router
 from app.modules.teams.router import router as teams_router
@@ -81,7 +82,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
     for router in (auth_router, hackathons_router, teams_router, requests_router, board_router,
-                   suggestions_router, events_router):
+                   suggestions_router, events_router, lab_router):
         app.include_router(router)
 
     @app.get("/healthz", include_in_schema=False)

@@ -8,6 +8,7 @@ import { ActivityFeed } from '../components/ActivityFeed';
 import { BoardToolbar, SearchBox } from '../components/BoardToolbar';
 import { Button } from '../components/Button';
 import { ErrorNotice } from '../components/ErrorNotice';
+import { HeroBanner } from '../components/HeroBanner';
 import { EmptyState, LoadError, SkeletonCards } from '../components/LoadState';
 import { PeopleGrid, SuggestionList } from '../components/People';
 import { RequestDialog } from '../components/RequestDialog';
@@ -95,16 +96,12 @@ export default function BoardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section aria-labelledby="page-title" className="flex flex-col gap-2">
-        <p className="label">Team board</p>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <h1 id="page-title" className="display text-[30px] leading-9 md:text-[40px] md:leading-[46px]">{hackathon.data?.name ?? 'Team board'}</h1>
-          <LiveDot status={stream} />
-        </div>
+      <HeroBanner eyebrow="Team board" titleId="page-title" title={hackathon.data?.name ?? 'Team board'}>
+        <span className="inline-flex self-start rounded-sm bg-surface px-2 py-1 text-ink shadow-1"><LiveDot status={stream} /></span>
         {hackathon.data && (
-          <p className="text-ink-2">Teams of {hackathon.data.min_team_size} to {hackathon.data.max_team_size}. Invite codes last {hackathon.data.invite_ttl_hours} h.</p>
+          <p className="text-shell-ink2">Teams of {hackathon.data.min_team_size} to {hackathon.data.max_team_size}. Invite codes last {hackathon.data.invite_ttl_hours} h. Seats, teams and requests update here the moment anyone acts.</p>
         )}
-      </section>
+      </HeroBanner>
 
       <StatusPanel hid={hid} status={status.data} loading={status.isPending} />
       <ErrorNotice error={withdraw.error} />

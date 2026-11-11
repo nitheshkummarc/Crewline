@@ -47,6 +47,8 @@ class Limiters:
     login: SlidingWindowLimiter
     signup: SlidingWindowLimiter
     mutations: SlidingWindowLimiter
+    lab_user: SlidingWindowLimiter
+    lab_global: SlidingWindowLimiter
 
 
 limiters: Limiters | None = None
@@ -61,6 +63,8 @@ def configure(settings: Settings) -> Limiters:
         login=SlidingWindowLimiter(settings.rate_login_per_min, 60),
         signup=SlidingWindowLimiter(settings.rate_signup_per_hour, 3600),
         mutations=SlidingWindowLimiter(settings.rate_mutations_per_min, 60),
+        lab_user=SlidingWindowLimiter(settings.rate_lab_per_min, 60),
+        lab_global=SlidingWindowLimiter(settings.rate_lab_global_per_hour, 3600),
     )
     return limiters
 

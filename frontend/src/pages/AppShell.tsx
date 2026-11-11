@@ -1,6 +1,6 @@
 // Signed-in shell: session gate, layout, the one event stream for the current hackathon, and the command palette.
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, KeyRound, LayoutGrid, LogOut, Plus, Sparkles, UserRound, Users } from 'lucide-react';
+import { ArrowRight, FlaskConical, KeyRound, LayoutGrid, LogOut, Plus, Sparkles, UserRound, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
@@ -72,6 +72,7 @@ export default function AppShell() {
             { id: 'people', label: 'People looking', icon: <Users size={16} />, onSelect: go(`/h/${hid}?tab=people`) },
             { id: 'ranked', label: 'Best matches for me', icon: <Sparkles size={16} />, onSelect: go(`/h/${hid}?tab=people&view=ranked`) }] : []),
           ...(myTeam ? [{ id: 'my-team', label: `My team: ${myTeam.name}`, icon: <Users size={16} />, onSelect: go(`/teams/${myTeam.id}`) }] : []),
+          { id: 'lab', label: 'Race lab: last-seat race, spam clicks, latency', keywords: ['demo', 'concurrency'], icon: <FlaskConical size={16} />, onSelect: go('/lab') },
           { id: 'profile', label: 'Profile', icon: <UserRound size={16} />, onSelect: go('/me') },
         ],
       },
@@ -110,9 +111,10 @@ export default function AppShell() {
     { to: '/', label: 'Home', icon: 'home' },
     ...(hid ? [{ to: `/h/${hid}`, label: 'Board', icon: 'board' as const }] : []),
     ...(myTeam ? [{ to: `/teams/${myTeam.id}`, label: 'My team', icon: 'team' as const }] : []),
+    { to: '/lab', label: 'Race lab', icon: 'lab' },
     { to: '/me', label: 'Profile', icon: 'profile' },
   ];
-  const context = hackathon ? <span><span className="label block">Hackathon</span><span className="font-semibold">{hackathon.name}</span></span> : null;
+  const context = hackathon ? <span><span className="block text-[12px] font-semibold uppercase tracking-[0.08em] text-shell-ink2">Hackathon</span><span className="font-semibold">{hackathon.name}</span></span> : null;
 
   return (
     <ShellContext.Provider value={shell}>

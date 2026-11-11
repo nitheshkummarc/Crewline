@@ -1,9 +1,9 @@
 // One typed function per endpoint in docs/api.md.
 import { request } from './client';
 import type {
-  AuditEvent, FormToken, Hackathon, Invite, JoinRequest, LeaveResult, LoginBody, Meta, MyStatus, Page,
-  ProfilePatch, PublicUser, RegisterResult, SignupBody, SuggestionsResponse, TeamDetail, TeamPatch,
-  TeamSummary, User,
+  AuditEvent, FormToken, Hackathon, Invite, JoinRequest, LabInfo, LatencyReport, LeaveResult, LoginBody, Meta, MyStatus,
+  Page, ProfilePatch, PublicUser, QueueResult, RaceResult, RegisterResult, SignupBody, SpamResult, SuggestionsResponse,
+  TeamDetail, TeamPatch, TeamSummary, User, WalkthroughResult,
 } from './types';
 
 /** Options for a mutation: the key of the user action it belongs to. */
@@ -113,3 +113,17 @@ export const suggestions = (hid: string, limit = 20) =>
 
 /** URL of the event stream for one hackathon (opened with EventSource in useEventStream). */
 export const eventsUrl = (hid: string) => `/api/events${q({ hackathon_id: hid })}`;
+
+// Race lab: each run is a new experiment, so these posts carry no Idempotency-Key (api.md).
+/** GET /api/lab */
+export const labInfo = () => request<LabInfo>('GET', '/api/lab');
+/** POST /api/lab/race */
+export const labRace = (attempts: number) => request<RaceResult>('POST', '/api/lab/race', { attempts }, { noIdempotency: true });
+/** POST /api/lab/spam */
+export const labSpam = (clicks: number) => request<SpamResult>('POST', '/api/lab/spam', { clicks }, { noIdempotency: true });
+/** POST /api/lab/queue */
+export const labQueue = (requests: number) => request<QueueResult>('POST', '/api/lab/queue', { requests }, { noIdempotency: true });
+/** POST /api/lab/walkthrough */
+export const labWalkthrough = () => request<WalkthroughResult>('POST', '/api/lab/walkthrough', undefined, { noIdempotency: true });
+/** GET /api/lab/latency */
+export const labLatency = () => request<LatencyReport>('GET', '/api/lab/latency');

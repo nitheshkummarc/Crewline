@@ -1,58 +1,92 @@
-/* Design tokens (values measured by scripts/contrast.mjs): light by default, dark from the system setting. */
+/* Design tokens (values measured by scripts/contrast.mjs): light, dark, or the system setting via [data-theme]. */
 
 :root {
   color-scheme: light;
-  --canvas: #eef0f3;
+  --canvas: #edf2f6;
   --surface: #ffffff;
-  --surface-2: #f5f6f8;
-  --line: #dde1e6;
-  --control: #7b828b;
-  --ink: #111317;
-  --ink-2: #4f5761;
-  --plate: #111317;
+  --surface-2: #f2f6f9;
+  --line: #d8e2ea;
+  --control: #768a9c;
+  --ink: #0e1c2b;
+  --ink-2: #455a6c;
+  /* Selected states (tabs, chips, toggles). */
+  --plate: #0f2a44;
   --plate-ink: #ffffff;
-  --focus: #1d5bff;
+  --focus: #0a66c2;
   --ok: #13723a;
   --warn: #9a5300;
   --bad: #c0271c;
   --live: #16a34a;
-  --shadow-1: 0 1px 2px rgb(16 18 22 / 0.06), 0 4px 12px rgb(16 18 22 / 0.05);
-  --shadow-2: 0 2px 4px rgb(16 18 22 / 0.06), 0 14px 32px rgb(16 18 22 / 0.12);
-  --overlay: rgb(17 19 23 / 0.45);
+  --shadow-1: 0 1px 2px rgb(14 28 43 / 0.06), 0 4px 14px rgb(15 42 68 / 0.07);
+  --shadow-2: 0 2px 6px rgb(14 28 43 / 0.08), 0 18px 40px rgb(15 42 68 / 0.16);
+  --overlay: rgb(10 21 32 / 0.5);
+
+  /* Fixed in both themes: the navy brand shell and the orange primary action. */
+  --shell: #0f2a44;
+  --shell-2: #183b5c;
+  --shell-ink: #eef5fb;
+  --shell-ink-2: #b0c6da;
+  --brand: #ff7a2f;
+  --brand-ink: #0e1c2b;
+  --brand-edge: #b24a0e;
 
   /* Team band colors: a team's color is picked from its id; text on a band is always --band-ink. */
-  --band-ink: #111317;
+  --band-ink: #0e1c2b;
   --band-0: #ff8a3d;
   --band-1: #3ec5f0;
   --band-2: #a3e635;
   --band-3: #ffd23f;
   --band-4: #ff7aa2;
   --band-5: #34d6b0;
-  --band-6: #6f9bff;
+  --band-6: #4fa8ff;
   --band-7: #ff6b5b;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* Dark: navy, never plain black. Applied when chosen, or when the system is dark and light was not chosen. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #0a1520;
+  --surface: #11202e;
+  --surface-2: #182a3b;
+  --line: #24374a;
+  --control: #6b8397;
+  --ink: #eef4f8;
+  --ink-2: #a3b6c6;
+  --plate: #4cc3e6;
+  --plate-ink: #0a1520;
+  --focus: #4cc3e6;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --bad: #ff7a6b;
+  --live: #4ade80;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 14px rgb(0 0 0 / 0.25);
+  --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px rgb(0 0 0 / 0.45);
+  --overlay: rgb(3 10 18 / 0.65);
+  --shell: #0c2238;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
-    --canvas: #0d0f12;
-    --surface: #161a1f;
-    --surface-2: #1d2228;
-    --line: #2a3038;
-    --control: #6f7882;
-    --ink: #f2f3f5;
-    --ink-2: #a7aeb7;
-    --plate: #f2f3f5;
-    --plate-ink: #0d0f12;
-    --focus: #6b97ff;
+    --canvas: #0a1520;
+    --surface: #11202e;
+    --surface-2: #182a3b;
+    --line: #24374a;
+    --control: #6b8397;
+    --ink: #eef4f8;
+    --ink-2: #a3b6c6;
+    --plate: #4cc3e6;
+    --plate-ink: #0a1520;
+    --focus: #4cc3e6;
     --ok: #4ade80;
     --warn: #fbbf24;
     --bad: #ff7a6b;
     --live: #4ade80;
-    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.25);
-    --shadow-2: 0 2px 4px rgb(0 0 0 / 0.4), 0 16px 36px rgb(0 0 0 / 0.45);
-    --overlay: rgb(0 0 0 / 0.6);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 14px rgb(0 0 0 / 0.25);
+    --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px rgb(0 0 0 / 0.45);
+    --overlay: rgb(3 10 18 / 0.65);
+    --shell: #0c2238;
   }
 }

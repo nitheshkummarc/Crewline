@@ -30,6 +30,7 @@ function api(signedIn: boolean) {
     ['GET', new RegExp(`/api/teams/${TID}/requests$`), 200, []],
     ['GET', new RegExp(`/api/teams/${TID}/audit`), 200, { items: [{ seq: 1, action: 'team_created', actor_id: ME.id, created_at: '2026-11-11T10:00:00Z', payload: {} }], next_cursor: null }],
     ['GET', new RegExp(`/api/teams/${TID}$`), 200, teamDetail()],
+    ['GET', /\/api\/lab$/, 200, { enabled: true, hackathon_id: 'eeeeeeee-0000-4000-8000-000000000001', max_attempts: 200 }],
   ]);
 }
 
@@ -58,6 +59,7 @@ const PAGES: Array<[string, string, boolean]> = [
   [`/h/${HID}/join?code=ABCDE-FGHJK`, 'Join with a code', true],
   [`/teams/${TID}`, 'Null Pointers', true],
   ['/me', 'Your profile', true],
+  ['/lab', 'Watch one seat go to exactly one person', true],
   ['/no/such/page', 'This page is not on the board', false],
 ];
 

@@ -51,7 +51,7 @@ Crewline/
       config.py                   settings from environment
       core/                       cross-cutting: errors, security, deps, idempotency, invite codes,
                                   rate limit, cache, events hub, metrics, logging, middleware, skills
-      db/                         pools, tx (run_write), errors (constraint mapping), listener
+      db/                         pools, tx (run_write), errors (constraint mapping), listener, trace (lab statement tracing)
       modules/
         auth/                     signup, login, logout, me, profile
         hackathons/               list, get, register participant, my status, looking flag
@@ -61,6 +61,7 @@ Crewline/
         suggestions/              candidate query, scoring
         audit/                    record event, list team audit
         events/                   SSE endpoint
+        lab/                      Race lab: concurrent experiments, traced join walkthrough, latency report
     tests/
       conftest.py                 database, server and client fixtures
       api/                        endpoint behavior tests
@@ -265,6 +266,8 @@ END $$;
 CREATE TRIGGER audit_events_notify AFTER INSERT ON audit_events
   FOR EACH ROW EXECUTE FUNCTION audit_events_publish();
 ```
+
+Migration 0003 adds `hackathons.is_lab boolean NOT NULL DEFAULT false` and the partial unique index `hackathons_one_lab ON hackathons (is_lab) WHERE is_lab`: at most one hidden Race lab hackathon, excluded from `GET /api/hackathons`.
 
 ### What each constraint guarantees
 
@@ -748,12 +751,14 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 - Logs: one JSON line per request (`ts, level, request_id, method, route, status, duration_ms, user_id`), plus ERROR lines for backstop hits and listener reconnects.
 - `/metrics` (Prometheus text): request duration histogram per route, pool size/idle/waiting per pool, pool acquire wait histogram, transaction duration per route, counters for 503 by cause (`lock_timeout`, `pool_timeout`, `inflight_cap`, `deadlock_exhausted`), `cap_backstop_hits_total`, `deadlock_retries_total`, SSE connections gauge, cache hits/misses.
 - `/healthz` (process up), `/readyz` (`SELECT 1` on the read pool).
+- Latency ring: the request middleware also keeps the last 1,000 durations per `/api` route in memory, so `GET /api/lab/latency` reports exact p50, p95 and p99 (the Prometheus buckets are too coarse for that).
+- Statement tracing (`db/trace.py`): inside `tracing()`, every connection acquired by that asyncio task gets an asyncpg query logger; the Race lab walkthrough uses it to show the real statements of one join. Off everywhere else (one context-variable read per acquire).
 - SQL tagged with `/* route:... */` and pools named with `application_name`, so `pg_stat_activity` shows who holds connections.
 
 ## 13. Frontend
 
 - Vite + React 18 + TypeScript strict + React Router v6 + TanStack Query v5 + Tailwind CSS (ADR-031). Headless Radix primitives (dialog, popover, tabs, dropdown menu, switch) for accessible behavior, `cmdk` for the command palette, `qrcode.react` for invite QR codes, `motion` for card and feed animation, `lucide-react` icons, `zod` for form schemas, Archivo variable font self-hosted. No styled component library.
-- Tests: Vitest with Testing Library (T-WEB-01 to 11) and Playwright end-to-end flows against a running server at 360 px and 1280 px (E2E-01 to 09); every e2e page fails the test on a CSP violation, an uncaught error or horizontal overflow.
+- Tests: Vitest with Testing Library (T-WEB-01 to 11) and Playwright end-to-end flows against a running server at 360 px and 1280 px (E2E-01 to 10); every e2e page fails the test on a CSP violation, an uncaught error or horizontal overflow.
 - Routes: `/login`, `/signup`, `/` (hackathon list), `/h/:hid` (board with Teams and People tabs), `/h/:hid/teams/new`, `/h/:hid/join` (enter code, also accepts `?code=`), `/teams/:tid` (members, requests, invite code, leave, finalize, audit), `/me` (profile: name, skills, time zone).
 - Public pages: `/privacy` (what is stored and why, retention, the single session cookie, contact) and `/terms` (acceptable use, accounts, invite codes and requests, no warranty). Signup links to both and requires agreeing. A custom 404 page handles unknown routes.
 - Head: SVG and PNG favicons, apple-touch-icon, Open Graph and Twitter card tags with a 1200x630 preview image.
@@ -767,6 +772,8 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 - Time zone: signup and profile default to the browser's `Intl.DateTimeFormat().resolvedOptions().timeZone`; shown as the current offset.
 - Visual system (ADR-038, wristband): every team has its own band color, picked from its id so all clients agree, used for its card header, seat tabs, page hero, peek sheet and feed entries. Light theme by default, dark from the system setting. Wide Archivo for headings. Sidebar navigation on laptops, a bottom tab bar on phones, the page's primary action in a bar above it. Tokens live in `frontend/src/styles/tokens.css` and `tailwind.config.ts`; every text, control, tag and band pair is measured by `frontend/scripts/contrast.mjs` (4.5:1 text, 3:1 borders and focus).
 - Interaction: a live activity feed of team events (created, filled, emptied, finalized, deleted) beside the board on wide screens and as a Live tab on phones; search, skill filters (needs or has) and sorting kept in the URL; a team peek sheet with members; a command palette (Ctrl+K or Cmd+K) for pages, actions and teams; `/` focuses search; invite QR codes.
+- Race lab page (`/lab`, ADR-040): tabs for How a join works (traced statements of a real join, a retry and a full team), Last-seat race, Spam clicks, Request queue and Latency (server percentiles plus a measurement from the browser).
+- Theme: Light, Dark or System switch (sidebar and login), stored per browser and applied before first paint by `public/theme-init.js`; navy brand shell and orange primary action in both themes.
 - The one event stream for the current hackathon is opened by the app shell, so it stays open across board and team pages (cap of 3 per user).
 - Errors: one display everywhere (`ErrorNotice`): the exact API error code as a tag and one plain line from `lib/errors.ts`; 5xx also show the request id. Field errors use one `FieldError` line under the field.
 - Optimistic updates for accept (a join through a request) and leave, with rollback on error. Join by code waits for the server: the target team is unknown until the code is resolved. 409 messages go to the page's single `aria-live` region and inline next to the action.
@@ -792,6 +799,8 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 | `IDEMPOTENCY_TTL_H` | `24` | Key retention |
 | `LOG_LEVEL` | `INFO` | Logging |
 | `WEB_DIST_DIR` | `frontend/dist` | Built SPA served at `/` |
+| `LAB_ENABLED` / `LAB_MAX_ATTEMPTS` | `true` / `200` | Race lab on or off; largest race or queue per run |
+| `RATE_LAB_PER_MIN` / `RATE_LAB_GLOBAL_PER_HOUR` | `6` / `120` | Lab runs per user per minute and in total per hour |
 | `CREWLINE_PUBLIC_URL` (web build only) | `http://localhost:8000` | Absolute site URL written into `og:url` and `og:image` at build time |
 
 ## 15. Deployment

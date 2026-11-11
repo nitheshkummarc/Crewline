@@ -157,6 +157,26 @@ test('E2E-07 unknown routes show the 404 page and the API keeps JSON 404s', asyn
   await assertClean(page);
 });
 
+test('E2E-10 race lab: a traced join shows the real statements, and a 30-person race has exactly one winner', async ({ baseURL, browser, viewport }) => {
+  const [judge] = await people(browser, baseURL ?? '', hid, viewport, ['Judge']);
+  await judge.page.goto('/lab');
+  await judge.page.getByRole('button', { name: 'Trace a join' }).click();
+  const free = judge.page.getByRole('region', { name: '1. A seat is free' });
+  await expect(free.getByText('Take the seat (conditional UPDATE)')).toBeVisible({ timeout: 20000 });
+  await expect(free.getByText('Commit', { exact: true })).toBeVisible();
+  await expect(judge.page.getByRole('region', { name: '3. The team is already full' }).getByText('Roll back', { exact: true })).toBeVisible();
+
+  await judge.page.getByRole('tab', { name: 'Last-seat race' }).click();
+  await judge.page.getByRole('slider').fill('30');
+  await judge.page.getByRole('button', { name: 'Start the race' }).click();
+  await expect(judge.page.getByText('got the last seat')).toBeVisible({ timeout: 30000 });
+  const proof = judge.page.getByRole('list', { name: 'Read back from the database' });
+  await expect(proof.getByText('as expected')).toHaveCount(4);
+  await expect(judge.page.getByRole('list', { name: 'Attempts in finish order' }).getByRole('listitem')).toHaveCount(30);
+  await assertClean(judge.page);
+  await judge.context.close();
+});
+
 test('E2E-08 command palette: Ctrl+K, type a team name, Enter opens the team; Escape closes', async ({ browser, baseURL, viewport }) => {
   const [leader, visitor] = await people(browser, baseURL ?? '', hid, viewport, ['Palette', 'Visitor']);
   const teamName = `Kbd ${unique().slice(-5)}`;

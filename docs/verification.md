@@ -18,6 +18,7 @@ Status values: `planned`, `written`, `passing`. Update this file in the same com
 | I7 | Every membership has a creating audit event | Same-transaction audit | `SELECT m.team_id, m.user_id FROM memberships m WHERE NOT EXISTS (SELECT 1 FROM audit_events a WHERE a.team_id = m.team_id AND a.action IN ('team_created', 'member_joined_via_code', 'request_accepted') AND (a.payload->>'user_id')::uuid = m.user_id);` |
 | I8 | A join request is accepted at most once | Status predicate | `SELECT payload->>'request_id' FROM audit_events WHERE action = 'request_accepted' GROUP BY 1 HAVING count(*) > 1;` |
 | I9 | No committed idempotency key without a response | Claim and store in one transaction | `SELECT user_id, key FROM idempotency_keys WHERE response_status IS NULL OR response_body IS NULL;` |
+| I10 | At most one Race lab hackathon | Partial unique index `hackathons_one_lab` | `SELECT count(*) FROM hackathons WHERE is_lab HAVING count(*) > 1;` |
 
 I9 note: the response columns are nullable because the claim inserts the row before the response exists. The checker runs in its own transaction and sees only committed rows, so any row it returns is a real bug (a commit without a stored response), never an in-flight claim.
 
@@ -76,6 +77,11 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-46 | Form token minimum fill time | Fresh token from `GET /api/auth/form-token` used at once on signup and login: 400 `bot_check_failed`; same token after 2 s: 201; no token: 400 `validation_error`; token response is `no-store` | passing |
 | T-API-47 | Honeypot and forged tokens | Filled `company`, a token signed with another secret, an expired token, or a session JWT as form token: 400 `bot_check_failed`; a form token as the session cookie: 401 | passing |
 | T-API-48 | Security headers and web cache rules | CSP (scripts from self only, no `'unsafe-*'` for scripts), HSTS, nosniff, Referrer-Policy on API, SPA shell, assets and API 404; shell `no-cache`, hashed asset `immutable`, API responses without a cache rule; client routes fall back to index.html | passing |
+| T-LAB-01 | Race lab race, 40 people for the last seat | One 200, 39 `team_full`, none other; 4 seats, 4 memberships, 3 join events | passing |
+| T-LAB-02 | Race lab spam, 12 clicks | Same key: all 200 with identical bodies, one committed, 1 membership, 1 join event, 1 stored key. New keys: one committed, the rest 200 already in, 1 membership | passing |
+| T-LAB-03 | Race lab queue, 8 requests | All created; queue oldest first; first accept 200, second 409 `team_full`; 4 seats | passing |
+| T-LAB-04 | Race lab walkthrough | Traced join runs claim, conditional UPDATE, membership, audit, store, commit in that order; the retry replays without an UPDATE; the full team rolls back with 409 | passing |
+| T-LAB-05 | Race lab hidden hackathon and limits | Lab hackathon not in `GET /api/hackathons`; size over the cap 400; latency report lists routes and pools; anonymous 401 | passing |
 | T-API-45 | Leave as the last member | `team_deleted` event has `team: null` and `version` = last version + 1 | passing |
 
 ## 3. Concurrency tests
@@ -158,6 +164,7 @@ Run against a server started with relaxed signup and login limits (as the pytest
 | E2E-06 | The skip link is the first tab stop and moves focus to main | passing |
 | E2E-07 | Unknown routes show the 404 page with a working link home; unknown `/api` paths keep the JSON 404 | passing |
 | E2E-08 | Command palette: Ctrl+K opens it, typing a team name and Enter opens that team, Escape closes it | passing |
+| E2E-10 | Race lab in the browser: Trace a join shows the seat UPDATE, commit and rollback steps; a 30-person race shows 30 attempts and four database checks as expected | passing |
 | E2E-09 | Live feed, search and peek: a team created by another user appears in the feed live, search narrows the board to it, peek shows its leader | passing |
 
 ## 6. Ops checks
@@ -244,7 +251,7 @@ README shows the CI badge.
 ## 12. Submission acceptance checklist
 
 - [ ] All must-haves R1 to R19 show `passing` in requirements.md
-- [ ] 20+ API tests (target 48 API + 19 race + 4 guarantee + 8 unit + 11 web + 9 end-to-end) green in CI
+- [ ] 20+ API tests (target 48 API + 5 lab + 19 race + 4 guarantee + 8 unit + 11 web + 10 end-to-end) green in CI
 - [ ] T-RACE-01 and T-RACE-02 both behave as expected in CI logs
 - [ ] Invariants clean on seed, after tests, after L-B, after chaos
 - [ ] Load report filled with measured numbers, commands and hardware

@@ -1,11 +1,12 @@
-// App shell: skip link, sidebar on wide screens, top bar and bottom tab bar on phones, footer links.
+// App shell: skip link, navy sidebar on wide screens, navy top bar and bottom tab bar on phones, theme switch, footer links.
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import clsx from 'clsx';
-import { Command as CommandIcon, Home, LayoutGrid, LogOut, Search, UserRound, Users } from 'lucide-react';
+import { Command as CommandIcon, FlaskConical, Home, LayoutGrid, LogOut, Search, UserRound, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import type { User } from '../api/types';
 import { Avatar } from './Avatar';
+import { ThemeToggle } from './ThemeToggle';
 
 export const CONTACT_URL = 'https://github.com/nitheshkummarc/Crewline/issues';
 export const SOURCE_URL = 'https://github.com/nitheshkummarc/Crewline';
@@ -27,10 +28,10 @@ export function Wordmark({ className }: { className?: string }) {
 export interface NavItem {
   to: string;
   label: string;
-  icon: 'home' | 'board' | 'team' | 'profile';
+  icon: 'home' | 'board' | 'team' | 'profile' | 'lab';
 }
 
-const ICONS = { home: Home, board: LayoutGrid, team: Users, profile: UserRound } as const;
+const ICONS = { home: Home, board: LayoutGrid, team: Users, profile: UserRound, lab: FlaskConical } as const;
 
 interface LayoutProps {
   user: User;
@@ -49,28 +50,29 @@ export function Layout({ user, nav, context, onLogout, onOpenPalette, children }
         Skip to main content
       </a>
 
-      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line bg-surface px-4 py-5 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 bg-shell px-4 py-5 text-shell-ink lg:flex">
         <Link to="/" className="inline-flex min-h-touch items-center px-2" aria-label="Crewline home"><Wordmark /></Link>
-        {context && <div className="rounded-md bg-surface-2 px-3 py-2 text-sm">{context}</div>}
+        {context && <div className="rounded-md bg-shell-2 px-3 py-2 text-sm">{context}</div>}
         <button type="button" onClick={onOpenPalette}
-          className="press flex min-h-touch items-center gap-3 rounded border border-line bg-canvas px-3 text-sm text-ink-2 hover:border-control">
+          className="press flex min-h-touch items-center gap-3 rounded border border-shell-2 bg-shell-2 px-3 text-sm text-shell-ink2 hover:border-shell-ink2 hover:text-shell-ink">
           <Search size={16} aria-hidden="true" /> <span className="flex-1 text-left">Search or jump to</span>
-          <kbd className="inline-flex items-center gap-1 rounded-sm border border-line px-[6px] text-[12px]"><CommandIcon size={11} aria-hidden="true" />K</kbd>
+          <kbd className="inline-flex items-center gap-1 rounded-sm border border-shell-ink2 px-[6px] text-[12px]"><CommandIcon size={11} aria-hidden="true" />K</kbd>
         </button>
         <nav aria-label="Main" className="flex flex-col gap-1">
           {nav.map((item) => <SideLink key={item.to} item={item} />)}
         </nav>
         <div className="mt-auto flex flex-col gap-4">
+          <ThemeToggle onShell className="self-start" />
           <UserMenu user={user} onLogout={onLogout} />
-          <FooterLinks />
+          <FooterLinks onShell />
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 bg-shell px-4 text-shell-ink lg:hidden">
         <Link to="/" className="inline-flex min-h-touch items-center" aria-label="Crewline home"><Wordmark /></Link>
-        <div className="min-w-0 flex-1 truncate text-sm text-ink-2">{context}</div>
+        <div className="min-w-0 flex-1 truncate text-sm text-shell-ink2">{context}</div>
         <button type="button" onClick={onOpenPalette} aria-label="Search or jump to"
-          className="press inline-flex h-11 w-11 items-center justify-center rounded text-ink hover:bg-surface-2">
+          className="press inline-flex h-11 w-11 items-center justify-center rounded text-shell-ink hover:bg-shell-2">
           <Search size={20} aria-hidden="true" />
         </button>
       </header>
@@ -102,7 +104,7 @@ function SideLink({ item }: { item: NavItem }) {
   return (
     <NavLink to={item.to} end={item.icon === 'home'}
       className={({ isActive }) => clsx('press flex min-h-touch items-center gap-3 rounded px-3 font-medium',
-        isActive ? 'bg-plate text-plate-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink')}>
+        isActive ? 'bg-brand text-brand-ink shadow-1' : 'text-shell-ink2 hover:bg-shell-2 hover:text-shell-ink')}>
       <Icon size={18} aria-hidden="true" /> {item.label}
     </NavLink>
   );
@@ -116,7 +118,7 @@ function TabLink({ item }: { item: NavItem }) {
         isActive ? 'text-ink' : 'text-ink-2')}>
       {({ isActive }) => (
         <>
-          <span className={clsx('flex h-7 w-12 items-center justify-center rounded-md transition-colors', isActive && 'bg-plate text-plate-ink')}>
+          <span className={clsx('flex h-7 w-12 items-center justify-center rounded-md transition-colors', isActive && 'bg-brand text-brand-ink')}>
             <Icon size={18} aria-hidden="true" />
           </span>
           {item.label}
@@ -129,11 +131,11 @@ function TabLink({ item }: { item: NavItem }) {
 function UserMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <Menu.Root>
-      <Menu.Trigger className="press flex min-h-touch w-full items-center gap-3 rounded px-2 py-2 text-left hover:bg-surface-2">
-        <Avatar id={user.id} name={user.display_name} size="sm" />
+      <Menu.Trigger className="press flex min-h-touch w-full items-center gap-3 rounded px-2 py-2 text-left hover:bg-shell-2">
+        <Avatar id={user.id} name={user.display_name} size="sm" className="ring-shell" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">{user.display_name}</span>
-          <span className="block truncate text-[12px] text-ink-2">{user.email}</span>
+          <span className="block truncate text-[12px] text-shell-ink2">{user.email}</span>
         </span>
       </Menu.Trigger>
       <AccountMenuContent user={user} onLogout={onLogout} />
@@ -157,11 +159,11 @@ function AccountMenuContent({ onLogout }: { user: User; onLogout: () => void }) 
   );
 }
 
-/** Privacy, terms, contact and source links. */
-export function FooterLinks() {
-  const link = 'inline-flex min-h-touch items-center underline underline-offset-[3px] hover:text-ink';
+/** Privacy, terms, contact and source links; `onShell` for the navy sidebar. */
+export function FooterLinks({ onShell = false }: { onShell?: boolean }) {
+  const link = clsx('inline-flex min-h-touch items-center underline underline-offset-[3px]', onShell ? 'hover:text-shell-ink' : 'hover:text-ink');
   return (
-    <nav aria-label="Legal and contact" className="flex flex-wrap gap-x-4 px-2 text-[13px] text-ink-2">
+    <nav aria-label="Legal and contact" className={clsx('flex flex-wrap gap-x-4 px-2 text-[13px]', onShell ? 'text-shell-ink2' : 'text-ink-2')}>
       <Link to="/privacy" className={link}>Privacy</Link>
       <Link to="/terms" className={link}>Terms</Link>
       <a href={CONTACT_URL} className={link}>Contact</a>

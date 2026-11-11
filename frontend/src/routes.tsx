@@ -13,6 +13,7 @@ const CreateTeamPage = lazy(() => import('./pages/CreateTeamPage'));
 const JoinPage = lazy(() => import('./pages/JoinPage'));
 const TeamPage = lazy(() => import('./pages/TeamPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const LabPage = lazy(() => import('./pages/LabPage'));
 
 const page = (element: ReactNode) => <Suspense fallback={<SkeletonCards count={3} />}>{element}</Suspense>;
 
@@ -30,6 +31,7 @@ export const routes: RouteObject[] = [
       { path: '/h/:hid/join', element: page(<JoinPage />) },
       { path: '/teams/:tid', element: page(<TeamPage />) },
       { path: '/me', element: page(<ProfilePage />) },
+      { path: '/lab', element: page(<LabPage />) },
     ],
   },
   { path: '*', element: <NotFoundPage /> },

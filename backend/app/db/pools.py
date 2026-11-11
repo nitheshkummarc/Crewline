@@ -11,6 +11,7 @@ import orjson
 
 from app.config import Settings
 from app.core.errors import Busy
+from app.db import trace
 
 
 async def init_connection(conn: asyncpg.Connection) -> None:
@@ -77,9 +78,11 @@ async def read_conn() -> AsyncIterator[asyncpg.Connection]:
         conn = await p.read.acquire(timeout=p.acquire_timeout)
     except TimeoutError as exc:
         raise Busy() from exc
+    logger = trace.attach(conn, "read")
     try:
         yield conn
     finally:
+        trace.detach(conn, logger)
         await p.read.release(conn)
 
 
@@ -91,7 +94,9 @@ async def write_conn() -> AsyncIterator[asyncpg.Connection]:
         conn = await p.write.acquire(timeout=p.acquire_timeout)
     except TimeoutError as exc:
         raise Busy() from exc
+    logger = trace.attach(conn, "write")
     try:
         yield conn
     finally:
+        trace.detach(conn, logger)
         await p.write.release(conn)

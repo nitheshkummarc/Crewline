@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     rate_login_per_min: int = 5
     rate_signup_per_hour: int = 10
     rate_mutations_per_min: int = 60
+    lab_enabled: bool = True
+    lab_max_attempts: int = 200
+    rate_lab_per_min: int = 6
+    rate_lab_global_per_hour: int = 120
     idempotency_ttl_h: int = 24
     log_level: str = "INFO"
     web_dist_dir: str = "frontend/dist"

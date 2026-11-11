@@ -15,7 +15,7 @@ const SIZES: Record<Size, string> = {
 };
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-plate text-plate-ink shadow-1 hover:shadow-2 hover:-translate-y-px',
+  primary: 'border border-brand-edge bg-brand text-brand-ink shadow-1 hover:shadow-2 hover:-translate-y-px hover:brightness-105',
   secondary: 'border border-control bg-surface text-ink hover:border-ink aria-pressed:border-ink aria-pressed:bg-plate aria-pressed:text-plate-ink',
   ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
   danger: 'border border-bad text-bad hover:bg-[color-mix(in_srgb,var(--bad)_10%,transparent)]',

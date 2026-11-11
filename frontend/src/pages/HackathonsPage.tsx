@@ -2,6 +2,7 @@
 import { ArrowRight, CalendarClock, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ButtonLink } from '../components/Button';
+import { HeroBanner } from '../components/HeroBanner';
 import { EmptyState, LoadError, SkeletonCards } from '../components/LoadState';
 import { useHackathons, useMe } from '../hooks/queries';
 import { bandStyle } from '../lib/teamColor';
@@ -14,11 +15,9 @@ export default function HackathonsPage() {
   const firstName = me.data?.display_name.split(' ')[0];
   return (
     <section aria-labelledby="page-title" className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <p className="label">Welcome{firstName ? `, ${firstName}` : ''}</p>
-        <h1 id="page-title" className="display text-[32px] leading-[38px] md:text-[44px] md:leading-[50px]">Hackathons</h1>
-        <p className="max-w-[60ch] text-ink-2">Open a hackathon to see teams with open seats, the people looking for one, and everything that changes, live.</p>
-      </div>
+      <HeroBanner eyebrow={`Welcome${firstName ? `, ${firstName}` : ''}`} titleId="page-title" title="Hackathons">
+        <p className="max-w-[52ch] text-shell-ink2">Open a hackathon to see teams with open seats, the people looking for one, and everything that changes, live.</p>
+      </HeroBanner>
       {hackathons.isPending && <SkeletonCards count={2} label="Loading hackathons" />}
       {hackathons.error && <LoadError error={hackathons.error} onRetry={() => void hackathons.refetch()} />}
       {hackathons.isSuccess && list.length === 0 && (

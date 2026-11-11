@@ -36,3 +36,6 @@ GROUP BY 1 HAVING count(*) > 1;
 
 -- I9: no committed idempotency key without a response
 SELECT user_id, key FROM idempotency_keys WHERE response_status IS NULL OR response_body IS NULL;
+
+-- I10: at most one Race lab hackathon
+SELECT count(*) AS lab_hackathons FROM hackathons WHERE is_lab HAVING count(*) > 1;

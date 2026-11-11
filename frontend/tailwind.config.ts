@@ -15,14 +15,15 @@ export default {
       control: token('control'),
       ink: { DEFAULT: token('ink'), 2: token('ink-2') },
       plate: { DEFAULT: token('plate'), ink: token('plate-ink') },
+      brand: { DEFAULT: token('brand'), ink: token('brand-ink'), edge: token('brand-edge') },
+      shell: { DEFAULT: token('shell'), 2: token('shell-2'), ink: token('shell-ink'), ink2: token('shell-ink-2') },
       focus: token('focus'),
       ok: token('ok'),
       warn: token('warn'),
       bad: token('bad'),
       live: token('live'),
       band: { ink: token('band-ink') },
-      // Fixed in both themes: the dark brand panel on login and signup, and white behind QR codes.
-      night: { DEFAULT: '#111317', ink: '#f2f3f5', ink2: '#c4c9d0' },
+      // White behind QR codes in both themes, so phones can scan them.
       paper: '#ffffff',
     },
     fontFamily: {

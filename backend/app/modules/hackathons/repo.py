@@ -9,8 +9,8 @@ HACKATHON_COLUMNS = ("id, name, min_team_size, max_team_size, "
 
 
 async def list_all(conn: asyncpg.Connection) -> list[asyncpg.Record]:
-    """Return all hackathons, newest first."""
-    return await conn.fetch(f"SELECT {HACKATHON_COLUMNS} FROM hackathons ORDER BY created_at DESC")
+    """Return all real hackathons (the hidden Race lab one excluded), newest first."""
+    return await conn.fetch(f"SELECT {HACKATHON_COLUMNS} FROM hackathons WHERE NOT is_lab ORDER BY created_at DESC")
 
 
 async def get(conn: asyncpg.Connection, hackathon_id: UUID) -> asyncpg.Record | None:

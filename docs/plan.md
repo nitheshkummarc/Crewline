@@ -4,7 +4,7 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Wed 11 Nov 2026, end of module 8 plus a full frontend redesign (ADR-038 wristband team colors, live feed, filters, palette, peek, QR invites). Backend: 101 tests pass, ruff and mypy clean. Web: typecheck and lint clean, 63 Vitest tests pass, 9 Playwright flows pass on phone (360 px) and laptop (1280 px) with CSP, error and overflow guards. Bugs B-22 to B-31 fixed with regression tests. Chaos test last passed at the end of module 7.
+Last checkpoint: Wed 11 Nov 2026, module 8 plus redesign, Race lab (ADR-040) and Light, Dark or System theme. Backend: 106 tests pass, ruff and mypy clean. Web: 65 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Next: a visual pass toward a hackathon-event look (Devpost and MLH style, owner's choice), then module 9.
 
 | Module | Scope | Status |
 |---|---|---|
