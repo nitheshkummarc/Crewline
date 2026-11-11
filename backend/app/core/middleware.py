@@ -1,10 +1,12 @@
-"""Request id and access log middleware (pure ASGI, safe for streaming responses)."""
+"""Request id, access log and request-duration metrics middleware (pure ASGI, safe for streaming)."""
 
 import logging
 import time
 import uuid
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from app.core.metrics import observe_request
 
 log = logging.getLogger("crewline.access")
 
@@ -37,10 +39,13 @@ class RequestIdMiddleware:
             await self.app(scope, receive, send_wrapper)
         finally:
             route = scope.get("route")
+            elapsed = time.perf_counter() - started
+            route_path = getattr(route, "path", "unmatched")
+            observe_request(scope["method"], route_path, status, elapsed)
             log.info("request", extra={
                 "request_id": request_id,
                 "method": scope["method"],
                 "route": getattr(route, "path", scope["path"]),
                 "status": status,
-                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "duration_ms": round(elapsed * 1000, 2),
             })

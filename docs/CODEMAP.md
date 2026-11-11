@@ -26,12 +26,12 @@ Initial schema: tables, constraints, indexes, `team_snapshot()`, audit triggers.
 ## API core
 
 ### backend/app/main.py
-App factory: lifespan, middleware, routers, static web files. Run with `uvicorn --factory app.main:create_app`.
+App factory: lifespan (pools, listener, purge task), middleware, routers, health, metrics, static web files. Run with `uvicorn --factory app.main:create_app`.
 | Name | Purpose | Status |
 |---|---|---|
-| `create_app(settings)` | Build the FastAPI app with middleware, routers and the SPA mount | done |
-| `lifespan(app)` | Open pools and start background tasks; close them on shutdown | done |
+| `lifespan(app)` | Open pools, start the LISTEN listener and the idempotency purge task; stop them on shutdown | done |
 | `mount_web(app, dist_dir)` | Serve the built SPA at / with index.html as the fallback for client routes | done |
+| `create_app(settings)` | Build the app: rate limits, cache, event hub, middleware, routers, /healthz, /readyz, /metrics, SPA | done |
 
 ### backend/app/config.py
 Settings loaded from environment variables.
@@ -121,23 +121,29 @@ Micro-cache with single-flight loading for board pages (per worker; never a sour
 | `configure(ttl_ms)` | Replace the board cache with one using the configured TTL | done |
 
 ### backend/app/core/events.py
-SSE hub: subscriptions per hackathon and event fan-out.
+SSE hub: subscriptions per hackathon, public projection of audit notifications, fan-out.
 | Name | Purpose | Status |
 |---|---|---|
-| `EventHub` | Map hackathon id to subscriber queues | planned |
-| `EventHub.subscribe(hackathon_id, user_id)` | Register a queue; raise RateLimited past 3 streams per user | planned |
-| `EventHub.unsubscribe(sub)` | Remove a subscriber | planned |
-| `EventHub.publish(raw_notification)` | Project the notification and push it to the hackathon's subscribers, or only to its audience for request events; drop full queues | planned |
-| `EventHub.broadcast_resync()` | Send a resync event to every subscriber | planned |
-| `public_projection(raw)` | Return `(kind, data, audience)`: kind `team`, `people` or `request`, data without secrets, audience for request events | planned |
+| `TEAM_ACTIONS`, `PEOPLE_ACTIONS`, `REQUEST_ACTIONS` | Audit actions per event kind | done |
+| `public_projection(raw)` | Return (kind, data, audience) for a notification; no codes or emails; None if unknown | done |
+| `Subscriber` | One SSE stream: hackathon, user and bounded queue | done |
+| `EventHub` | Map hackathon id to subscriber queues and fan events out | done |
+| `EventHub.connections` | Number of open streams in this worker | done |
+| `EventHub.subscribe(hackathon_id, user_id)` | Register a queue; raise RateLimited past the per-user stream cap | done |
+| `EventHub.unsubscribe(sub)` | Remove a subscriber (idempotent) | done |
+| `EventHub._offer(sub, event)` | Queue an event; a full queue closes the slow client so it reconnects and refetches | done |
+| `EventHub.publish(raw)` | Push to the hackathon's subscribers, or only to the audience for request events | done |
+| `EventHub.broadcast_resync()` | Send a resync event to every subscriber | done |
+| `hub`, `configure(max_streams_per_user)` | Process-wide hub and its setup | done |
 
 ### backend/app/core/metrics.py
-Prometheus metrics definitions and helpers.
+Prometheus metrics: request durations per route plus pool, transaction, cache and SSE gauges read at scrape.
 | Name | Purpose | Status |
 |---|---|---|
-| `REQUEST_DURATION`, `TX_DURATION`, `POOL_ACQUIRE_WAIT`, `BUSY_TOTAL`, `CAP_BACKSTOP_HITS`, `DEADLOCK_RETRIES`, `SSE_CONNECTIONS`, `CACHE_HITS`, `CACHE_MISSES` | Metric objects | planned |
-| `collect_pool_stats(pools)` | Update pool size, idle and waiting gauges | planned |
-| `metrics_endpoint()` | Return the Prometheus text exposition | planned |
+| `registry`, `REQUEST_DURATION`, `POOL_SIZE`, `POOL_IDLE`, `TX_EVENTS`, `CACHE`, `SSE_CONNECTIONS`, `SSE_DROPPED`, `LISTENER_RECONNECTS` | Metric objects | done |
+| `observe_request(method, route, status, seconds)` | Record one request duration (status grouped as 2xx, 4xx, 5xx) | done |
+| `collect(pools, tx_stats, cache, hub, listener)` | Update the gauges from live objects right before a scrape | done |
+| `render()` | Return the Prometheus text exposition and its content type | done |
 
 ### backend/app/core/logging.py
 JSON logging setup.
@@ -148,10 +154,10 @@ JSON logging setup.
 | `configure_logging(level)` | Install the JSON formatter on the root logger | done |
 
 ### backend/app/core/middleware.py
-Request id and access log middleware (pure ASGI, safe for streaming responses). The write in-flight cap lives in `db/tx.py`.
+Request id, access log and request-duration metrics middleware (pure ASGI, safe for streaming). The write in-flight cap lives in `db/tx.py`.
 | Name | Purpose | Status |
 |---|---|---|
-| `RequestIdMiddleware` | Accept or create X-Request-ID, attach it to the request and response, log one line per request | done |
+| `RequestIdMiddleware` | Accept or create X-Request-ID, log one line per request, observe the route duration histogram | done |
 
 ### backend/app/core/responses.py
 JSON response rendered with orjson (FastAPI deprecated its ORJSONResponse).
@@ -208,15 +214,15 @@ Map PostgreSQL errors to domain errors by constraint name and SQLSTATE.
 | `is_busy(exc)` | True for lock timeouts, statement timeouts and connection exhaustion | done |
 
 ### backend/app/db/listener.py
-Dedicated LISTEN connection with reconnect.
+Dedicated LISTEN connection with reconnect; clears the board cache and feeds the event hub.
 | Name | Purpose | Status |
 |---|---|---|
-| `EventListener(settings, hub, cache)` | Owns the LISTEN connection | planned |
-| `EventListener.start()` | Connect and LISTEN on team_events | planned |
-| `EventListener.stop()` | Close the connection | planned |
-| `EventListener._on_notify(conn, pid, channel, payload)` | Clear the hackathon cache and publish to the hub | planned |
-| `EventListener._on_terminate(conn)` | Schedule a reconnect | planned |
-| `EventListener._reconnect()` | Reconnect with backoff, then broadcast resync | planned |
+| `EventListener(url)` | Owns the LISTEN connection and a supervisor task | done |
+| `EventListener.start()` | Connect, LISTEN, and start the supervisor | done |
+| `EventListener.stop()` | Stop the supervisor and close the connection | done |
+| `EventListener._connect()` | Open the connection (`crewline-listen`) and LISTEN on team_events | done |
+| `EventListener._on_notify(conn, pid, channel, payload)` | Clear the hackathon's board cache, then publish to the hub | done |
+| `EventListener._supervise()` | Detect a closed connection every 0.5 s, reconnect with backoff, broadcast resync; keepalive every 30 s | done |
 
 ## API modules
 
@@ -498,10 +504,10 @@ Removed: the team audit endpoint lives in `teams/router.py` (`team_audit`) becau
 |---|---|---|
 
 ### backend/app/modules/events/router.py
-SSE endpoint.
+SSE endpoint: one stream per browser tab, events for one hackathon.
 | Name | Purpose | Status |
 |---|---|---|
-| `stream(hackathon_id, user_id)` | GET /api/events: subscribe and yield events with heartbeats | planned |
+| `stream(hackathon_id, user_id)` | GET /api/events: check the hackathon, subscribe, yield events with heartbeats; no database connection held | done |
 
 ## Tests
 
@@ -546,6 +552,19 @@ Test helpers: users with their own HTTP client, hackathons, teams, keys and raw 
 | `join(user, code)` | Join a team by invite code | done |
 | `make_hackathon(db_url, min_size, max_size, ttl, name)` | Insert a hackathon and return its id | done |
 | `query(db_url, sql, *args)` | Run a raw query (json and jsonb decoded like the app) and return its rows | done |
+
+### backend/tests/sse.py
+Test helper: read a server-sent event stream in the background and wait for events by kind.
+| Name | Purpose | Status |
+|---|---|---|
+| `SseReader(client, url)` | Collect (event, data) pairs from one SSE stream; use `async with` | done |
+| `SseReader.next(kind, within)` | Return the next event of a kind, skipping others; TimeoutError if none | done |
+| `SseReader.nothing(kind, seconds)` | True if no event of this kind arrives in time | done |
+
+### frontend/README.md
+Placeholder describing the planned React app (module 8).
+| Name | Purpose | Status |
+|---|---|---|
 
 ### backend/tests/concurrency/barrier.py
 Helpers to release many requests at the same instant and retry 503s with the same key.

@@ -8,17 +8,20 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from starlette.responses import Response
 
 from app.config import Settings, get_settings
-from app.core import cache, idempotency, ratelimit
+from app.core import cache, events, idempotency, metrics, ratelimit
 from app.core.errors import Busy, NotFound, install_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.core.responses import JsonResponse
 from app.db import pools as db_pools
 from app.db import tx
+from app.db.listener import EventListener
 from app.modules.auth.router import router as auth_router
 from app.modules.board.router import router as board_router
+from app.modules.events.router import router as events_router
 from app.modules.hackathons.router import router as hackathons_router
 from app.modules.requests.router import router as requests_router
 from app.modules.suggestions.router import router as suggestions_router
@@ -32,9 +35,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     pools = await db_pools.create_pools(settings)
     tx.configure(settings.write_inflight_max)
     purge = asyncio.create_task(idempotency.purge_loop(pools.write, settings.idempotency_ttl_h))
+    listener = EventListener(settings.listen_url)
+    await listener.start()
+    app.state.listener = listener
     try:
         yield
     finally:
+        await listener.stop()
         purge.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await purge
@@ -68,9 +75,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     ratelimit.configure(settings)
     cache.configure(settings.board_cache_ttl_ms)
+    events.configure(settings.sse_max_streams_per_user)
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
-    for router in (auth_router, hackathons_router, teams_router, requests_router, board_router, suggestions_router):
+    for router in (auth_router, hackathons_router, teams_router, requests_router, board_router,
+                   suggestions_router, events_router):
         app.include_router(router)
 
     @app.get("/healthz", include_in_schema=False)
@@ -85,6 +94,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except Exception as exc:
             raise Busy("database not ready") from exc
         return {"ok": True}
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics_endpoint() -> Response:
+        metrics.collect(db_pools._pools, tx.stats, cache.board_cache, events.hub, getattr(app.state, "listener", None))
+        body, content_type = metrics.render()
+        return Response(body, media_type=content_type)
 
     mount_web(app, settings.web_dist_dir)
     return app

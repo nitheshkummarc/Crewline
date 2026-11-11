@@ -694,7 +694,7 @@ Three event kinds, built by `public_projection` (no emails, no invite codes):
 - On every (re)connect the client refetches; there is no `Last-Event-ID` replay (ADR-018). The database is the truth, events are hints.
 - Heartbeat comment every 15 s. Header `X-Accel-Buffering: no`. Max 3 streams per user (4th gets 429).
 - Slow client: if its queue is full, the hub drops the subscriber and closes the stream; the browser reconnects and refetches.
-- Listener failure: on connection loss, reconnect with backoff (0.5 s doubling to 10 s), then publish `event: resync` to every subscriber so they refetch.
+- Listener failure: a supervisor checks the LISTEN connection every 0.5 s (and runs `SELECT 1` every 30 s as a keepalive); on loss it reconnects with backoff (0.5 s doubling to 10 s), clears the board cache, then publishes `event: resync` to every subscriber so they refetch. Proven by killing the backend with `pg_terminate_backend` (B-3 test).
 - SSE streams never hold a database connection.
 
 ## 10. Security
@@ -751,7 +751,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 
 - Vite + React 18 + TypeScript strict + React Router v6 + TanStack Query v5 + Tailwind CSS. No component library.
 - Routes: `/login`, `/signup`, `/` (hackathon list), `/h/:hid` (board with Teams and People tabs), `/h/:hid/teams/new`, `/h/:hid/join` (enter code, also accepts `?code=`), `/teams/:tid` (members, requests, invite code, leave, finalize, audit), `/me` (profile: name, skills, time zone).
-- `backend/client.ts`: same-origin fetch with credentials, adds `Idempotency-Key` to mutations, parses the error envelope, retries network errors and 503 with the same key (max 3, `Retry-After` plus jitter).
+- `api/client.ts`: same-origin fetch with credentials, adds `Idempotency-Key` to mutations, parses the error envelope, retries network errors and 503 with the same key (max 3, `Retry-After` plus jitter).
 - `hooks/useEventStream.ts`: one EventSource per hackathon, refetch on open, merge `team` events by version, keep tombstones, refetch People board on `people` events, refresh request lists on `request` events, handle `resync`.
 - `lib/merge.ts`: `mergeTeam`, `mergeBoardPage` and the tombstone map, shared by event and refetch paths.
 - Time zone: signup and profile default to the browser's `Intl.DateTimeFormat().resolvedOptions().timeZone`; shown as the current offset.

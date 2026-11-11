@@ -4,7 +4,7 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Wed 11 Nov 2026, end of module 5 plus guarantee tests. All 88 backend tests pass (`RACE_ITERATIONS=20`), ruff and mypy clean, pushed to `main`.
+Last checkpoint: Wed 11 Nov 2026, end of module 6. All 97 backend tests pass (`RACE_ITERATIONS=20`), ruff and mypy clean, pushed to `main`.
 
 | Module | Scope | Status |
 |---|---|---|
@@ -13,8 +13,8 @@ Last checkpoint: Wed 11 Nov 2026, end of module 5 plus guarantee tests. All 88 b
 | 3 Teams | Create, join by code, leave, handover, delete with tombstone, remove, finalize, reopen, invite, update, team audit; race tests + negative control | done |
 | 4 Join requests | Create (team FOR SHARE, participant lock, cap 5), accept (stale on 23505), decline, withdraw, lists; T-API-14 to 18, 42, 43; T-RACE-05, 06, 07, 13, 17, 18 | done |
 | 5 Board and suggestions | Keyset board (teams, people), micro-cache + ETag, suggestions + scoring unit tests; guarantee tests T-GUAR-01 to 04 (overload, per-user limits, atomicity) | done |
-| 6 Realtime | Listener with reconnect, EventHub (team, people, request audience), SSE endpoint, cache invalidation on notify (B-2), metrics | next |
-| 7 Data and load | `database/seed.py`, k6 scenarios, chaos test, EXPLAIN | planned |
+| 6 Realtime | Listener with reconnect, EventHub (team, people, request audience), SSE endpoint, cache invalidation on notify (B-2), metrics | done |
+| 7 Data and load | `database/seed.py`, latency of every endpoint, k6 scenarios, chaos test, EXPLAIN | next |
 | 8 Frontend | `frontend/` React app (run `/impeccable init` first) | planned |
 | 9 Ops | Dockerfile, Compose, GitHub Actions, deploy (Render + Neon), README, design doc numbers, video | planned |
 

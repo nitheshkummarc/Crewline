@@ -63,14 +63,14 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-32 | Board ETag | Second request with `If-None-Match` gets 304 | passing |
 | T-API-33 | Suggestions | Candidate covering missing roles ranks above a duplicate-skill candidate; breakdown and reasons present; deterministic order | passing |
 | T-API-34 | Audit append-only | Direct `UPDATE audit_events` and `DELETE` raise | passing |
-| T-API-35 | SSE event after commit | Subscriber receives `team` event with new version within 1 s of a join | planned |
-| T-API-36 | No SSE event after rollback | A rejected join (409) produces no event | planned |
+| T-API-35 | SSE event after commit | Subscriber receives `team` event with new version within 1 s of a join | passing |
+| T-API-36 | No SSE event after rollback | A rejected join (409) produces no event | passing |
 | T-API-37 | Team audit endpoint | Members get events newest first; non-member gets 403 `members_only` | passing |
-| T-API-38 | `/metrics` | Exposes pool gauges and route histograms | planned |
+| T-API-38 | `/metrics` | Exposes pool gauges and route histograms | passing |
 | T-API-39 | Invite code visibility | Board and events never contain `invite_code`; `/invite` returns it to members only | passing |
-| T-API-40 | Participant registers, then toggles `looking` | Each publishes a `people` event; the People board reflects it on the next fetch (cache cleared); audit rows `participant_registered`, `participant_updated` | partial (audit rows pass; SSE delivery in the realtime module) |
-| T-API-41 | Team member changes skills | Team `version` increases; a `team` event carries the new skills; board shows them | planned |
-| T-API-42 | Request event privacy | A non-member subscriber receives no `request` events; the leader and the requester do | partial (audience in payload passes; SSE delivery in module 6) |
+| T-API-40 | Participant registers, then toggles `looking` | Each publishes a `people` event; the People board reflects it on the next fetch (cache cleared); audit rows `participant_registered`, `participant_updated` | passing |
+| T-API-41 | Team member changes skills | Team `version` increases; a `team` event carries the new skills; board shows them | passing |
+| T-API-42 | Request event privacy | A non-member subscriber receives no `request` events; the leader and the requester do | passing |
 | T-API-43 | Create a request for a full team | 409 `team_full`, no request row | passing |
 | T-API-44 | Suggestions for a caller without a team | `context.team_id` null; the time zone term compares against the caller; a candidate covering the caller's missing roles ranks first | passing |
 | T-API-45 | Leave as the last member | `team_deleted` event has `team: null` and `version` = last version + 1 | passing |
