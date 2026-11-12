@@ -48,7 +48,7 @@ Source: Hack4Hack Crew Hiring Challenge 2026, Problem Statement 1, "Race-proof t
 | R16 | Seed script: 10,000 users, 2,000 teams | database/seed.py | T-OPS-01; I1 to I9 on seed | passing (0.9 s, invariants clean) |
 | R17 | Load test (k6 or autocannon): board p95 under 200 ms at 100 concurrent users | arch 8; ADR-021 | L-A | passing (k6 run 43194526097: L-A1 p95 80.1 ms, L-B p95 92.4 ms with stampedes, L-C p95 21.4 ms over 10 minutes) |
 | R18 | React UI for the full flow, usable on phone and keyboard only | arch 13; ADR-031, 038 | T-WEB-01 to 11; E2E-01 to 10 (360 px and 1280 px); M-01 to M-06 | passing (automated); manual keyboard and screen reader pass in module 9 |
-| R19 | Live URL on a free tier | arch 15; ADR-026 | M-07 | planned |
+| R19 | Live URL on a free tier | arch 15; ADR-026 | M-07 | passing (https://crewline-20bm.onrender.com: reviewer login, board, SSE through Render, Race lab race with one winner, checked 12 Nov; M-07 from a clean browser and phone still to do) |
 
 ## Bonus requirements
 

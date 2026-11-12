@@ -1,7 +1,7 @@
 # Load and latency report
 
 Measured numbers only. Scenario definitions are in [verification.md](verification.md) section 8.
-Status: the k6 scenarios L-A1, L-A2, L-B and L-C were run on 12 Nov 2026 in the `load.yml` workflow (results first, below). The development measurements with the Python latency probe and the CI smoke runs follow. L-LIVE (against the deployed URL) is reported separately and labeled free tier.
+Status: the k6 scenarios L-A1, L-A2, L-B and L-C were run on 12 Nov 2026 in the `load.yml` workflow (results first, below). The development measurements with the Python latency probe and the CI smoke runs follow. L-LIVE (against the deployed URL, free tier) has its own section below.
 
 ## k6 results (L-A1, L-A2, L-B, L-C), 12 Nov 2026
 
@@ -133,8 +133,14 @@ All in milliseconds. Spec target p95 < 200 ms: met in both runs. The two runs di
 | L-B under load (k6 run 43194526097): 12 stampedes of 50 on one-seat teams with readers, churn and 50 SSE streams | Exactly one winner in each stampede; 0 deadlocks; invariants clean after L-B and after L-C |
 | Chaos (T-CHAOS-01): 3 hard kills in 60 s, 200 users | 23,012 actions, 0 x 500, 0 replay mismatches, 0 over capacity, invariants clean |
 
-## Pending
+## L-LIVE: the deployed URL (free tier), 12 Nov 2026
 
-| Scenario | Status |
-|---|---|
-| L-LIVE: L-A1 for 30 s against the deployed URL (Render free plan, labeled free tier) | to run |
+Target https://crewline-20bm.onrender.com: Render free web service (Singapore, 1 uvicorn worker, 0.1 CPU) and Neon free PostgreSQL 18 (Singapore), seeded with 300 users and 40 teams. Client: k6 v2.3.0 on the dev laptop in India over a home connection (TCP connect to the site about 66 ms). Sessions: 20 seeded users logged in through the API (`live_tokens.py` in the session scratchpad, not in the repo) and shared by the 100 VUs. Command: `k6 run -e BASE_URL=<live> -e TOKENS=<file> -e RAMP=10s -e DURATION=30s [-e THINK=1] loadtest/board.js`.
+
+| Run | p50 | p95 | p99 | max | req/s | Requests | Errors | p95 < 200 ms |
+|---|---|---|---|---|---|---|---|---|
+| 100 VUs, 1 s think time (people reading the board) | 68.8 | 101.0 | 314.6 | 414.0 | 80 | 3,291 | 0 | met |
+| 100 VUs, no think time (stress) | 893.7 | 1,110.6 | 1,307.9 | 1,507.4 | 124 | 5,073 | 0 | not met |
+
+Why the stress run is slow, from the measurements: the API's own timing for the board (Race lab latency window, last 1,000 requests) was p50 7.3 ms and p95 107.5 ms, so most of the 1.1 s is queueing in front of the handler. In a closed loop, latency is about users divided by throughput (100 / 124 req/s, about 0.8 s), and throughput is capped by the free plan's 0.1 CPU: the same code on 4 vCPU served 1,643 req/s at p95 80.1 ms (L-A1 above). A paid instance or a second worker raises the cap; the code does not change.
+
