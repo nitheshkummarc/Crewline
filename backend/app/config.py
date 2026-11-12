@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     rate_lab_global_per_hour: int = 120
     idempotency_ttl_h: int = 24
     log_level: str = "INFO"
+    # Header set by the host's edge with the real client IP (Render: cf-connecting-ip); empty = socket peer.
+    client_ip_header: str = ""
     web_dist_dir: str = "frontend/dist"
 
     @property

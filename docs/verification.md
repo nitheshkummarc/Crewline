@@ -77,6 +77,7 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-46 | Form token minimum fill time | Fresh token from `GET /api/auth/form-token` used at once on signup and login: 400 `bot_check_failed`; same token after 2 s: 201; no token: 400 `validation_error`; token response is `no-store` | passing |
 | T-API-47 | Honeypot and forged tokens | Filled `company`, a token signed with another secret, an expired token, or a session JWT as form token: 400 `bot_check_failed`; a form token as the session cookie: 401 | passing |
 | T-API-48 | Security headers and web cache rules | CSP (scripts from self only, no `'unsafe-*'` for scripts), HSTS, nosniff, Referrer-Policy on API, SPA shell, assets and API 404; shell `no-cache`, hashed asset `immutable`, API responses without a cache rule; client routes fall back to index.html | passing |
+| T-API-49 | HEAD on health checks and web routes (B-32) | `HEAD` on `/healthz`, `/readyz`, `/`, a client route and a hashed asset returns 200 with no body and the security headers; `HEAD` on an unknown `/api` path stays 404 | passing |
 | T-LAB-01 | Race lab race, 40 people for the last seat | One 200, 39 `team_full`, none other; 4 seats, 4 memberships, 3 join events | passing |
 | T-LAB-02 | Race lab spam, 12 clicks | Same key: all 200 with identical bodies, one committed, 1 membership, 1 join event, 1 stored key. New keys: one committed, the rest 200 already in, 1 membership | passing |
 | T-LAB-03 | Race lab queue, 8 requests | All created; queue oldest first; first accept 200, second 409 `team_full`; 4 seats | passing |
@@ -120,6 +121,7 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-GUAR-02 | Per-user request limits | Server with 5 mutations/min, 3 logins/min, 2 signups/hour | 6th mutation of one user is 429 `rate_limited` with `Retry-After`; another user still gets 200; 4th login 429; 3rd signup 429 | passing |
 | T-GUAR-03 | Atomicity of join | Audit insert fails for the joining user | 500; seat count, membership and idempotency key all unchanged; same key succeeds after the fault is removed; invariants clean | passing |
 | T-GUAR-04 | Atomicity of accept | Audit insert fails for the requester | 500; request still pending, count unchanged; accept succeeds after the fault is removed; invariants clean | passing |
+| T-GUAR-05 | Forwarded-for spoofing (B-33) | 4 failed logins on the limited server, each with a new fake `X-Forwarded-For` | `[401, 401, 401, 429]`: the per-IP login limit still applies | passing |
 
 ## 4. Unit tests
 
@@ -133,6 +135,7 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-UNIT-04 | Request hash: key order and whitespace do not change the hash; body change does | passing |
 | T-UNIT-05 | Error mapping: each constraint name maps to the right error code | passing |
 | T-UNIT-08 | Every seeded account email passes the login model (B-22) | passing |
+| T-UNIT-09 | Rate-limit client IP: without `CLIENT_IP_HEADER` the socket peer is used whatever `X-Forwarded-For` says; with it, the header value (trimmed) is used, and a missing or blank header falls back to the peer (B-33) | passing |
 
 ## 5. Web tests (Vitest)
 
@@ -148,6 +151,7 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-WEB-09 | Board filters: name search, skills a team needs or has, sort by open seats, URL round trip with defaults dropped, people search | passing |
 | T-WEB-10 | Activity feed: team events become readable items, non-news events skipped, deleted teams named from cache, newest first, duplicates ignored, capped at 30 | passing |
 | T-WEB-11 | Team colors are stable per id and spread over all 8 bands; initials from names | passing |
+| T-WEB-12 | Theme switch has exactly two options, Light and Dark; with nothing saved the device theme is checked and not saved; Light when the browser cannot tell; a click applies and saves; a saved choice wins over the device; arrow keys wrap | passing |
 | T-WEB-08 | Content rules in every frontend text file (source, configs, e2e, scripts, index.html, README; B-31): no em dash, no banned marketing words, no `rounded-full`, no purple, gradients only in the style files and never on buttons, no AI badge, no secrets, only public `VITE_` env values | passing |
 
 ## 5b. End-to-end tests (Playwright, real API and database, phone 360 px and laptop 1280 px)
@@ -199,7 +203,7 @@ All on seeded data (10,000 users, 2,000 teams). Pre-minted tokens. Requests tagg
 |---|---|---|
 | L-A1 | Board, 100 VUs, no think time, 30 s ramp then 60 s steady; 70% first page, 30% follow a cursor | `http_req_duration{route:board_teams}` p95 < 200 ms (internal goal < 80 ms), errors < 0.1% |
 | L-A2 | Same with 1 s think time | Same |
-| L-B | Mixed: L-A1 board readers + every 5 s a 50-way stampede on a fresh one-seat team + 2 req/s create, join, leave churn + 50 open SSE streams | Board p95 < 200 ms; each stampede exactly one 200; no 5xx except `busy`; invariants clean afterwards |
+| L-B | Mixed: 100 board readers + 12 stampedes, one every 5 s, of 50 fresh users on a fresh one-seat team (k6 `setup()` creates each team with 3 of 4 seats taken) + 2 creates per second churn + 50 open SSE streams (`backend/scripts/sse_listeners.py`). Joins and creates retry `503 busy` with the same key after `Retry-After`, like the web client | Board p95 < 200 ms; every stampede exactly one 200 (`stampede_wins{stampede:i}` count == 1 for each i); after retries only 200/201 or 409; every SSE stream stays open and receives team events; invariants clean and deadlocks 0 afterwards |
 | L-C | Soak: L-A2 for 10 minutes | Pool waiting, memory and p95 flat; invariants clean |
 | L-LIVE | L-A1 for 30 s against the live URL | Reported, labeled as free tier |
 
@@ -250,10 +254,12 @@ Runs on every push (any branch), every pull request and on demand. Every job tha
 
 README shows the CI badge.
 
+The load scenarios run in a separate workflow, `.github/workflows/load.yml` (on demand, and on pushes that change `loadtest/`, `backend/scripts/sse_listeners.py`, `.github/scripts/k6_notice.py` or the workflow): PostgreSQL 18 as on Neon, the API with production settings (1 worker, default pools and limits) except `RATE_CODE_PER_IP_MIN` raised because every k6 request comes from one IP; L-A1, L-A2, L-B with 50 SSE streams, invariants and the deadlock counter, then L-C. Each result is posted as a run annotation by `.github/scripts/k6_notice.py` and the summaries are uploaded as an artifact.
+
 ## 12. Submission acceptance checklist
 
 - [ ] All must-haves R1 to R19 show `passing` in requirements.md
-- [x] 20+ API tests (catalog IDs: 48 API + 5 lab + 19 race + 4 guarantee + 8 unit + 11 web + 10 end-to-end; collected: 73 API incl. lab + 13 unit + 20 concurrency, 65 Vitest, 20 Playwright runs) green in CI
+- [x] 20+ API tests (catalog IDs: 49 API + 5 lab + 19 race + 5 guarantee + 9 unit + 12 web + 10 end-to-end; collected: 74 API incl. lab + 15 unit + 21 concurrency, 70 Vitest, 20 Playwright runs) green in CI
 - [x] T-RACE-01 and T-RACE-02 both behave as expected in CI logs (run 43063463873)
 - [ ] Invariants clean on seed, after tests, after L-B, after chaos
 - [ ] Load report filled with measured numbers, commands and hardware

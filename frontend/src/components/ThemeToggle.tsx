@@ -1,16 +1,15 @@
-// Light, dark or system theme switch as a radio group (arrow keys move between options).
+// Light or dark theme switch as a radio group (arrow keys move between options).
 import clsx from 'clsx';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
 import { useTheme, type ThemeMode } from '../lib/theme';
 
 const OPTIONS: Array<{ mode: ThemeMode; label: string; Icon: typeof Sun }> = [
   { mode: 'light', label: 'Light', Icon: Sun },
   { mode: 'dark', label: 'Dark', Icon: Moon },
-  { mode: 'system', label: 'System', Icon: Monitor },
 ];
 
-/** Three-way theme switch; `onShell` styles it for the navy brand shell. */
+/** Two-way theme switch; `onShell` styles it for the navy brand shell. */
 export function ThemeToggle({ onShell = false, className }: { onShell?: boolean; className?: string }) {
   const [mode, setMode] = useTheme();
   const move = (event: KeyboardEvent<HTMLButtonElement>) => {

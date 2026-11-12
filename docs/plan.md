@@ -4,7 +4,7 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Wed 11 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Light, Dark or System theme and the hackathon-event look. Backend: 106 tests pass (73 API, 13 unit, 20 concurrency), ruff and mypy clean. Web: 65 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Module 9 step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven. Step 2 done: Dockerfile and Compose, verified by the CI compose smoke job. Next: deploy to Render + Neon, k6 runs, manual checks, video.
+Last checkpoint: Thu 12 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Light or Dark theme (System option removed 12 Nov) and the hackathon-event look. Backend: 110 tests pass (74 API, 15 unit, 21 concurrency), ruff and mypy clean. Web: 70 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Module 9 step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven. Step 2 done: Dockerfile and Compose, verified by the CI compose smoke job. Step 3 in progress: Render service live at https://crewline-20bm.onrender.com on Neon (PostgreSQL 18, Singapore); demo seed pending the owner; load workflow (`load.yml`) for the k6 runs. Then manual checks, video.
 
 | Module | Scope | Status |
 |---|---|---|
@@ -15,7 +15,7 @@ Last checkpoint: Wed 11 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Li
 | 5 Board and suggestions | Keyset board (teams, people), micro-cache + ETag, suggestions + scoring unit tests; guarantee tests T-GUAR-01 to 04 (overload, per-user limits, atomicity) | done |
 | 6 Realtime | Listener with reconnect, EventHub (team, people, request audience), SSE endpoint, cache invalidation on notify (B-2), metrics | done |
 | 7 Data and load | `database/seed.py` (0.9 s), EXPLAIN, latency probe of every endpoint, suggestions tuning (B-21), k6 scripts, chaos test (PASS). The k6 runs happen in module 9 (k6 is installed at `C:\Program Files\k6\k6.exe` and also runs in CI) | done |
-| 8 Frontend | Bot checks (ADR-037); React app with every endpoint wired; visual system with team band colors, event look, Light, Dark or System theme (ADR-038); live feed, filters, command palette, team peek, QR invites; security headers (ADR-039); Race lab for judges (ADR-040); Vitest T-WEB-01 to 11, Playwright E2E-01 to 10, T-LAB-01 to 05 | done |
+| 8 Frontend | Bot checks (ADR-037); React app with every endpoint wired; visual system with team band colors, event look, Light or Dark theme (ADR-038); live feed, filters, command palette, team peek, QR invites; security headers (ADR-039); Race lab for judges (ADR-040); Vitest T-WEB-01 to 11, Playwright E2E-01 to 10, T-LAB-01 to 05 | done |
 | 9 Ops | Dockerfile (builds the web app), Compose, GitHub Actions (lint, API, race, web, e2e, k6 smoke), deploy (Render + Neon) with `CREWLINE_PUBLIC_URL`, reviewer accounts, k6 L-A/L-B/L-C runs, manual keyboard, screen reader and real phone checks, design doc numbers, video | next |
 
 How to resume: start the dev database (`uv run --project backend python database/dev_db.py start --name test` happens automatically in tests), run `uv run --project backend pytest backend/tests -q` from the repo root (about 2 minutes), then continue with the module marked next. Read docs/bug-diary.md (root causes of every bug so far) first.

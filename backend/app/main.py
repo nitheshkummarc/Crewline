@@ -59,8 +59,10 @@ def mount_web(app: FastAPI, dist_dir: str) -> None:
     if not index.exists():
         return
 
-    @app.get("/{path:path}", include_in_schema=False)
+    # HEAD too: uptime monitors and link checkers send it, and FastAPI routes are GET-only by default (B-32).
+    @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     async def spa(path: str) -> FileResponse:
+        """Return a built file, or index.html so the client router decides; API paths stay 404."""
         if path.startswith("api/"):
             raise NotFound()
         candidate = (dist / path).resolve()
@@ -85,12 +87,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                    suggestions_router, events_router, lab_router):
         app.include_router(router)
 
-    @app.get("/healthz", include_in_schema=False)
+    @app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
     async def healthz() -> dict:
+        """Liveness: the process answers; no database call."""
         return {"ok": True}
 
-    @app.get("/readyz", include_in_schema=False)
+    @app.api_route("/readyz", methods=["GET", "HEAD"], include_in_schema=False)
     async def readyz() -> dict:
+        """Readiness: one SELECT 1 on the read pool; 503 busy if the database is unreachable."""
         try:
             async with db_pools.read_conn() as conn:
                 await conn.fetchval("SELECT 1")

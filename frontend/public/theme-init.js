@@ -1,4 +1,4 @@
-// Apply the saved theme (light, dark or system) before the page paints, so there is no flash of the wrong theme.
+// Apply the saved theme (light or dark) before the page paints, so there is no flash of the wrong theme; without one the device setting applies.
 (function applySavedTheme() {
   try {
     var saved = window.localStorage.getItem('crewline-theme');

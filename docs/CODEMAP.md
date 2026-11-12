@@ -35,7 +35,10 @@ App factory: lifespan (pools, listener, purge task), middleware, routers, health
 | Name | Purpose | Status |
 |---|---|---|
 | `lifespan(app)` | Open pools, start the LISTEN listener and the idempotency purge task; stop them on shutdown | done |
-| `mount_web(app, dist_dir)` | Serve the built SPA at / with index.html as the fallback for client routes | done |
+| `mount_web(app, dist_dir)` | Serve the built SPA at / with index.html as the fallback for client routes (GET and HEAD, B-32) | done |
+| `spa(path)` | Return a built file, or index.html so the client router decides; API paths stay 404 | done |
+| `healthz()` | Liveness: the process answers; no database call (GET and HEAD) | done |
+| `readyz()` | Readiness: one SELECT 1 on the read pool; 503 busy if the database is unreachable (GET and HEAD) | done |
 | `create_app(settings)` | Build the app: rate limits, cache, event hub, middleware (security headers, request id), routers, /healthz, /readyz, /metrics, SPA | done |
 
 ### backend/app/config.py
@@ -88,7 +91,7 @@ FastAPI dependencies shared by routers.
 |---|---|---|
 | `current_user_id(request)` | Return the user id from the session cookie or raise 401 | done |
 | `idempotency_key(key)` | Validate and return the Idempotency-Key header or raise 400 | done |
-| `client_ip(request)` | Return the client IP used for rate limits (first X-Forwarded-For hop behind a proxy) | done |
+| `client_ip(request)` | Client IP for per-IP rate limits: the `CLIENT_IP_HEADER` edge header if present, else the socket peer; never `X-Forwarded-For` (B-33) | done |
 | `write_context(request, user_id, key, route, params, body)` | Apply the per-user mutation limit and build the WriteContext for one write | done |
 
 ### backend/app/core/idempotency.py
@@ -162,7 +165,7 @@ SSE hub: subscriptions per hackathon, public projection of audit notifications, 
 Prometheus metrics: request durations per route plus pool, transaction, cache and SSE gauges read at scrape.
 | Name | Purpose | Status |
 |---|---|---|
-| `registry`, `REQUEST_DURATION`, `POOL_SIZE`, `POOL_IDLE`, `TX_EVENTS`, `CACHE`, `SSE_CONNECTIONS`, `SSE_DROPPED`, `LISTENER_RECONNECTS` | Metric objects | done |
+| `registry`, `REQUEST_DURATION`, `POOL_SIZE`, `POOL_IDLE`, `TX_EVENTS`, `CACHE`, `SSE_CONNECTIONS`, `SSE_DROPPED`, `LISTENER_RECONNECTS`, `CLIENT_IP_SOURCE` | Metric objects (`CLIENT_IP_SOURCE` counts header vs peer client IPs, B-33) | done |
 | `observe_request(method, route, status, seconds)` | Record one request duration (status grouped as 2xx, 4xx, 5xx) and keep it for percentiles | done |
 | `RECENT_LIMIT` | Durations kept per route for exact percentiles (1,000) | done |
 | `percentile(sorted_ms, fraction)` | Return the nearest-rank percentile of sorted values | done |
@@ -730,6 +733,14 @@ Invariant checker.
 | `run_checks(url)` | Run every invariant query and return violations keyed by invariant id | done |
 | `main()` | Print violations and exit non-zero if any | done |
 
+### backend/scripts/sse_listeners.py
+Hold N event streams open during a load run (L-B) and report the events each one received.
+| Name | Purpose | Status |
+|---|---|---|
+| `listen(base, token, hackathon_id, seconds)` | Read one stream; return its status, event counts by kind and whether it stayed open | done |
+| `run(args, data)` | Open all streams at once, print a summary, exit 1 if any stream failed, dropped or got no team event | done |
+| `main()` | CLI entry point; reads the tokens file | done |
+
 ### backend/scripts/chaos.py
 Chaos test (T-CHAOS-01): hard-kill the API mid-workload, restart it, prove nothing is lost or duplicated.
 | Name | Purpose | Status |
@@ -752,27 +763,32 @@ Shared k6 helpers.
 | `loadData()` | Read the seeded tokens, hackathon id and open team codes | done |
 | `BASE` | Base URL from `BASE_URL` | done |
 | `params(token, route, mutate)` | Session cookie, route tag, and an Idempotency-Key for mutations | done |
+| `busyRetries` | Counter of 503 busy answers retried with the same key | done |
+| `postAction(url, body, token, route, attempts)` | POST one logical action; on 503 wait Retry-After plus jitter and resend with the same key | done |
 | `idempotencyKey()` | A random 32-character hex key | done |
 
 ### loadtest/board.js
 Scenario L-A1 and L-A2 (THINK=1).
 | Name | Purpose | Status |
 |---|---|---|
-| `options` | Ramp to 100 VUs, thresholds p95 < 200 ms and errors < 0.1 % on route board_teams | done (not yet run) |
-| `default()` | One board read: 70 % first page, 30 % follow the cursor | done (not yet run) |
+| `options` | Ramp to 100 VUs, thresholds p95 < 200 ms and errors < 0.1 % on route board_teams | done |
+| `default()` | One board read: 70 % first page, 30 % follow the cursor | done |
 
 ### loadtest/mixed.js
 Scenario L-B.
 | Name | Purpose | Status |
 |---|---|---|
-| `options` | 100 board readers, a 50-user stampede every 5 s (12 rounds), churn at 2 creates per second | done (not yet run) |
-| `boardReader()`, `stampede()`, `churn()` | Scenario functions | done (not yet run) |
+| `options` | 100 board readers, a 50-user stampede every 5 s (12 rounds), churn at 2 creates per second; one `stampede_wins` threshold per stampede (`count==1`) | done |
+| `setup()` | Create one team per stampede with 3 of 4 seats taken (leader plus two joins); return the invite codes | done |
+| `boardReader()` | Board read, same mix as L-A without think time | done |
+| `stampede(setupData)` | Iteration i: 50 fresh users join team i; after busy retries only 200 or 409, one 200 per team | done |
+| `churn()` | Fresh users create teams at 2 per second (busy retries) | done |
 
 ### loadtest/soak.js
 Scenario L-C.
 | Name | Purpose | Status |
 |---|---|---|
-| `options`, `default()` | 10 minutes of 100 VUs with 1 s think time; p95 < 200 ms and p99 < 400 ms | done (not yet run) |
+| `options`, `default()` | 10 minutes of 100 VUs with 1 s think time; p95 < 200 ms and p99 < 400 ms | done |
 
 ## Web
 
@@ -874,10 +890,11 @@ Race lab hooks.
 | `useLabRun(run, done)` | Run one experiment; announce the result or the error | done |
 
 ### frontend/src/lib/theme.ts
-Theme preference: light, dark or system, stored per browser.
+Theme preference: light or dark, stored per browser; the device setting applies until a choice is saved.
 | Name | Purpose | Status |
 |---|---|---|
-| `savedTheme()`, `applyTheme(mode)`, `useTheme()` | Read, apply and track the theme mode | done |
+| `deviceTheme()` | The device's preferred theme (light when the browser cannot tell) | done |
+| `savedTheme()`, `applyTheme(mode)`, `useTheme()` | Read (saved or device), apply and save, and track the theme | done |
 
 ### frontend/src/components/lab/
 Race lab views (presentational).
@@ -996,7 +1013,7 @@ Presentational components (no data fetching).
 | `BoardToolbar.tsx` | `BoardToolbar` (search, skill filter popover with needs or has, sort, removable filter chips), `SearchBox` | done |
 | `Button.tsx` | `Button` (primary, secondary, ghost, danger; md and sm; busy spinner; `data-variant`), `ButtonLink`, `buttonClass` | done |
 | `HeroBanner.tsx` | `HeroBanner` (page header on the lit navy surface, optional facts row), `HeroFact` (one real fact) | done |
-| `ThemeToggle.tsx` | `ThemeToggle`: Light, Dark or System radio group | done |
+| `ThemeToggle.tsx` | `ThemeToggle`: Light or Dark radio group (T-WEB-12 in `ThemeToggle.test.tsx`) | done |
 | `CommandPalette.tsx` | `CommandPalette` (cmdk list in a dialog: groups of items, arrow keys, Enter, Escape) | done |
 | `ConfirmDialog.tsx` | `ConfirmDialog`, `DIALOG_CLASS` | done |
 | `ErrorNotice.tsx` | `ErrorNotice`: the one error display (code tag, one-line message, request id for 5xx) | done |

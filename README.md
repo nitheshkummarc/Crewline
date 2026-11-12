@@ -37,7 +37,7 @@ On Windows without make, run the raw commands (uv is installed with `pip install
 | PostgreSQL + API with Docker (`make up`, `make down`) | `docker compose up -d --build`, `docker compose down` |
 | Local Postgres without Docker | `uv run --project backend python database/dev_db.py start` (prints `DATABASE_URL`; `stop` to stop) |
 | Apply migrations | `uv run --project backend python database/migrate.py` |
-| API dev server | `uv run --project backend uvicorn --factory app.main:create_app --reload --app-dir backend` |
+| API dev server | `uv run --project backend uvicorn --factory app.main:create_app --reload --app-dir backend --no-proxy-headers` |
 | All backend tests | `uv run --project backend pytest backend/tests` |
 | Race and guarantee tests only | `uv run --project backend pytest backend/tests/concurrency -q` |
 | Invariant checker | `uv run --project backend python database/invariants.py` |

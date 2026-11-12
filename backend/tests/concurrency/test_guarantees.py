@@ -132,6 +132,20 @@ async def test_guar_02_per_user_limits(limited_server: str, users: Users, clean_
         await limited.close()
 
 
+async def test_guar_05_forwarded_for_cannot_dodge_ip_limits(limited_server: str, users: Users, clean_db: str) -> None:
+    """T-GUAR-05: a new fake X-Forwarded-For on every login still hits the per-IP login limit (B-33)."""
+    limited = Users(limited_server)
+    try:
+        known = await users.new("spoof-target")
+        client = limited.client()
+        wrong = {"email": known.email, "password": "wrong-pass-1", **form_fields()}
+        logins = [(await client.post("/api/auth/login", json=wrong,
+                                     headers={"X-Forwarded-For": f"203.0.113.{i}"})).status_code for i in range(4)]
+        assert logins == [401, 401, 401, 429]
+    finally:
+        await limited.close()
+
+
 async def test_guar_03_join_is_all_or_nothing(fault_server: str, fault_db: str) -> None:
     """T-GUAR-03: a failure at the last statement of a join leaves no seat, no member and no stored key."""
     hid = await make_hackathon(fault_db, min_size=1, max_size=4)

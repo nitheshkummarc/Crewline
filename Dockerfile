@@ -30,6 +30,7 @@ RUN useradd --system --uid 10001 --no-create-home crewline
 USER crewline
 
 # PORT is set by the host (Render sets it); WEB_CONCURRENCY sets the uvicorn worker count (default 1).
+# --no-proxy-headers: the client IP comes only from CLIENT_IP_HEADER or the socket, never X-Forwarded-For (B-33).
 ENV PORT=8000 WEB_DIST_DIR=/app/frontend/dist
 EXPOSE 8000
-CMD ["sh", "-c", "python database/migrate.py && exec uvicorn --factory app.main:create_app --app-dir backend --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "python database/migrate.py && exec uvicorn --factory app.main:create_app --app-dir backend --host 0.0.0.0 --port ${PORT} --no-proxy-headers"]

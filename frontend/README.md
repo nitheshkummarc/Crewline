@@ -23,7 +23,7 @@ End-to-end tests need a running API that serves the build, on seeded data, with 
 ```
 uv run --project backend python database/seed.py --users 300 --teams 40
 RATE_SIGNUP_PER_HOUR=100000 RATE_LOGIN_PER_MIN=100000 COOKIE_SECURE=false \
-  uv run --project backend uvicorn --factory app.main:create_app --app-dir backend --port 8000
+  uv run --project backend uvicorn --factory app.main:create_app --app-dir backend --port 8000 --no-proxy-headers
 npm --prefix frontend run e2e            # E2E_BASE_URL defaults to http://127.0.0.1:8000
 ```
 

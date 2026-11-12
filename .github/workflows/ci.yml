@@ -231,15 +231,7 @@ jobs:
         run: |
           k6 run -e RAMP=5s -e DURATION=15s --summary-trend-stats "avg,min,med,max,p(90),p(95),p(99)" \
             --summary-export k6-summary.json loadtest/board.js
-          python3 - <<'EOF'
-          import json
-          m = json.load(open("k6-summary.json"))["metrics"]
-          d, r = m["http_req_duration{route:board_teams}"], m["http_reqs"]
-          import subprocess
-          version = subprocess.run(["k6", "version"], capture_output=True, text=True).stdout.split()[1]
-          print(f"::notice title=k6 {version} board_teams::p50 {d['med']:.1f} ms, p95 {d['p(95)']:.1f} ms, "
-                f"p99 {d['p(99)']:.1f} ms, max {d['max']:.1f} ms, {r['rate']:.0f} req/s, {r['count']} requests")
-          EOF
+          python3 .github/scripts/k6_notice.py k6-summary.json "board_teams smoke (L-A1 20 s)"
       - name: Invariants
         run: uv run --project backend python database/invariants.py
       - name: Upload API log

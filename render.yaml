@@ -17,6 +17,9 @@ services:
         generateValue: true
       # Passed to the Docker build as a build argument; must match the service URL Render assigns.
       - key: CREWLINE_PUBLIC_URL
-        value: https://crewline.onrender.com
+        value: https://crewline-20bm.onrender.com
+      # Cloudflare in front of Render overwrites this header with the real client IP; X-Forwarded-For is spoofable (B-33).
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
       - key: LAB_ENABLED
         value: "true"

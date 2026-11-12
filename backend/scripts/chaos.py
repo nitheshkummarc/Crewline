@@ -65,7 +65,7 @@ class Api:
         log = open(self.log_path, "ab")  # noqa: SIM115
         self.proc = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "--factory", "app.main:create_app", "--app-dir", str(ROOT / "backend"),
-             "--host", "127.0.0.1", "--port", str(self.port), "--log-level", "warning"],
+             "--host", "127.0.0.1", "--port", str(self.port), "--log-level", "warning", "--no-proxy-headers"],
             env=self.env, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
         deadline = time.time() + 40
         while time.time() < deadline:

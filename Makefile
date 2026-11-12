@@ -18,7 +18,7 @@ migrate:          ## Apply SQL migrations to $$DATABASE_URL
 	$(PY) database/migrate.py
 
 api:              ## API dev server on :8000
-	$(UV) run --project backend uvicorn --factory app.main:create_app --reload --app-dir backend
+	$(UV) run --project backend uvicorn --factory app.main:create_app --reload --app-dir backend --no-proxy-headers
 
 web:              ## Web dev server (proxies /api to :8000)
 	npm --prefix frontend run dev

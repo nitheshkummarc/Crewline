@@ -3,7 +3,7 @@
 import math
 from collections import defaultdict, deque
 
-from prometheus_client import CollectorRegistry, Gauge, Histogram, generate_latest
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, generate_latest
 from prometheus_client.exposition import CONTENT_TYPE_LATEST
 
 registry = CollectorRegistry()
@@ -20,6 +20,8 @@ CACHE = Gauge("crewline_board_cache", "Board cache hits and misses", ["result"],
 SSE_CONNECTIONS = Gauge("crewline_sse_connections", "Open SSE streams in this worker", registry=registry)
 SSE_DROPPED = Gauge("crewline_sse_dropped", "SSE streams closed because the client was too slow", registry=registry)
 LISTENER_RECONNECTS = Gauge("crewline_listener_reconnects", "LISTEN connection reconnects", registry=registry)
+CLIENT_IP_SOURCE = Counter("crewline_client_ip_source", "Where the rate-limit client IP came from (header or peer)",
+                           ["source"], registry=registry)
 
 
 RECENT_LIMIT = 1000

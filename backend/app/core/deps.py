@@ -6,7 +6,8 @@ from uuid import UUID
 
 from fastapi import Header, Request
 
-from app.core import ratelimit
+from app.config import get_settings
+from app.core import metrics, ratelimit
 from app.core.errors import IdempotencyKeyRequired, RateLimited, Unauthenticated
 from app.core.idempotency import request_hash
 from app.core.security import COOKIE_NAME, decode_token
@@ -32,10 +33,13 @@ def idempotency_key(key: str | None = Header(default=None, alias="Idempotency-Ke
 
 
 def client_ip(request: Request) -> str:
-    """Return the client IP used for rate limits (first X-Forwarded-For hop behind a proxy)."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    """Return the client IP for per-IP rate limits: the configured edge header if present, else the socket peer."""
+    # X-Forwarded-For is never read: Render's edge appends to it, so its first hop is whatever the client sent (B-33).
+    name = get_settings().client_ip_header
+    value = request.headers.get(name, "").strip() if name else ""
+    metrics.CLIENT_IP_SOURCE.labels("header" if value else "peer").inc()
+    if value:
+        return value
     return request.client.host if request.client else "unknown"
 
 

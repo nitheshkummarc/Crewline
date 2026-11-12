@@ -49,7 +49,7 @@ def start_server(db_url: str, log_path: Path, extra_env: dict[str, str] | None =
     log = open(log_path, "ab")  # noqa: SIM115
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "--factory", "app.main:create_app", "--app-dir", str(BACKEND_DIR),
-         "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
+         "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning", "--no-proxy-headers"],
         env=env, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
     base = f"http://127.0.0.1:{port}"
     deadline = time.time() + 40

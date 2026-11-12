@@ -39,7 +39,8 @@ Crewline/
   Dockerfile                      multi-stage: build frontend, install backend, run uvicorn
   render.yaml                     Render Blueprint for the deploy (Singapore, Docker, free plan)
   .github/workflows/ci.yml        lint, API tests, race tests, web tests, e2e, k6 smoke, invariants
-  .github/scripts/                start-postgres.sh (postgres:$PG_VERSION, default 16, max_connections=300), start-api.sh (background API, waits for /readyz)
+  .github/workflows/load.yml      k6 L-A1, L-A2, L-B (with 50 SSE streams), L-C on seeded data, PostgreSQL 18
+  .github/scripts/                k6_notice.py (k6 summary to a run annotation), start-postgres.sh (postgres:$PG_VERSION, default 16, max_connections=300), start-api.sh (background API, waits for /readyz)
   database/                       everything that owns the schema and data
     migrations/0001_init.sql      full schema below
     migrate.py                    apply migrations
@@ -71,6 +72,8 @@ Crewline/
       unit/                       scoring, invite codes, cursor, request hash
     scripts/
       chaos.py                    kill the API mid-join and verify
+      sse_listeners.py            hold N event streams open during a load run and count events
+      latency_probe.py            every endpoint uncontended plus the board under load
   loadtest/
     lib.js                        shared helpers (tokens, tags)
     board.js                      scenario A (spec)
@@ -714,7 +717,7 @@ Three event kinds, built by `public_projection` (no emails, no invite codes):
 | Authorization | Leader checks inside the SQL predicate or under the team row lock |
 | Invite codes | 50 bits from `secrets.choice`; expiry in SQL with the database clock; same 404 for unknown and expired |
 | Bot checks | Signup and login carry a form token (HS256 JWT, audience `crewline-form`, issue time in ms, 2 h expiry) fetched from `GET /api/auth/form-token` when the form renders, and a hidden honeypot field `company`. `core/formguard.py` rejects a filled honeypot, a bad or expired token, or a submit under 2 s with 400 `bot_check_failed`. The audience keeps form and session tokens apart (ADR-037) |
-| Brute force | Failed code attempts limited per user (5/min) and per IP (20/min); login limited per IP+email (5/min); signup per IP (10/hour); all mutations per user (60/min). In-process sliding windows (per worker; documented) |
+| Brute force | Failed code attempts limited per user (5/min) and per IP (20/min); login limited per IP+email (5/min); signup per IP (10/hour); all mutations per user (60/min). In-process sliding windows (per worker; documented) The IP is the host edge's header named by `CLIENT_IP_HEADER` (Render: `cf-connecting-ip`) or the socket peer; `X-Forwarded-For` is never trusted because a client can prepend its own value (B-33). |
 | Brute-force math | 2,000 live codes in 2^50 ≈ 1.13e15 space. At 20,000 guesses per minute (1,000 IPs at the cap), expected time to the first hit is about 2.8e7 minutes ≈ 53 years, while each code lives 48 h |
 | Abuse caps | 5 pending requests per user, page size ≤ 50, request message ≤ 280 chars, 3 SSE streams per user |
 | Input validation | pydantic models with explicit limits; skills from a fixed taxonomy; IANA time zones checked against `zoneinfo`; UUID path params. A custom `RequestValidationError` handler returns 400 `validation_error` (FastAPI's default is 422, which the contract reserves for idempotency key mismatch) |
@@ -751,7 +754,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 ## 12. Observability
 
 - Logs: one JSON line per request (`ts, level, request_id, method, route, status, duration_ms, user_id`), plus ERROR lines for backstop hits and listener reconnects.
-- `/metrics` (Prometheus text): request duration histogram per route, pool size/idle/waiting per pool, pool acquire wait histogram, transaction duration per route, counters for 503 by cause (`lock_timeout`, `pool_timeout`, `inflight_cap`, `deadlock_exhausted`), `cap_backstop_hits_total`, `deadlock_retries_total`, SSE connections gauge, cache hits/misses.
+- `/metrics` (Prometheus text): request duration histogram per route, pool size/idle/waiting per pool, pool acquire wait histogram, transaction duration per route, counters for 503 by cause (`lock_timeout`, `pool_timeout`, `inflight_cap`, `deadlock_exhausted`), `cap_backstop_hits_total`, `deadlock_retries_total`, SSE connections gauge, cache hits/misses, `crewline_client_ip_source_total{source}` (rate-limit client IP from the edge header or the socket peer; B-33).
 - `/healthz` (process up), `/readyz` (`SELECT 1` on the read pool).
 - Latency ring: the request middleware also keeps the last 1,000 durations per `/api` route in memory, so `GET /api/lab/latency` reports exact p50, p95 and p99 (the Prometheus buckets are too coarse for that).
 - Statement tracing (`db/trace.py`): inside `tracing()`, every connection acquired by that asyncio task gets an asyncpg query logger; the Race lab walkthrough uses it to show the real statements of one join. Off everywhere else (one context-variable read per acquire).
@@ -775,7 +778,7 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 - Visual system (ADR-038, wristband): every team has its own band color, picked from its id so all clients agree, used for its card header, seat tabs, page hero, peek sheet and feed entries. Light theme by default, dark from the system setting. Wide Archivo for headings; labels in sentence case, no eyebrow labels. A faint dot grid on the canvas, banners on the navy shell lit by soft sky and mint glows, team headers with a soft gradient within their band color; gradients never on buttons and never purple. Sidebar navigation on laptops, a bottom tab bar on phones, the page's primary action in a bar above it. Tokens live in `frontend/src/styles/tokens.css` and `tailwind.config.ts`; every text, control, tag and band pair is measured by `frontend/scripts/contrast.mjs` (4.5:1 text, 3:1 borders and focus).
 - Interaction: a live activity feed of team events (created, filled, emptied, finalized, deleted) beside the board on wide screens and as a Live tab on phones; search, skill filters (needs or has) and sorting kept in the URL; a team peek sheet with members; a command palette (Ctrl+K or Cmd+K) for pages, actions and teams; `/` focuses search; invite QR codes.
 - Race lab page (`/lab`, ADR-040): tabs for How a join works (traced statements of a real join, a retry and a full team), Last-seat race, Spam clicks, Request queue and Latency (server percentiles plus a measurement from the browser).
-- Theme: Light, Dark or System switch (sidebar and login), stored per browser and applied before first paint by `public/theme-init.js`; navy brand shell and orange primary action in both themes.
+- Theme: Light or Dark switch (sidebar and login); until a choice is saved the device setting applies (`prefers-color-scheme`); the choice is stored per browser and applied before first paint by `public/theme-init.js`; navy brand shell and orange primary action in both themes.
 - The one event stream for the current hackathon is opened by the app shell, so it stays open across board and team pages (cap of 3 per user).
 - Errors: one display everywhere (`ErrorNotice`): the exact API error code as a tag and one plain line from `lib/errors.ts`; 5xx also show the request id. Field errors use one `FieldError` line under the field.
 - Optimistic updates for accept (a join through a request) and leave, with rollback on error. Join by code waits for the server: the target team is unknown until the code is resolved. 409 messages go to the page's single `aria-live` region and inline next to the action.
@@ -800,10 +803,11 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 | `RATE_LOGIN_PER_MIN` / `RATE_SIGNUP_PER_HOUR` / `RATE_MUTATIONS_PER_MIN` | `5` / `10` / `60` | Login per IP+email, signup per IP, mutations per user |
 | `IDEMPOTENCY_TTL_H` | `24` | Key retention |
 | `LOG_LEVEL` | `INFO` | Logging |
+| `CLIENT_IP_HEADER` | empty | Header that carries the real client IP for per-IP rate limits, set by the host's edge (Render: `cf-connecting-ip`); empty means the socket peer. `X-Forwarded-For` is never read, and uvicorn runs with `--no-proxy-headers` (B-33) |
 | `WEB_DIST_DIR` | `frontend/dist` | Built SPA served at `/` |
 | `LAB_ENABLED` / `LAB_MAX_ATTEMPTS` | `true` / `200` | Race lab on or off; largest race or queue per run |
 | `RATE_LAB_PER_MIN` / `RATE_LAB_GLOBAL_PER_HOUR` | `6` / `120` | Lab runs per user per minute and in total per hour |
-| `CREWLINE_PUBLIC_URL` (web build only) | `http://localhost:8000` | Absolute site URL written into `og:url` and `og:image` at build time (Docker build argument) |
+| `CREWLINE_PUBLIC_URL` (web build only) | `http://localhost:8000` | Absolute site URL written into `og:url` and `og:image` at build time (Docker build argument; Render passes service environment variables as build arguments, `render.yaml` sets the live URL) |
 | `PORT` (container only) | `8000` | Port uvicorn listens on in the image; Render sets it |
 | `WEB_CONCURRENCY` (container only) | `1` | uvicorn worker count, read by uvicorn itself; Compose sets `2` |
 

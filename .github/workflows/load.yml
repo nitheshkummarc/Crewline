@@ -1,0 +1,109 @@
+# Load scenarios L-A1, L-A2, L-B (with 50 SSE streams) and L-C on seeded data; numbers go to docs/load-report.md.
+name: Load
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - loadtest/**
+      - backend/scripts/sse_listeners.py
+      - .github/scripts/k6_notice.py
+      - .github/workflows/load.yml
+
+concurrency:
+  group: load-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DATABASE_URL: postgresql://postgres@127.0.0.1:5432/crewline
+  JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
+  # Production settings (1 worker, default pools and limits) on the production PostgreSQL version.
+  PG_VERSION: "18"
+  # All k6 traffic comes from one IP; the per-IP invite limit (20/min) would turn a 50-user stampede into 429s.
+  RATE_CODE_PER_IP_MIN: "100000"
+  STATS: avg,min,med,max,p(90),p(95),p(99)
+
+jobs:
+  load:
+    name: k6 L-A1, L-A2, L-B, L-C
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+          save-cache: false
+      - run: uv sync --project backend --locked
+      - name: Runner hardware
+        run: |
+          echo "::notice title=Runner::$(nproc) vCPU $(lscpu | sed -n 's/^Model name: *//p') $(free -g | awk '/Mem:/ {print $2}') GB RAM"
+      - name: Start PostgreSQL 18
+        run: bash .github/scripts/start-postgres.sh
+      - name: Migrate and seed (10,000 users, 2,000 teams, k6 tokens)
+        run: |
+          uv run --project backend python database/migrate.py
+          uv run --project backend python database/seed.py --users 10000 --teams 2000 --tokens loadtest/tokens.json
+      - name: Start API
+        run: bash .github/scripts/start-api.sh
+      - uses: grafana/setup-k6-action@v1
+
+      - name: L-A1 board, 100 VUs, no think time (30 s ramp, 60 s steady)
+        run: |
+          k6 run --summary-trend-stats "$STATS" --summary-export la1.json loadtest/board.js
+          python3 .github/scripts/k6_notice.py la1.json "L-A1 board 100 VUs"
+      - name: L-A2 board, 100 VUs, 1 s think time
+        if: ${{ !cancelled() }}
+        run: |
+          k6 run -e THINK=1 --summary-trend-stats "$STATS" --summary-export la2.json loadtest/board.js
+          python3 .github/scripts/k6_notice.py la2.json "L-A2 board 100 VUs 1 s think"
+      - name: L-B mixed (readers, 12 stampedes of 50 on one-seat teams, churn, 50 SSE streams)
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --project backend python backend/scripts/sse_listeners.py --streams 50 --seconds 85 > sse.log 2>&1 &
+          sse=$!
+          sleep 2
+          code=0
+          k6 run --summary-trend-stats "$STATS" --summary-export lb.json loadtest/mixed.js || code=$?
+          wait "$sse" || code=1
+          cat sse.log
+          python3 .github/scripts/k6_notice.py lb.json "L-B mixed"
+          echo "::notice title=L-B SSE::$(tail -n 1 sse.log)"
+          exit "$code"
+      - name: Invariants and deadlocks after L-B
+        if: ${{ !cancelled() }}
+        run: |
+          uv run --project backend python database/invariants.py
+          echo "::notice title=After L-B::deadlocks $(docker exec crewline-pg psql -U postgres -d crewline -tAc \
+            "SELECT deadlocks FROM pg_stat_database WHERE datname = 'crewline'") / $(curl -fsS http://127.0.0.1:8000/metrics \
+            | grep -E '^crewline_(tx_events|sse_dropped|listener_reconnects)' | tr '\n' ' ')"
+      - name: L-C soak, 100 VUs, 1 s think time, 10 minutes
+        if: ${{ !cancelled() }}
+        run: |
+          k6 run --summary-trend-stats "$STATS" --summary-export lc.json loadtest/soak.js
+          python3 .github/scripts/k6_notice.py lc.json "L-C soak 10 min"
+      - name: Invariants after L-C
+        if: ${{ !cancelled() }}
+        run: uv run --project backend python database/invariants.py
+      - name: Upload summaries and API log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: load-results
+          path: |
+            la1.json
+            la2.json
+            lb.json
+            lc.json
+            sse.log
+            api.log
+          retention-days: 30

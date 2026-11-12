@@ -4,7 +4,7 @@
 set -euo pipefail
 
 nohup backend/.venv/bin/python -m uvicorn --factory app.main:create_app --app-dir backend \
-  --host 127.0.0.1 --port 8000 > api.log 2>&1 &
+  --host 127.0.0.1 --port 8000 --no-proxy-headers > api.log 2>&1 &
 
 for _ in $(seq 1 60); do
   if curl -fsS http://127.0.0.1:8000/readyz >/dev/null 2>&1; then

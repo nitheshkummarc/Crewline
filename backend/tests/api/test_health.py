@@ -47,3 +47,14 @@ async def test_api_48_security_headers_and_web_cache_rules(server: str) -> None:
     assert asset.headers["cache-control"] == "public, max-age=31536000, immutable"
     assert "cache-control" not in api.headers
     assert missing_api.status_code == 404 and missing_api.json()["error"]["code"] == "not_found"
+
+
+async def test_api_49_head_requests_on_health_and_web(server: str) -> None:
+    """T-API-49: HEAD answers 200 on health checks, the SPA shell, client routes and assets (B-32); unknown API 404."""
+    async with httpx.AsyncClient(base_url=server, verify=SHARED_TLS) as client:
+        for path in ("/healthz", "/readyz", "/", "/teams/any-client-route", "/assets/index-abc123.js"):
+            response = await client.head(path)
+            assert response.status_code == 200, (path, response.status_code)
+            assert response.content == b""
+            assert response.headers["x-content-type-options"] == "nosniff"
+        assert (await client.head("/api/does-not-exist")).status_code == 404
