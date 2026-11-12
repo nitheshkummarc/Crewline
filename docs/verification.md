@@ -261,7 +261,7 @@ The load scenarios run in a separate workflow, `.github/workflows/load.yml` (on 
 - [ ] All must-haves R1 to R19 show `passing` in requirements.md
 - [x] 20+ API tests (catalog IDs: 49 API + 5 lab + 19 race + 5 guarantee + 9 unit + 12 web + 10 end-to-end; collected: 74 API incl. lab + 15 unit + 21 concurrency, 70 Vitest, 20 Playwright runs) green in CI
 - [x] T-RACE-01 and T-RACE-02 both behave as expected in CI logs (run 43063463873)
-- [ ] Invariants clean on seed, after tests, after L-B, after chaos
+- [x] Invariants clean on seed, after tests, after L-B, after chaos (L-B and L-C: load run 43194526097)
 - [ ] Load report filled with measured numbers, commands and hardware
 - [ ] Design doc is one page and matches the code
 - [ ] `make race` and `make invariants` work from a clean clone

@@ -24,8 +24,8 @@ sys.path.insert(0, str(ROOT / "backend"))
 from app.core.invite_codes import generate_code
 from app.core.skills import SKILLS
 
-ZONES = ["Asia/Kolkata", "Asia/Singapore", "Europe/London", "Europe/Berlin", "America/New_York",
-         "America/Los_Angeles", "America/Sao_Paulo", "Africa/Lagos", "Asia/Tokyo", "Australia/Sydney"]
+# Every seeded user is in India: the demo hackathon is India-based (owner's choice, 12 Nov 2026).
+ZONE = "Asia/Kolkata"
 
 
 def build(users: int, teams: int, max_size: int, min_size: int, rng: random.Random) -> dict:
@@ -34,7 +34,7 @@ def build(users: int, teams: int, max_size: int, min_size: int, rng: random.Rand
     hackathon_id = uuid.uuid4()
     user_ids = [uuid.uuid4() for _ in range(users)]
     user_rows = [(uid, f"user{i:05d}@example.com", f"User {i:05d}",
-                  rng.sample(SKILLS, rng.randint(1, 4)), rng.choice(ZONES), now - timedelta(minutes=users - i))
+                  rng.sample(SKILLS, rng.randint(1, 4)), ZONE, now - timedelta(minutes=users - i))
                  for i, uid in enumerate(user_ids)]
     participants = [(hackathon_id, uid, True, now - timedelta(minutes=users - i)) for i, uid in enumerate(user_ids)]
     pool = user_ids[:]

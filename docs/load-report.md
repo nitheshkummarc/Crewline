@@ -1,7 +1,42 @@
 # Load and latency report
 
 Measured numbers only. Scenario definitions are in [verification.md](verification.md) section 8.
-Status: development measurements with the Python latency probe are below, plus the k6 smoke run from CI (every push). The full k6 runs (L-A, L-B, L-C, L-LIVE) are pending in module 9; k6 is installed on the dev machine at `C:\Program Files\k6\k6.exe`.
+Status: the k6 scenarios L-A1, L-A2, L-B and L-C were run on 12 Nov 2026 in the `load.yml` workflow (results first, below). The development measurements with the Python latency probe and the CI smoke runs follow. L-LIVE (against the deployed URL) is reported separately and labeled free tier.
+
+## k6 results (L-A1, L-A2, L-B, L-C), 12 Nov 2026
+
+Run [43194526097](https://github.com/nitheshkummarc/Crewline/actions/runs/43194526097) of `.github/workflows/load.yml` on commit `3aced2b`. Every number below is from that run's annotations; the k6 summaries, SSE log and API log are in its `load-results` artifact.
+
+| Item | Value |
+|---|---|
+| Machine | GitHub-hosted `ubuntu-24.04` runner: 4 vCPU Intel Xeon Platinum 8573C, 15 GB RAM. k6, the API and PostgreSQL share it, so the numbers include the load generator's own CPU use |
+| Database | PostgreSQL 18 (`postgres:18` in Docker, `max_connections=300`), the version Neon runs in production |
+| API | 1 uvicorn worker, production defaults: pools read 10 and write 10 opened at startup, in-flight write cap 30, 1 s board cache. Only `RATE_CODE_PER_IP_MIN` is raised, because every k6 request comes from one IP |
+| Data | `database/seed.py --users 10000 --teams 2000 --tokens loadtest/tokens.json` |
+| Tool | k6 v2.3.0; `--summary-trend-stats "avg,min,med,max,p(90),p(95),p(99)"` |
+
+Teams board (`GET /api/hackathons/{hid}/board/teams`, client-side, milliseconds):
+
+| Scenario | Command | p50 | p95 | p99 | max | req/s | Requests | Thresholds |
+|---|---|---|---|---|---|---|---|---|
+| L-A1: 100 VUs, no think time, 30 s ramp + 60 s steady | `k6 run loadtest/board.js` | 54.9 | 80.1 | 93.9 | 147.2 | 1,643 | 147,898 | passed |
+| L-A2: same with 1 s think time | `k6 run -e THINK=1 loadtest/board.js` | 0.8 | 2.4 | 3.9 | 10.7 | 83 | 7,520 | passed |
+| L-B: mixed (below) | `k6 run loadtest/mixed.js` with `sse_listeners.py --streams 50` alongside | 61.4 | 92.4 | 110.4 | 636.5 | 1,444 | 102,539 | passed |
+| L-C: 100 VUs, 1 s think time, 10 minutes | `k6 run loadtest/soak.js` | 8.2 | 21.4 | 40.2 | 71.8 | 99 | 59,500 | passed (p95 < 200, p99 < 400) |
+
+Spec target: board p95 < 200 ms at 100 concurrent users. Met in every scenario, including L-B with stampedes and churn running at the same time.
+
+L-B in detail: 100 board readers, 12 stampedes (one every 5 s) of 50 fresh users on a fresh one-seat team, 2 team creations per second, and 50 open SSE streams.
+
+| Check | Result |
+|---|---|
+| Winners per stampede | `[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]`: exactly one in each of the 12 |
+| Final statuses of joins and creates | only 200/201 or 409, after 11 `503 busy` answers retried with the same key |
+| SSE | 50 streams, 0 failed, 97 team events received by each (4,850 in total), 0 dropped by the server |
+| Database | 0 deadlocks (`pg_stat_database`), 0 deadlock or state retries, 0 listener reconnects |
+| Invariants I1 to I10 | clean after L-B and again after L-C |
+
+L-C covers the whole 10 minutes in one aggregate: p99 40.2 ms and max 71.8 ms over 59,500 requests leave no room for a slowdown during the run. A per-minute series was not recorded.
 
 ## Setup (development measurements, 11 Nov 2026)
 
@@ -92,16 +127,14 @@ All in milliseconds. Spec target p95 < 200 ms: met in both runs. The two runs di
 
 | Run | Result |
 |---|---|
-| Seed | Invariants I1 to I9 clean |
+| Seed | Invariants clean (I1 to I9 at the time; I10 was added with the Race lab and is clean on every later seed) |
 | 50-way stampedes (T-RACE-01, 20 rounds) | Exactly one winner every round; invariants clean |
 | Overload (T-GUAR-01) | Fast 503 with Retry-After, no 500, correct final membership |
+| L-B under load (k6 run 43194526097): 12 stampedes of 50 on one-seat teams with readers, churn and 50 SSE streams | Exactly one winner in each stampede; 0 deadlocks; invariants clean after L-B and after L-C |
 | Chaos (T-CHAOS-01): 3 hard kills in 60 s, 200 users | 23,012 actions, 0 x 500, 0 replay mismatches, 0 over capacity, invariants clean |
 
-## Pending (k6)
+## Pending
 
 | Scenario | Status |
 |---|---|
-| L-A1 / L-A2 board, 100 VUs | script `loadtest/board.js`; a 20 s smoke version runs in CI (above); full run pending |
-| L-B mixed (board + stampedes + churn) | script `loadtest/mixed.js` written; to run with k6 |
-| L-C soak 10 min | script `loadtest/soak.js` written; to run with k6 |
-| L-LIVE against the deployed URL | after deploy (module 9) |
+| L-LIVE: L-A1 for 30 s against the deployed URL (Render free plan, labeled free tier) | to run |

@@ -4,7 +4,7 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Thu 12 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Light or Dark theme (System option removed 12 Nov) and the hackathon-event look. Backend: 110 tests pass (74 API, 15 unit, 21 concurrency), ruff and mypy clean. Web: 70 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Module 9 step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven. Step 2 done: Dockerfile and Compose, verified by the CI compose smoke job. Step 3 in progress: Render service live at https://crewline-20bm.onrender.com on Neon (PostgreSQL 18, Singapore); demo seed pending the owner; load workflow (`load.yml`) for the k6 runs. Then manual checks, video.
+Last checkpoint: Thu 12 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Light or Dark theme (System option removed 12 Nov) and the hackathon-event look. Backend: 110 tests pass (74 API, 15 unit, 21 concurrency), ruff and mypy clean. Web: 70 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Module 9 step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven. Step 2 done: Dockerfile and Compose, verified by the CI compose smoke job. Step 3 done: live at https://crewline-20bm.onrender.com (Render, Singapore) on Neon PostgreSQL 18, demo data seeded (all users in Asia/Kolkata), live checks passed (reviewer login, board, SSE through Render, Race lab 50-way race with one winner, B-32 and B-33 fixed and verified live). Step 4 done: k6 L-A1, L-A2, L-B, L-C in load run 43194526097, all thresholds met. Next: L-LIVE, keep-awake ping for judging, manual checks M-01 to M-07, video, tag and submit.
 
 | Module | Scope | Status |
 |---|---|---|
@@ -52,16 +52,22 @@ No new features on Sunday.
 
 ## Video script (5 minutes max)
 
-| Time | Content |
-|---|---|
-| 0:00 | The problem in one sentence; stack and why one database |
-| 0:30 | Run the negative control (multiple winners), then the real race test (exactly one) |
-| 1:30 | Walk the join SQL: conditional UPDATE, READ COMMITTED re-check, lock order, unique index, CHECK backstop |
-| 2:15 | Idempotency: retry of a winning join replays 200; same key, different body gives 422 |
-| 2:45 | Two browsers and a phone: live board, request accept, leader handover |
-| 3:30 | Load report: L-A and L-B numbers, pool metrics, 0 deadlocks |
-| 4:10 | Chaos test output and invariant checker clean |
-| 4:40 | Known gaps and what one more week adds |
+Shape: problem first, then the product working within 30 seconds, then how it works, then proof. Every claim on screen is a real run, never a slide.
+
+| Time | Show | Say (plain, one idea per sentence) |
+|---|---|---|
+| 0:00 | Race lab, Last-seat race tab, 50 racers, press Run | "Fifty people click Join on the last open seat at the same moment. How many get in?" Pause on the result: one winner, 49 `team_full`, read back from the database |
+| 0:20 | Same screen | "One. Every time. This is Crewline, team formation for a 10,000-person hackathon, built so that a race, a retry or a crash can never leave a team over capacity." |
+| 0:35 | Board in two browser windows side by side; create a team in one, join with the code in the other | Live board: the change appears in the other window without a refresh |
+| 1:10 | Spam clicks tab: one person presses Join 20 times | One membership. "Every click carries an idempotency key, so a retry replays the first answer instead of acting twice." |
+| 1:35 | How a join works tab: the traced statements | Walk the statements: claim the key, the conditional UPDATE, membership insert, audit row, commit. "Under READ COMMITTED the losers wait on the row lock, re-check the count and match nothing." |
+| 2:20 | `teams/repo.py` `take_seat_by_code` and the `teams_cap` constraint | The predicate compares columns of the same row; the CHECK constraint is the backstop; one lock order everywhere, so no deadlocks |
+| 2:50 | GitHub Actions run: race job on PostgreSQL 16 and 18, then the T-OPS-04 red run | "The race test runs 20 rounds on every push. To prove the test can catch a race, I deleted the seat check on a branch: CI went red, 50 of 50 got the seat." |
+| 3:30 | `docs/load-report.md` numbers and the chaos summary in verification.md | Board p95 at 100 users, stampedes with exactly one winner under load, 3 hard kills with 0 lost or doubled actions, invariants clean |
+| 4:15 | `docs/bug-diary.md` B-7 and B-33 rows | Two real bugs: a pre-check that broke retries, a spoofable client IP found on the live site; each found, proven and fixed with a test |
+| 4:40 | README "Known gaps" | Trade-offs (rate limits per worker, no organizer UI) and what one more week adds; close with the opening line: "Fifty clicks, one seat, one winner." |
+
+Recording checklist: wake the Render service 5 minutes before (first request after 15 idle minutes takes about a minute); sign in to both browsers first; browser zoom 125 %, 1080p, notifications off; record each row as its own take and cut them together; keep the final cut at or under 5:00.
 
 ## Risks and mitigations
 

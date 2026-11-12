@@ -706,7 +706,7 @@ Local PostgreSQL 16 without Docker, using the pgserver package.
 Bulk seed data with COPY and a k6 tokens file; every invariant holds on the result.
 | Name | Purpose | Status |
 |---|---|---|
-| `ZONES` | Time zones used for seeded users | done |
+| `ZONE` | Time zone of every seeded user (`Asia/Kolkata`) | done |
 | `build(users, teams, max_size, min_size, rng)` | Build all rows in memory; team members are at most half the users | done |
 | `seed(url, users, teams, max_size, min_size, password_hash, rng_seed)` | Insert one hackathon and all rows with COPY in a single transaction | done |
 | `write_tokens(path, user_ids, hackathon_id, secret, count, team_codes)` | Write pre-minted session JWTs, the hackathon id and open team codes for k6 | done |
