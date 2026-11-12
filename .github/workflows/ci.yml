@@ -121,7 +121,7 @@ jobs:
             echo "::error title=Race and guarantee tests failed (PostgreSQL $PG_VERSION)::$(grep -E '^(FAILED|ERROR) ' pytest.log | cut -c1-200 | tr '\n' ' ')"
             exit 1
           fi
-          echo "::notice title=Race and guarantee tests (PostgreSQL $PG_VERSION, RACE_ITERATIONS=$RACE_ITERATIONS)::$(tail -n 1 pytest.log)"
+          echo "::notice title=Race and guarantee tests (PostgreSQL $PG_VERSION / RACE_ITERATIONS=$RACE_ITERATIONS)::$(tail -n 1 pytest.log)"
       - name: Invariants on the test database
         run: uv run --project backend python database/invariants.py --url "$TEST_DB_URL"
 

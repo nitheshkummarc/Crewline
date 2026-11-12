@@ -241,8 +241,8 @@ Runs on every push (any branch), every pull request and on demand. Every job tha
 | Job | Steps | Fails when |
 |---|---|---|
 | `lint` | ruff, mypy (inside `backend/`), `tsc -b`, eslint | Any error |
-| `api-tests` | Matrix PostgreSQL 16 and 18 (18 is what Neon runs), pytest `backend/tests/api backend/tests/unit` (migrations applied by the fixture), invariants on the test database | Any failure or violation |
-| `race-tests` | Matrix PostgreSQL 16 and 18, pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20` (races, negative control, guarantees, deadlock counter check), invariants | Any failure, violation or deadlock |
+| `api-tests` | Matrix PostgreSQL 16 and 18 (18 is what Neon runs; first green on both in run 43069784023: 86 passed each), pytest `backend/tests/api backend/tests/unit` (migrations applied by the fixture), invariants on the test database | Any failure or violation |
+| `race-tests` | Matrix PostgreSQL 16 and 18 (run 43069784023: 20 passed each), pytest `backend/tests/concurrency` with `RACE_ITERATIONS=20` (races, negative control, guarantees, deadlock counter check), invariants | Any failure, violation or deadlock |
 | `web-tests` | `npm ci`, vitest, contrast check, production build | Any failure |
 | `e2e` | PostgreSQL 16, migrate, seed 300 users and 40 teams, build web, start the API with the pytest server's relaxed rate limits (bot check on), E2E-01 to 10 on 360 px and 1280 px in the runner's preinstalled Chrome (no browser download), invariants | Any failure or violation |
 | `compose-smoke` | `docker compose up -d --build --wait` (image built from the `Dockerfile`), then `.github/scripts/compose-smoke.sh`: `/readyz`, `database/seed.py` inside the API container, signup through the real bot check, register, create team (201), web app served at `/`; image size as an annotation | Any non-2xx or missing page |
