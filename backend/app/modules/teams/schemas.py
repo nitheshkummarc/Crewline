@@ -1,16 +1,18 @@
 """Team request models."""
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
+
+from app.core.inputs import InputModel
 
 
-class CreateTeamIn(BaseModel):
+class CreateTeamIn(InputModel):
     """Body for POST /api/hackathons/{hid}/teams."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=60)
 
 
-class UpdateTeamIn(BaseModel):
+class UpdateTeamIn(InputModel):
     """Body for PATCH /api/teams/{tid}; at least one field."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -24,7 +26,7 @@ class UpdateTeamIn(BaseModel):
         return self
 
 
-class JoinIn(BaseModel):
+class JoinIn(InputModel):
     """Body for POST /api/teams/join."""
 
     model_config = ConfigDict(extra="forbid")

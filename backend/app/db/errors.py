@@ -19,6 +19,9 @@ CONSTRAINT_ERRORS: dict[str, type[e.DomainError]] = {
     "teams_cap": e.TeamFull,
     "teams_min_when_finalized": e.BelowMinSize,
     "users_email_unique": e.EmailTaken,
+    # A valid session whose user row no longer exists (database reset or reseed) (B-40).
+    "participants_user_id_fkey": e.Unauthenticated,
+    "teams_leader_id_fkey": e.Unauthenticated,
 }
 
 RETRYABLE = (asyncpg.exceptions.DeadlockDetectedError, asyncpg.exceptions.SerializationError)

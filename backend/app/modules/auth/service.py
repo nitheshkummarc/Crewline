@@ -67,6 +67,9 @@ async def update_profile(ctx: WriteContext, data: UpdateMeIn) -> Outcome:
     async def body(conn: asyncpg.Connection) -> Outcome:
         teams = await repo.bump_member_teams(conn, ctx.user_id)
         row = await repo.update_profile(conn, ctx.user_id, fields)
+        if row is None:
+            # Valid session for a user row that no longer exists (B-40).
+            raise Unauthenticated()
         changed = sorted(fields)
         for team in teams:
             await audit.record(conn, team["hackathon_id"], team["id"], ctx.user_id, "member_profile_updated",

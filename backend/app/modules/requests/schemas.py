@@ -1,9 +1,11 @@
 """Join request models."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+
+from app.core.inputs import InputModel
 
 
-class CreateRequestIn(BaseModel):
+class CreateRequestIn(InputModel):
     """Body for POST /api/teams/{tid}/requests."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)

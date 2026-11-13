@@ -56,7 +56,7 @@ Domain error types and the HTTP error envelope.
 | `DomainError` | Base error with `status`, `code`, `message`, optional `retry_after` | done |
 | `ValidationFailed`, `BotCheckFailed`, `IdempotencyKeyRequired`, `Unauthenticated`, `InvalidCredentials`, `NotLeader`, `MembersOnly`, `NotFound`, `InviteInvalid`, `EmailTaken`, `NotRegistered`, `AlreadyInTeam`, `TeamFull`, `TeamFinalized`, `NotFinalized`, `BelowMinSize`, `RequestNotPending`, `NotAMember`, `CannotRemoveSelf`, `TooManyPendingRequests`, `IdempotencyKeyMismatch`, `RateLimited`, `Busy` | One subclass per error code in api.md | done |
 | `error_response(request, status, code, message, retry_after)` | Build the error envelope response with the request id | done |
-| `install_error_handlers(app)` | Register handlers that render DomainError as the envelope and validation errors as 400 `validation_error`; transient database errors are 503 `busy` | done |
+| `install_error_handlers(app)` | Register handlers that render DomainError as the envelope and validation errors as 400 `validation_error`; 22021 is 400; transient database errors are 503 `busy` | done |
 
 ### backend/app/core/security.py
 Password hashing and JWT session tokens (cookie `crewline_session`).
@@ -68,6 +68,13 @@ Password hashing and JWT session tokens (cookie `crewline_session`).
 | `decode_token(token)` | Verify a JWT and return the user id, or None if invalid or expired | done |
 | `set_session_cookie(response, token)` | Set the httpOnly session cookie | done |
 | `clear_session_cookie(response)` | Remove the session cookie | done |
+
+### backend/app/core/inputs.py
+Base model for request bodies: unknown fields and NUL characters are rejected.
+| Name | Purpose | Status |
+|---|---|---|
+| `_has_nul(value)` | True when a string, or any string inside a list or dict, contains U+0000 | done |
+| `InputModel` | Request body base; refuses unknown fields and U+0000 with 400 (B-39); every `*In` model extends it | done |
 
 ### backend/app/core/formguard.py
 Bot checks for signup and login: a signed form token with a minimum fill time, plus a honeypot field (ADR-037).
@@ -237,7 +244,7 @@ Write-transaction wrapper: idempotency claim, timeouts, retries, rollback on any
 Map PostgreSQL errors to domain errors by constraint name and SQLSTATE.
 | Name | Purpose | Status |
 |---|---|---|
-| `CONSTRAINT_ERRORS` | Constraint name to DomainError class | done |
+| `CONSTRAINT_ERRORS` | Constraint name to DomainError class (user FKs map to 401 for a session whose user is gone) | done |
 | `constraint_of(exc)` | Return the constraint name carried by an integrity error, if any | done |
 | `to_domain_error(exc)` | Convert an asyncpg integrity error to a DomainError, or return None | done |
 | `is_retryable(exc)` | True for 40P01 and 40001 | done |
@@ -281,7 +288,7 @@ Auth request and response models.
 | Name | Purpose | Status |
 |---|---|---|
 | `_unique_skills(skills)` | Return the skills without duplicates, keeping order | done |
-| `SignupIn`, `LoginIn`, `UpdateMeIn`, `UserOut` | Validated models with limits from api.md (extra fields rejected); signup and login carry `form_token` and the honeypot `company` | done |
+| `SignupIn`, `LoginIn`, `UpdateMeIn`, `UserOut` | Validated models with limits from api.md (extra fields rejected); signup and login carry `form_token` and the honeypot `company`; `UpdateMeIn` refuses explicit nulls | done |
 
 ### backend/app/modules/auth/service.py
 Signup, login and profile rules.
@@ -686,6 +693,12 @@ Guarantee tests through dedicated servers (T-GUAR-01 to 07).
 | `limited_server` | Server with small mutation, login and signup limits | done |
 | `fault_db`, `fault_server` | Database with the fault trigger and a server on it | done |
 | `_wait_for_lock_waiter(conn, app_name)` | Return the pid of the first backend of app_name that waits on a lock | done |
+
+### backend/tests/api/test_input_errors.py
+Input and session edge cases that used to answer 500: T-API-29 nulls (B-38), T-API-50 (B-40), T-API-51 (B-39).
+| Name | Purpose | Status |
+|---|---|---|
+| `test_api_29_explicit_nulls_are_400`, `test_api_50_session_for_missing_user_is_401`, `test_api_51_nul_in_text_is_400` | T-API-29 nulls, T-API-50, T-API-51 | done |
 
 ### backend/tests/concurrency/test_profile_races.py
 Profile update against the same user's join, accept and leave: T-RACE-19, T-RACE-20 (B-36, B-37).

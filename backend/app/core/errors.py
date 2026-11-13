@@ -2,6 +2,7 @@
 
 import logging
 
+import asyncpg
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -149,6 +150,11 @@ def install_error_handlers(app: FastAPI) -> None:
     async def _http(request: Request, exc: StarletteHTTPException) -> JsonResponse:
         code = "not_found" if exc.status_code == 404 else "http_error"
         return error_response(request, exc.status_code, code, str(exc.detail))
+
+    @app.exception_handler(asyncpg.exceptions.CharacterNotInRepertoireError)
+    async def _bad_text(request: Request, exc: Exception) -> JsonResponse:
+        # Backstop for text outside request bodies (InputModel refuses NUL in bodies) (B-39).
+        return error_response(request, 400, "validation_error", "Text contains a character that cannot be stored")
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JsonResponse:

@@ -19,10 +19,10 @@ Transactions behind each write are in [architecture.md](architecture.md) section
 
 | Status | Code | When | Client retries? |
 |---|---|---|---|
-| 400 | `validation_error` | Body, query or path fails validation (custom handler; FastAPI's default 422 is not used) | No |
+| 400 | `validation_error` | Body, query or path fails validation (custom handler; FastAPI's default 422 is not used). Includes an explicit `null` on `PATCH /api/users/me` and U+0000 in any text | No |
 | 400 | `bot_check_failed` | Signup or login with a filled honeypot, a missing, forged or expired form token, or submitted under 2 s after the token was issued | No (fetch a new form token) |
 | 400 | `idempotency_key_required` | Mutation without a valid `Idempotency-Key` | No |
-| 401 | `unauthenticated` | Missing, invalid or expired session | No (log in) |
+| 401 | `unauthenticated` | Missing, invalid or expired session, or a valid session whose user no longer exists | No (log in) |
 | 401 | `invalid_credentials` | Wrong email or password | No |
 | 403 | `not_leader` | Leader-only action by a non-leader | No |
 | 403 | `members_only` | Team-private data requested by a non-member | No |

@@ -59,6 +59,9 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-27 | Same key, different body | 422 `idempotency_key_mismatch` | passing |
 | T-API-28 | Mutation without `Idempotency-Key` | 400 `idempotency_key_required` | passing |
 | T-API-29 | Validation: bad UUID, name too long, limit 500, message 281 chars, unknown IANA time zone | 400 `validation_error` each (never FastAPI's default 422) | passing |
+| T-API-29b | Explicit null for `display_name`, `skills`, `timezone` on `PATCH /api/users/me` (B-38) | 400 `validation_error` each; 500 on the old code | passing |
+| T-API-50 | Valid session token for a user id with no row: register, create team, profile update (B-40) | 401 `unauthenticated` each; 500 on the old code | passing |
+| T-API-51 | U+0000 in a team name, display name, request message (B-39) | 400 `validation_error` each; 500 on the old code | passing |
 | T-API-30 | 6 wrong codes in a minute from one user | 6th gets 429 `rate_limited` with `Retry-After` | passing |
 | T-API-31 | Board pagination | Pages do not overlap, full and finalized teams excluded, `next_cursor` null at end | passing |
 | T-API-32 | Board ETag | Second request with `If-None-Match` gets 304 | passing |

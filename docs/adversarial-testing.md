@@ -39,9 +39,9 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 | BRK-07 | low | A read blocked past the read `statement_timeout` returned 500 | B-35 | T-GUAR-07 | fixed |
 | BRK-01 | medium | A profile change overlapping the same user's join or accept left the team's last live event with the old skills | B-36 | T-RACE-19 | fixed |
 | BRK-02 | low | A profile change overlapping the same user's leave audited and bumped the team they had just left | B-37 | T-RACE-20 | fixed |
-| BRK-03 | low | An explicit `null` in a profile update returned 500 | - | T-API-29 | open |
-| BRK-08 | low | A valid session for a deleted user returned 500 on writes | - | T-API-50 | open |
-| BRK-09 | low | A NUL character in any text field returned 500 | - | T-API-51 | open |
+| BRK-03 | low | An explicit `null` in a profile update returned 500 | B-38 | T-API-29b | fixed |
+| BRK-08 | low | A valid session for a deleted user returned 500 on writes | B-40 | T-API-50 | fixed |
+| BRK-09 | low | A NUL character in any text field returned 500 | B-39 | T-API-51 | fixed |
 | BRK-04 | low | A retry of a committed request could get 429 instead of its stored response | - | T-GUAR-02 | open |
 | BRK-05 | low | The hourly idempotency purge stopped working past a large backlog | - | purge test | open |
 
@@ -63,3 +63,9 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 - **Cause (BRK-01):** the profile and the join shared no lock. Each read the other's data before it committed, so the join's live event carried the old skills at the same version the database now shows with the new skills. Clients only apply a higher version, so every live board stayed stale.
 - **Cause (BRK-02):** PostgreSQL re-checks a waiting row lock only against the locked table's row, not the joined membership row, so a membership deleted by a leave still matched.
 - **Fix:** the profile update locks the user's participant rows first; a membership insert needs a `KEY SHARE` on that row, which `FOR UPDATE` blocks, so the two serialize. The version bump runs in a new statement that re-checks membership. The documented lock order changed for this one path (ADR-007), with the argument for why it cannot deadlock; 1,215 explored schedules and the race tests show 0 deadlocks.
+
+### BRK-03, BRK-08, BRK-09: inputs that reached the database and answered 500 (B-38 to B-40)
+
+- **How found:** probing request hashing (explicit nulls), schema fuzzing over every operation, and security probes (a forged-but-valid token for a deleted user, NUL bytes in text).
+- **Cause:** the API let through values the database refuses: a null for a NOT NULL column, U+0000 in `text`, and a user id with no row (sessions are checked without a database hit). The resulting database errors were not mapped, so they became 500.
+- **Fix:** refuse them at the boundary: explicit nulls are 400, every request body rejects U+0000 through one shared base model, and a session whose user is gone gets 401. A 22021 handler stays as a backstop for text outside bodies.

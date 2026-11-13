@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
+from app.core.inputs import InputModel
 from app.core.skills import Skill
 from app.core.timezones import validate_timezone
 
@@ -13,7 +14,7 @@ def _unique_skills(skills: list[str] | None) -> list[str] | None:
     return list(dict.fromkeys(skills)) if skills is not None else None
 
 
-class SignupIn(BaseModel):
+class SignupIn(InputModel):
     """Signup body."""
 
     model_config = ConfigDict(extra="forbid")
@@ -29,7 +30,7 @@ class SignupIn(BaseModel):
     _tz = field_validator("timezone")(validate_timezone)
 
 
-class LoginIn(BaseModel):
+class LoginIn(InputModel):
     """Login body."""
 
     model_config = ConfigDict(extra="forbid")
@@ -39,7 +40,7 @@ class LoginIn(BaseModel):
     company: str = Field(default="", max_length=200)
 
 
-class UpdateMeIn(BaseModel):
+class UpdateMeIn(InputModel):
     """Profile update body; at least one field."""
 
     model_config = ConfigDict(extra="forbid")
@@ -58,6 +59,9 @@ class UpdateMeIn(BaseModel):
     def _not_empty(self) -> "UpdateMeIn":
         if not self.model_fields_set:
             raise ValueError("provide at least one field")
+        # Every column is NOT NULL; an explicit null is refused here, not by PostgreSQL (B-38).
+        if any(getattr(self, name) is None for name in self.model_fields_set):
+            raise ValueError("fields cannot be null")
         return self
 
 
