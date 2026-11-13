@@ -131,6 +131,8 @@ def error_response(request: Request, status: int, code: str, message: str,
 
 def install_error_handlers(app: FastAPI) -> None:
     """Register handlers that render DomainError as the envelope and validation errors as 400."""
+    # Imported here: app.db.errors imports this module at load time.
+    from app.db.errors import is_busy
 
     @app.exception_handler(DomainError)
     async def _domain(request: Request, exc: DomainError) -> JsonResponse:
@@ -150,5 +152,9 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JsonResponse:
+        # Backstop for a transient error outside read_conn and run_write (B-35).
+        if is_busy(exc):
+            log.warning("transient database error", extra={"error": type(exc).__name__})
+            return error_response(request, 503, "busy", "Server is busy, retry shortly", 1)
         log.exception("unhandled error", extra={"request_id": getattr(request.state, "request_id", None)})
         return error_response(request, 500, "internal_error", "Internal error")

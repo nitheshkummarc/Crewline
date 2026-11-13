@@ -186,6 +186,7 @@ Index:
 **Decision.** 409 for business conflicts (never retried), 404 for unknown or expired invites (same body), 403 for not leader, 422 for idempotency key mismatch, 429 with `Retry-After` for rate limits, 503 with `Retry-After` for lock timeout, pool exhaustion, in-flight cap and exhausted deadlock retries (retried by the client with the same key). Full table in api.md.
 **Why.** The client needs one rule: retry only 503 and network errors, always with the same key.
 **Validation is 400.** FastAPI returns 422 for request validation by default; a custom `RequestValidationError` handler returns 400 `validation_error`, because 422 means idempotency key mismatch in this contract.
+**Changed 13 Nov 2026.** Transient database errors are also 503 `busy`: killed backends and restarts (class 57), lost sockets, read timeouts, and half-open links caught by a 5 s client command timeout. The check walks the exception cause chain (B-34, B-35).
 
 ## ADR-026 Deployment: Render + Neon in Singapore, same origin {#adr-026}
 

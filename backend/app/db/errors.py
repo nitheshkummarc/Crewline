@@ -27,6 +27,11 @@ BUSY = (
     asyncpg.exceptions.QueryCanceledError,
     asyncpg.exceptions.TooManyConnectionsError,
     asyncio.TimeoutError,
+    # Killed backend (57P01), restart (57P03), lost or half-open socket: retrying the same key is safe.
+    asyncpg.exceptions.OperatorInterventionError,
+    asyncpg.exceptions.PostgresConnectionError,
+    asyncpg.exceptions.InternalClientError,
+    OSError,
 )
 
 
@@ -52,5 +57,11 @@ def is_retryable(exc: BaseException) -> bool:
 
 
 def is_busy(exc: BaseException) -> bool:
-    """True for lock timeouts, statement timeouts and connection exhaustion."""
-    return isinstance(exc, BUSY)
+    """True for timeouts, connection exhaustion and lost connections anywhere in the cause chain."""
+    # A connection lost inside a transaction block surfaces as InterfaceError; the real error is its context.
+    seen: BaseException | None = exc
+    while seen is not None:
+        if isinstance(seen, BUSY):
+            return True
+        seen = seen.__cause__ or seen.__context__
+    return False

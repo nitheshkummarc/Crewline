@@ -56,7 +56,7 @@ Domain error types and the HTTP error envelope.
 | `DomainError` | Base error with `status`, `code`, `message`, optional `retry_after` | done |
 | `ValidationFailed`, `BotCheckFailed`, `IdempotencyKeyRequired`, `Unauthenticated`, `InvalidCredentials`, `NotLeader`, `MembersOnly`, `NotFound`, `InviteInvalid`, `EmailTaken`, `NotRegistered`, `AlreadyInTeam`, `TeamFull`, `TeamFinalized`, `NotFinalized`, `BelowMinSize`, `RequestNotPending`, `NotAMember`, `CannotRemoveSelf`, `TooManyPendingRequests`, `IdempotencyKeyMismatch`, `RateLimited`, `Busy` | One subclass per error code in api.md | done |
 | `error_response(request, status, code, message, retry_after)` | Build the error envelope response with the request id | done |
-| `install_error_handlers(app)` | Register handlers that render DomainError as the envelope and validation errors as 400 `validation_error` | done |
+| `install_error_handlers(app)` | Register handlers that render DomainError as the envelope and validation errors as 400 `validation_error`; transient database errors are 503 `busy` | done |
 
 ### backend/app/core/security.py
 Password hashing and JWT session tokens (cookie `crewline_session`).
@@ -208,13 +208,15 @@ Fixed skill taxonomy and core roles.
 Read and write asyncpg pools (opened fully at startup, idle connections never reaped).
 | Name | Purpose | Status |
 |---|---|---|
+| `COMMAND_TIMEOUT_S` | Client-side bound per statement (5 s), above the server timeouts | done |
 | `init_connection(conn)` | Register orjson codecs for json/jsonb and decode uuid to the standard uuid.UUID | done |
 | `Pools` | Holds the read and write pools and the acquire timeout | done |
 | `create_pools(settings)` | Open both pools fully at startup with their server settings and application names (`crewline-read`, `crewline-write`) | done |
 | `close_pools()` | Close both pools | done |
 | `pools()` | Return the open pools | done |
-| `read_conn()` | Acquire a read connection with the acquire timeout; 503 busy on timeout | done |
-| `write_conn()` | Acquire a write connection with the acquire timeout; 503 busy on timeout | done |
+| `_release(pool, conn)` | Return a connection to the pool; one that died during the reset is dropped, not raised | done |
+| `read_conn()` | Acquire a read connection; timeouts and lost connections raise 503 busy | done |
+| `write_conn()` | Acquire a write connection; acquire timeouts and refused reconnects raise 503 busy | done |
 
 ### backend/app/db/tx.py
 Write-transaction wrapper: idempotency claim, timeouts, retries, rollback on any error, in-flight cap.
@@ -239,7 +241,7 @@ Map PostgreSQL errors to domain errors by constraint name and SQLSTATE.
 | `constraint_of(exc)` | Return the constraint name carried by an integrity error, if any | done |
 | `to_domain_error(exc)` | Convert an asyncpg integrity error to a DomainError, or return None | done |
 | `is_retryable(exc)` | True for 40P01 and 40001 | done |
-| `is_busy(exc)` | True for lock timeouts, statement timeouts and connection exhaustion | done |
+| `is_busy(exc)` | True for timeouts, connection exhaustion and lost connections anywhere in the cause chain | done |
 
 ### backend/app/db/trace.py
 Statement tracing for the Race lab: records each SQL statement a traced call runs, in order, with its time.
@@ -259,7 +261,7 @@ Dedicated LISTEN connection with reconnect; clears the board cache and feeds the
 | `EventListener.stop()` | Stop the supervisor and close the connection | done |
 | `EventListener._connect()` | Open the connection (`crewline-listen`) and LISTEN on team_events | done |
 | `EventListener._on_notify(conn, pid, channel, payload)` | Clear the hackathon's board cache, then publish to the hub | done |
-| `EventListener._supervise()` | Detect a closed connection every 0.5 s, reconnect with backoff, broadcast resync; keepalive every 30 s | done |
+| `EventListener._supervise()` | Detect a closed connection every 0.5 s, reconnect with backoff, broadcast resync; keepalive every 30 s, terminated after 5 s without an answer | done |
 
 ## API modules
 
@@ -676,13 +678,21 @@ Concurrency test fixtures.
 | `no_deadlocks` | T-RACE-15: the deadlock counter must not increase during the concurrency suite | done |
 
 ### backend/tests/concurrency/test_guarantees.py
-Guarantee tests through dedicated servers (T-GUAR-01 to 04).
+Guarantee tests through dedicated servers (T-GUAR-01 to 07).
 | Name | Purpose | Status |
 |---|---|---|
 | `FAULT_SQL` | Fault table and audit trigger that fails inserts for listed users | done |
 | `tight_server` | Server with a 2-connection write pool, 0.2 s acquire timeout and in-flight cap 4 | done |
 | `limited_server` | Server with small mutation, login and signup limits | done |
 | `fault_db`, `fault_server` | Database with the fault trigger and a server on it | done |
+| `_wait_for_lock_waiter(conn, app_name)` | Return the pid of the first backend of app_name that waits on a lock | done |
+
+### backend/tests/concurrency/test_half_open.py
+Half-open database links (T-CHAOS-03, B-34): 503 within the command timeout, recovery, resync.
+| Name | Purpose | Status |
+|---|---|---|
+| `FreezeProxy` | TCP proxy to PostgreSQL that can silently stop forwarding on every open link | done |
+| `_via(db_url, port)` | Return db_url with its host and port replaced by the local proxy | done |
 
 ## Scripts
 

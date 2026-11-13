@@ -1,5 +1,6 @@
 """System guarantees through real servers: overload fails fast (T-GUAR-01), per-user limits (T-GUAR-02),
-all-or-nothing transactions under an injected failure (T-GUAR-03, 04)."""
+all-or-nothing transactions under an injected failure (T-GUAR-03, 04), lost connections and read timeouts
+answer 503 (T-GUAR-06, 07)."""
 
 import asyncio
 import time
@@ -189,3 +190,55 @@ async def test_guar_04_accept_is_all_or_nothing(fault_server: str, fault_db: str
         assert await run_checks(fault_db) == {}
     finally:
         await users.close()
+
+
+async def _wait_for_lock_waiter(conn: asyncpg.Connection, app_name: str) -> int:
+    """Return the pid of the first backend of app_name that waits on a lock (poll up to 2 s)."""
+    for _ in range(200):
+        pid = await conn.fetchval("SELECT pid FROM pg_stat_activity WHERE application_name = $1 "
+                                  "AND wait_event_type = 'Lock' LIMIT 1", app_name)
+        if pid is not None:
+            return int(pid)
+        await asyncio.sleep(0.01)
+    raise AssertionError(f"no {app_name} backend waited on the lock")
+
+
+async def test_guar_06_lost_write_connection_is_busy(server: str, users: Users, clean_db: str) -> None:
+    """T-GUAR-06: a write whose backend is terminated mid-transaction gets 503 busy; the same key then succeeds."""
+    hid = await make_hackathon(clean_db, min_size=1, max_size=4)
+    leader, joiner = await users.bulk(clean_db, 2, hid)
+    tid, code = await create_team(leader, hid)
+    holder = await asyncpg.connect(clean_db)
+    try:
+        tx = holder.transaction()
+        await tx.start()
+        await holder.execute("SELECT 1 FROM teams WHERE id = $1 FOR UPDATE", uuid.UUID(tid))
+        fixed = key()
+        pending = asyncio.create_task(joiner.post("/api/teams/join", {"code": code}, idem=fixed))
+        pid = await _wait_for_lock_waiter(holder, "crewline-write")
+        await holder.execute("SELECT pg_terminate_backend($1)", pid)
+        response = await pending
+        await tx.rollback()
+    finally:
+        await holder.close()
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["code"] == "busy" and response.headers["retry-after"] == "1"
+    assert (await joiner.post("/api/teams/join", {"code": code}, idem=fixed)).status_code == 200
+
+
+async def test_guar_07_read_timeout_is_busy(server: str, users: Users, clean_db: str) -> None:
+    """T-GUAR-07: a read blocked past the read pool statement_timeout gets 503 busy, not 500."""
+    hid = await make_hackathon(clean_db, min_size=1, max_size=4)
+    (leader,) = await users.bulk(clean_db, 1, hid)
+    tid, _ = await create_team(leader, hid)
+    holder = await asyncpg.connect(clean_db)
+    try:
+        tx = holder.transaction()
+        await tx.start()
+        await holder.execute("LOCK TABLE teams IN ACCESS EXCLUSIVE MODE")
+        response = await leader.get(f"/api/teams/{tid}")
+        await tx.rollback()
+    finally:
+        await holder.close()
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["code"] == "busy" and response.headers["retry-after"] == "1"

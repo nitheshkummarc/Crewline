@@ -123,6 +123,7 @@ No CAPTCHA at signup (a form token and a honeypot stop simple scripts) · logout
 | How each claim is proven | [docs/verification.md](docs/verification.md) |
 | Load test results | [docs/load-report.md](docs/load-report.md) |
 | Bugs found and fixed | [docs/bug-diary.md](docs/bug-diary.md) |
+| Adversarial testing: what held, what broke, how it was found | [docs/adversarial-testing.md](docs/adversarial-testing.md) |
 
 ## Commands
 

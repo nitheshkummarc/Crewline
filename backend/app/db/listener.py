@@ -14,6 +14,7 @@ log = logging.getLogger("crewline.listener")
 CHANNEL = "team_events"
 CHECK_EVERY_S = 0.5
 KEEPALIVE_EVERY_S = 30.0
+KEEPALIVE_TIMEOUT_S = 5.0
 
 
 class EventListener:
@@ -64,8 +65,11 @@ class EventListener:
             if self._conn is not None and not self._conn.is_closed():
                 if since_keepalive >= KEEPALIVE_EVERY_S:
                     since_keepalive = 0.0
-                    with contextlib.suppress(Exception):
-                        await self._conn.execute("SELECT 1")
+                    try:
+                        await asyncio.wait_for(self._conn.execute("SELECT 1"), KEEPALIVE_TIMEOUT_S)
+                    except Exception:  # noqa: BLE001
+                        # No answer means a dead link: drop it so the next check reconnects and resyncs (B-34).
+                        self._conn.terminate()
                 continue
             delay = 0.5
             while True:

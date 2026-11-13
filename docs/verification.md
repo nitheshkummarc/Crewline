@@ -122,6 +122,8 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-GUAR-03 | Atomicity of join | Audit insert fails for the joining user | 500; seat count, membership and idempotency key all unchanged; same key succeeds after the fault is removed; invariants clean | passing |
 | T-GUAR-04 | Atomicity of accept | Audit insert fails for the requester | 500; request still pending, count unchanged; accept succeeds after the fault is removed; invariants clean | passing |
 | T-GUAR-05 | Forwarded-for spoofing (B-33) | 4 failed logins on the limited server, each with a new fake `X-Forwarded-For` | `[401, 401, 401, 429]`: the per-IP login limit still applies | passing |
+| T-GUAR-06 | Lost write connection (B-35) | A join waits on an externally held team row lock; its write backend is terminated | 503 `busy` with `Retry-After: 1`, not 500; the same key then returns 200 | passing |
+| T-GUAR-07 | Read timeout (B-35) | An external transaction holds `LOCK TABLE teams IN ACCESS EXCLUSIVE MODE`; `GET /api/teams/{id}` | 503 `busy` with `Retry-After: 1` after the read `statement_timeout`, not 500 | passing |
 
 ## 4. Unit tests
 
@@ -194,6 +196,10 @@ Run against a server started with relaxed signup and login limits (as the pytest
 Status: passing. Run on 11 Nov 2026 (`python backend/scripts/chaos.py`, 200 users, 20 one-seat teams, 60 s, 3 kills at 15, 34 and 53 s): 23,012 actions (3,582 x 200, 19,430 x 409), 779 network retries and 749 busy retries with the same keys, 0 responses of 500, 0 replay mismatches, 0 teams over capacity, 0 keys without a response, invariants clean.
 
 The replay check is stronger than the plan above: every action that finally got 200 is re-sent with its key after the run and must return byte-identical content, which proves no effect was lost or applied twice across the crashes.
+
+### T-CHAOS-03 Half-open database links (B-34)
+
+`backend/tests/concurrency/test_half_open.py`. A TCP proxy in the test process sits between a dedicated server (write and read pools of 2) and PostgreSQL. After a team and an open SSE stream exist, the proxy stops forwarding on every open link without closing it (no FIN, no RST); new links still work. Assertions: the next read answers 503 `busy` with `Retry-After: 1` within 8 s (command timeout 5 s); reads return to 200 within 30 s; the stream receives `resync` within 45 s (keepalive every 30 s, 5 s timeout). Status: passing.
 
 ## 8. Load scenarios (k6)
 
