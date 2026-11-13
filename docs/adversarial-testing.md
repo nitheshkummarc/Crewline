@@ -37,8 +37,8 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 | BRK-10 | high (conditional) | A silently dead database link hung requests, then exhausted the pool for good; live updates stopped without a resync | B-34 | T-CHAOS-03 | fixed |
 | BRK-06 | medium | A lost connection mid-request (backend killed, PostgreSQL restart, socket reset) returned 500, not 503 | B-35 | T-GUAR-06 | fixed |
 | BRK-07 | low | A read blocked past the read `statement_timeout` returned 500 | B-35 | T-GUAR-07 | fixed |
-| BRK-01 | medium | A profile change overlapping the same user's join or accept left the team's last live event with the old skills | - | T-RACE-19 | open |
-| BRK-02 | low | A profile change overlapping the same user's leave audited and bumped the team they had just left | - | T-RACE-20 | open |
+| BRK-01 | medium | A profile change overlapping the same user's join or accept left the team's last live event with the old skills | B-36 | T-RACE-19 | fixed |
+| BRK-02 | low | A profile change overlapping the same user's leave audited and bumped the team they had just left | B-37 | T-RACE-20 | fixed |
 | BRK-03 | low | An explicit `null` in a profile update returned 500 | - | T-API-29 | open |
 | BRK-08 | low | A valid session for a deleted user returned 500 on writes | - | T-API-50 | open |
 | BRK-09 | low | A NUL character in any text field returned 500 | - | T-API-51 | open |
@@ -56,3 +56,10 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 - **How found:** terminating a write backend while it waited on a lock gave 500 (a retry with the same key then succeeded). A PostgreSQL restart under load gave 139 x 500. Reads blocked by `LOCK TABLE teams` gave 500.
 - **Cause:** only lock, statement and pool timeouts counted as busy. A connection lost inside a transaction block surfaces as asyncpg `InterfaceError`, with the real error hidden in `__context__`. Reads do not pass through `run_write`, where timeouts become 503.
 - **Fix:** killed backends, restarts, lost sockets and `InternalClientError` count as busy; the check walks the exception chain; the generic error handler answers 503 for the same chain. The client already retries 503 with the same key, so the user sees the result instead of an error.
+
+### BRK-01 and BRK-02: profile change racing the same user's join, accept or leave (B-36, B-37)
+
+- **How found:** pairwise overlap through the real server (27 of 30 and 16 of 30 repetitions), then the schedule explorer pinned exact interleavings, for example `A A A A A A A A B B B B B B B B B A` (A: profile update, B: join; A stops just before COMMIT, B runs and commits, A commits). A randomized mix found BRK-01 again without being pointed at it.
+- **Cause (BRK-01):** the profile and the join shared no lock. Each read the other's data before it committed, so the join's live event carried the old skills at the same version the database now shows with the new skills. Clients only apply a higher version, so every live board stayed stale.
+- **Cause (BRK-02):** PostgreSQL re-checks a waiting row lock only against the locked table's row, not the joined membership row, so a membership deleted by a leave still matched.
+- **Fix:** the profile update locks the user's participant rows first; a membership insert needs a `KEY SHARE` on that row, which `FOR UPDATE` blocks, so the two serialize. The version bump runs in a new statement that re-checks membership. The documented lock order changed for this one path (ADR-007), with the argument for why it cannot deadlock; 1,215 explored schedules and the race tests show 0 deadlocks.

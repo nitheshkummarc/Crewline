@@ -300,7 +300,7 @@ User SQL.
 | `insert_user(conn, email, password_hash, display_name, skills, timezone)` | Insert a user; 23505 on users_email_unique means the email is taken | done |
 | `get_by_email(conn, email)` | Return the user and password hash for an email | done |
 | `get_by_id(conn, user_id)` | Return a user | done |
-| `bump_member_teams(conn, user_id)` | Lock the user's teams in id order, increment their version, return team and hackathon ids | done |
+| `bump_member_teams(conn, user_id)` | Lock the user's participant rows, then their teams by (hackathon, id); bump teams they still belong to | done |
 | `update_profile(conn, user_id, fields)` | Update profile columns and return the user | done |
 | `participations(conn, user_id)` | Return the hackathon ids the user is registered in | done |
 
@@ -686,6 +686,17 @@ Guarantee tests through dedicated servers (T-GUAR-01 to 07).
 | `limited_server` | Server with small mutation, login and signup limits | done |
 | `fault_db`, `fault_server` | Database with the fault trigger and a server on it | done |
 | `_wait_for_lock_waiter(conn, app_name)` | Return the pid of the first backend of app_name that waits on a lock | done |
+
+### backend/tests/concurrency/test_profile_races.py
+Profile update against the same user's join, accept and leave: T-RACE-19, T-RACE-20 (B-36, B-37).
+| Name | Purpose | Status |
+|---|---|---|
+| `LAST_EVENT_IS_SNAPSHOT`, `VERSIONS_WITH_TWO_SNAPSHOTS` | Event checks E1 and E2 for one team | done |
+| `_warm_twice(users)` | Open two HTTP connections per user, so both requests of one user start at the barrier | done |
+| `_deadlock_retries(user)` | Return the server's deadlock retry counter from /metrics | done |
+| `_assert_clean(db_url, user, retries_before)` | Assert no deadlock was retried during the test and every invariant query returns zero rows | done |
+| `_assert_events_match(db_url, team_id)` | Assert E1 and E2 for one team | done |
+| `test_race_19_profile_update_vs_join_and_accept`, `test_race_20_profile_update_vs_leave` | T-RACE-19, T-RACE-20 | done |
 
 ### backend/tests/concurrency/test_half_open.py
 Half-open database links (T-CHAOS-03, B-34): 503 within the command timeout, recovery, resync.

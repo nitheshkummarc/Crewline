@@ -109,7 +109,8 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-RACE-16 | A join and its retry (same key) fire together with 48 other joiners for the last seat (bug B-7) | If the keyed request wins, both copies return the same 200; never a 200 plus a 409 for the same key | passing |
 | T-RACE-17 | 20 users create join requests while 20 others join by code until the team is full | No request created after the team became full (`created_at` vs the filling audit event) unless it was created before; no 500 | passing |
 | T-RACE-18 | One user fires 8 create-request calls to 8 teams at once | Exactly 5 pending, 3 × 409 `too_many_pending_requests` | passing |
-| T-RACE-19 | Profile update while 10 users join the same team | No deadlock; final snapshot version is the highest; invariants clean | planned |
+| T-RACE-19 | Profile update vs the same user's code join (even rounds) or accept (odd rounds), 20 rounds, two HTTP connections per user (B-36) | Both 200; the team's last event equals `team_snapshot()` (E1); no version maps to two snapshots (E2); deadlock retry counter unchanged; invariants clean. Fails on the old code (last team event is stale) | passing |
+| T-RACE-20 | Profile update vs the same user's leave, 20 rounds (B-37) | Both 200; no `member_profile_updated` for that user after their `member_left` in the team; E1, E2; no deadlock retry; invariants clean. Fails on the old code | passing |
 
 ## 3b. Guarantee tests (dedicated servers)
 

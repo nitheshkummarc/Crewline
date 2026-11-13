@@ -558,17 +558,25 @@ RETURNING looking;
 -- audit participant_updated {user_id, looking}
 
 /* route:update_profile */
-WITH mine AS (
+SELECT 1 FROM participants WHERE user_id = $me
+ORDER BY hackathon_id FOR UPDATE;                       -- participant rows first (B-36)
+SELECT array_agg(id) FROM (
   SELECT t.id FROM teams t JOIN memberships m ON m.team_id = t.id
-  WHERE m.user_id = $me ORDER BY t.id FOR NO KEY UPDATE OF t)
-UPDATE teams SET version = version + 1 FROM mine WHERE teams.id = mine.id
-RETURNING teams.id, teams.hackathon_id;                 -- team rows first, ascending id
+  WHERE m.user_id = $me ORDER BY t.hackathon_id, t.id FOR NO KEY UPDATE OF t) locked;
+UPDATE teams SET version = version + 1
+WHERE id = ANY($locked)
+  AND EXISTS (SELECT 1 FROM memberships m WHERE m.team_id = teams.id AND m.user_id = $me)
+RETURNING id, hackathon_id;                             -- new statement, new snapshot (B-37)
 UPDATE users SET display_name = ..., skills = ..., timezone = ... WHERE id = $me;
 -- audit member_profile_updated {user_id, fields} per team (snapshot now carries the new skills and version)
 -- audit participant_updated {user_id, fields} per hackathon the user is registered in
 ```
 
 The version bump makes the board and every client treat the new team snapshot as newer. The users row is locked only here (other paths take only the FK `KEY SHARE` on it), so taking it after the team rows cannot form a cycle.
+
+Why the participant rows come first (B-36): a join, accept or create team inserts a membership, which takes the FK `KEY SHARE` on the user's participant row, and `FOR UPDATE` conflicts with it. Without that lock the two transactions share no lock: the profile's team query cannot see the uncommitted membership, and the join's audit snapshot cannot see the uncommitted skills, so the team's last event kept the old skills at the current version. With it, either the join commits first and the profile sees and bumps the team, or the join waits and its snapshot reads the new skills. No cycle: the profile then locks only teams the user already belongs to; a transaction holding such a team that inserts this user's membership fails on the unique index (23505) before the FK check waits; create request rejects a member before it locks the participant row, and no membership can be added to a team it holds `FOR SHARE`; set looking holds only the participant row.
+
+Why the bump is a separate statement (B-37): when a leave holding the team row commits, PostgreSQL re-checks a waiting `FOR NO KEY UPDATE` only against the new version of the locked teams row, not the joined membership row, so a one-statement lock-and-bump still bumped and audited the team the user had just left. The `UPDATE` runs with a new snapshot after the locks are held, so it sees the committed leave.
 
 ### 6.12 Lock order summary
 
@@ -583,9 +591,9 @@ The version bump makes the board and every client treat the new team snapshot as
 | Leave / remove | 1 | 2 FOR UPDATE | - | (cascade on delete) | 3 delete | 4 |
 | Finalize / reopen / regenerate / update | 1 | 2 UPDATE | - | - | - | 3 |
 | Register / set looking | 1 | - | 2 INSERT / UPDATE | - | - | 3 |
-| Update profile | 1 | 2 FOR NO KEY UPDATE, ascending id (then users row) | - | - | - | 3 |
+| Update profile | 1 | 3 FOR NO KEY UPDATE, ascending (hackathon_id, id) (then users row) | 2 FOR UPDATE, ascending hackathon_id | - | - | 4 |
 
-Withdraw is the only path that takes a request row without the team row first. It holds no other lock, so it cannot complete a cycle.
+Withdraw is the only path that takes a request row without the team row first. It holds no other lock, so it cannot complete a cycle. Update profile is the only path that takes participant rows before team rows; 6.11 shows why it cannot complete a cycle (ADR-007, B-36).
 
 ### 6.13 Concurrency scenarios and outcomes
 
@@ -604,6 +612,8 @@ Withdraw is the only path that takes a request row without the team row first. I
 | Join request created while the team fills or is finalized | `FOR SHARE` on the team row | Request created before the change, or 409 `team_full` / `team_finalized` after |
 | One user creates 6 requests at once | `FOR NO KEY UPDATE` on the participant row | Exactly 5 pending, 1 × 409 `too_many_pending_requests` |
 | Profile update while joins run on the user's team | Team row lock | Both apply; the later event carries the higher version |
+| Profile update while the same user joins or is accepted | Participant row `FOR UPDATE` vs the membership FK `KEY SHARE` | Serialized; the team's last event carries the new skills (T-RACE-19, B-36) |
+| Profile update while the same user leaves | Team row lock, then the bump in a new statement | The left team is neither bumped nor audited (T-RACE-20, B-37) |
 | Process killed mid-transaction | PostgreSQL aborts the open transaction | Nothing partial; client retry with the same key re-executes or replays |
 
 ## 7. Connection management
