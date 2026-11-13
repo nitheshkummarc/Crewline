@@ -45,10 +45,19 @@ async def store(conn: asyncpg.Connection, user_id: UUID, key: str, status: int, 
         "WHERE user_id = $1 AND key = $2", user_id, key, status, orjson.dumps(body).decode())
 
 
+# Upper bound for one purge DELETE (2M expired keys took 28 s on the dev laptop).
+PURGE_TIMEOUT_S = 300
+
+
 async def purge_expired(pool: asyncpg.Pool, ttl_hours: int) -> int:
-    """Delete keys older than the TTL; return the number deleted."""
-    result = await pool.execute(
-        "DELETE FROM idempotency_keys WHERE created_at < now() - make_interval(hours => $1)", ttl_hours)
+    """Delete keys older than the TTL in one transaction with its own timeouts; return the number deleted."""
+    # The write pool cancels statements after 3 s (server) and 5 s (client); a cancelled DELETE rolls back
+    # entirely, so a large backlog would never shrink (B-42). Only this statement may run long.
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(f"SET LOCAL statement_timeout = {PURGE_TIMEOUT_S * 1000}", timeout=5)
+        result = await conn.execute(
+            "DELETE FROM idempotency_keys WHERE created_at < now() - make_interval(hours => $1)", ttl_hours,
+            timeout=PURGE_TIMEOUT_S + 5)
     return int(result.split()[-1])
 
 

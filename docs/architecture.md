@@ -343,7 +343,7 @@ Cost: requests that will be rejected still open a short write transaction. In a 
 | Outcome changed nothing (already a member, existing pending request) | 200 with current state, rolled back, not stored |
 | Previous attempt was rejected (409 etc.) | Nothing stored (rolled back); the retry re-executes, which is safe because the rejection changed nothing |
 | Previous attempt got 503 or the process died | Nothing stored; the retry re-executes |
-| Key older than 24 h | Purged by a background task every hour (`DELETE ... WHERE created_at < now() - interval '24 hours'`) |
+| Key older than 24 h | Purged by a background task every hour (`DELETE ... WHERE created_at < now() - interval '24 hours'`), in its own transaction with `SET LOCAL statement_timeout` of 5 min and a matching client timeout, so the write pool's 3 s and 5 s bounds cannot cancel it and a backlog always shrinks (B-42) |
 
 A committed idempotency row always has a response (I9), because the row is claimed and filled in the same transaction.
 

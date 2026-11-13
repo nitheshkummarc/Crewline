@@ -109,7 +109,8 @@ Idempotency key hashing, lookup, claim and store.
 | `lookup(conn, user_id, key)` | Return the stored row for a key, or None | done |
 | `claim(conn, user_id, key, req_hash)` | Insert the key row; return False if it already exists (waits for an in-flight owner) | done |
 | `store(conn, user_id, key, status, body)` | Save the success response on the claimed row | done |
-| `purge_expired(pool, ttl_hours)` | Delete keys older than the TTL; return the number deleted | done |
+| `PURGE_TIMEOUT_S` | Upper bound for one purge DELETE (300 s) | done |
+| `purge_expired(pool, ttl_hours)` | Delete keys older than the TTL in one transaction with its own timeouts; return the number deleted | done |
 | `purge_loop(pool, ttl_hours)` | Run purge_expired every hour | done |
 
 ### backend/app/core/invite_codes.py
@@ -694,6 +695,12 @@ Guarantee tests through dedicated servers (T-GUAR-01 to 07).
 | `fault_db`, `fault_server` | Database with the fault trigger and a server on it | done |
 | `test_guar_02b_committed_key_replays_after_limits` | T-GUAR-02b: a committed key replays after the mutation and failed-code limits | done |
 | `_wait_for_lock_waiter(conn, app_name)` | Return the pid of the first backend of app_name that waits on a lock | done |
+
+### backend/tests/api/test_idempotency_purge.py
+Idempotency purge (T-OPS-06, B-42): a backlog larger than one pool statement timeout is still deleted.
+| Name | Purpose | Status |
+|---|---|---|
+| `test_ops_06_purge_outlasts_the_pool_timeouts` | T-OPS-06 | done |
 
 ### backend/tests/api/test_input_errors.py
 Input and session edge cases that used to answer 500: T-API-29 nulls (B-38), T-API-50 (B-40), T-API-51 (B-39).

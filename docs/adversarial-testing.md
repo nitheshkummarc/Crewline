@@ -43,7 +43,7 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 | BRK-08 | low | A valid session for a deleted user returned 500 on writes | B-40 | T-API-50 | fixed |
 | BRK-09 | low | A NUL character in any text field returned 500 | B-39 | T-API-51 | fixed |
 | BRK-04 | low | A retry of a committed request could get 429 instead of its stored response | B-41 | T-GUAR-02b | fixed |
-| BRK-05 | low | The hourly idempotency purge stopped working past a large backlog | - | purge test | open |
+| BRK-05 | low | The hourly idempotency purge stopped working past a large backlog | B-42 | T-OPS-06 | fixed |
 
 ### BRK-10: half-open database links (B-34)
 
@@ -75,3 +75,9 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 - **How found:** idempotency probes: commit a join or a create with key K, exhaust a limit with other requests, then retry K.
 - **Cause:** the limits ran before the replay fast path, so a request that had already succeeded was refused on retry.
 - **Fix:** limits run after the replay and before the claim, so a committed key always returns its stored response and new work is still limited.
+
+### BRK-05: the idempotency purge stopped working past a large backlog (B-42)
+
+- **How found:** idempotency probes inserted 300k, 1M and 2M expired keys and called the real purge on a pool with the write pool's settings. 300k were deleted; 1M and 2M were cancelled with nothing deleted.
+- **Cause:** the purge was one DELETE under the write pool's 3 s statement timeout. A cancelled DELETE rolls back completely, and the next hourly run faced a bigger backlog, so it could never catch up.
+- **Fix:** the purge runs in its own transaction that raises the timeout for that one statement only. Deleting in batches was measured and rejected: it slowed down as the backlog grew.
