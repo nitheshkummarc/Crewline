@@ -96,18 +96,23 @@ def _record_failed_code(user_id: UUID, ip: str) -> None:
 
 
 async def join_by_code(ctx: WriteContext, raw_code: str, ip: str) -> Outcome:
-    """Normalize the code, check rate limits, then in one transaction take a seat and add the membership."""
-    limits = ratelimit.get()
-    wait = max(limits.code_user.check(str(ctx.user_id)), limits.code_ip.check(ip))
-    if wait:
-        raise RateLimited(retry_after=wait)
+    """Normalize the code, then in one transaction take a seat and add the membership; limits after the replay."""
     code = normalize_code(raw_code)
-    if code is None:
-        _record_failed_code(ctx.user_id, ip)
-        raise InviteInvalid()
+
+    def precheck() -> None:
+        """Failed-code limits and the code format; runs after the replay fast path, before the claim (B-41)."""
+        limits = ratelimit.get()
+        wait = max(limits.code_user.check(str(ctx.user_id)), limits.code_ip.check(ip))
+        if wait:
+            raise RateLimited(retry_after=wait)
+        if code is None:
+            _record_failed_code(ctx.user_id, ip)
+            raise InviteInvalid()
+
+    valid_code = code or ""  # precheck refuses a malformed code before the body runs
 
     async def body(conn: asyncpg.Connection) -> Outcome:
-        seat = await repo.take_seat_by_code(conn, code)
+        seat = await repo.take_seat_by_code(conn, valid_code)
         if seat is None:
             raise GuardFailed()
         await repo.insert_membership(conn, seat["id"], seat["hackathon_id"], ctx.user_id)
@@ -117,9 +122,9 @@ async def join_by_code(ctx: WriteContext, raw_code: str, ip: str) -> Outcome:
         return Outcome(200, await repo.get_detail(conn, seat["id"]))
 
     async def explain(exc: BaseException) -> Outcome:
-        return await _explain_join(code, ctx.user_id, ip)
+        return await _explain_join(valid_code, ctx.user_id, ip)
 
-    return await run_write(ctx, body, explain)
+    return await run_write(ctx, body, explain, precheck)
 
 
 async def _explain_join(code: str, user_id: UUID, ip: str) -> Outcome:

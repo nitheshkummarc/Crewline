@@ -298,9 +298,11 @@ HTTP request
  → WriteInflightLimiter (≤30 in-flight writes per worker, else 503 busy)
  → router: validate body (pydantic), current_user from JWT cookie, Idempotency-Key header
  → before the transaction (never decides a business outcome):
-     a. state-free checks only: input format (e.g. malformed invite code), rate-limit check
-     b. replay fast path (read pool): if the key is already committed → stored response, or 422 if the hash differs
+     a. replay fast path (read pool): if the key is already committed → stored response, or 422 if the hash differs
         (safe: it only ever returns a response that was really committed for this key)
+     b. state-free checks only, after the replay so a committed key always replays (B-41): the per-user
+        mutation limit (skipped for the Race lab), then the route's precheck (join: failed-code limits,
+        then the code format)
  → run_write(write pool):
      BEGIN
        1. claim idempotency key        (INSERT ... ON CONFLICT DO NOTHING RETURNING)

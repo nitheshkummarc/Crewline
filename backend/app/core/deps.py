@@ -7,8 +7,8 @@ from uuid import UUID
 from fastapi import Header, Request
 
 from app.config import get_settings
-from app.core import metrics, ratelimit
-from app.core.errors import IdempotencyKeyRequired, RateLimited, Unauthenticated
+from app.core import metrics
+from app.core.errors import IdempotencyKeyRequired, Unauthenticated
 from app.core.idempotency import request_hash
 from app.core.security import COOKIE_NAME, decode_token
 from app.db.tx import WriteContext
@@ -45,10 +45,7 @@ def client_ip(request: Request) -> str:
 
 def write_context(request: Request, user_id: UUID, key: str, route: str,
                   params: dict[str, Any] | None = None, body: Any = None) -> WriteContext:
-    """Apply the per-user mutation limit and build the WriteContext for one write."""
-    wait = ratelimit.get().mutations.hit(str(user_id))
-    if wait:
-        raise RateLimited(retry_after=wait)
+    """Build the WriteContext for one write; run_write applies the mutation limit after the replay."""
     return WriteContext(
         user_id=user_id, key=key, route=route,
         request_hash=request_hash(request.method, route, params or {}, body),

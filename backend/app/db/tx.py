@@ -11,8 +11,8 @@ from uuid import UUID
 import asyncpg
 import orjson
 
-from app.core import idempotency
-from app.core.errors import Busy, IdempotencyKeyMismatch
+from app.core import idempotency, ratelimit
+from app.core.errors import Busy, IdempotencyKeyMismatch, RateLimited
 from app.db.errors import is_busy, is_retryable, to_domain_error
 from app.db.pools import read_conn, write_conn
 
@@ -30,6 +30,8 @@ class WriteContext:
     request_hash: str
     request_id: str | None
     route: str
+    # False only for the Race lab, which runs real write paths for many synthetic users at once.
+    limited: bool = True
 
 
 @dataclass
@@ -113,7 +115,8 @@ async def _attempt(ctx: WriteContext, body: Body) -> Outcome:
     return outcome
 
 
-async def run_write(ctx: WriteContext, body: Body, explain: Explain | None = None) -> Outcome:
+async def run_write(ctx: WriteContext, body: Body, explain: Explain | None = None,
+                    precheck: Callable[[], None] | None = None) -> Outcome:
     """Run body in one transaction after claiming the key; store the response; retry deadlocks and StateChanged."""
     global _inflight
     if _inflight >= _inflight_max:
@@ -124,6 +127,13 @@ async def run_write(ctx: WriteContext, body: Body, explain: Explain | None = Non
         fast = await replay_fast_path(ctx)
         if fast is not None:
             return fast
+        # Limits run after the replay: a committed key always gets its stored response (B-41).
+        if ctx.limited:
+            wait = ratelimit.get().mutations.hit(str(ctx.user_id))
+            if wait:
+                raise RateLimited(retry_after=wait)
+        if precheck is not None:
+            precheck()
         for _ in range(MAX_ATTEMPTS):
             try:
                 return await _attempt(ctx, body)

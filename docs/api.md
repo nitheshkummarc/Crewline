@@ -40,7 +40,7 @@ Transactions behind each write are in [architecture.md](architecture.md) section
 | 409 | `cannot_remove_self` | Leader removes themselves (use leave) | No |
 | 409 | `too_many_pending_requests` | Already 5 pending requests in this hackathon (exact limit) | No |
 | 422 | `idempotency_key_mismatch` | Same key, different request | No |
-| 429 | `rate_limited` | Rate limit hit; `Retry-After` set | After delay |
+| 429 | `rate_limited` | Rate limit hit; `Retry-After` set. Never answers a retry of a key whose request committed: that retry gets its stored response | After delay |
 | 503 | `busy` | Lock timeout, statement or read timeout, pool timeout, in-flight cap, deadlock retries exhausted, lost or unresponsive database connection; `Retry-After` set | Yes, same key |
 | 500 | `internal_error` | Bug | No |
 

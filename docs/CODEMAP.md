@@ -99,7 +99,7 @@ FastAPI dependencies shared by routers.
 | `current_user_id(request)` | Return the user id from the session cookie or raise 401 | done |
 | `idempotency_key(key)` | Validate and return the Idempotency-Key header or raise 400 | done |
 | `client_ip(request)` | Client IP for per-IP rate limits: the `CLIENT_IP_HEADER` edge header if present, else the socket peer; never `X-Forwarded-For` (B-33) | done |
-| `write_context(request, user_id, key, route, params, body)` | Apply the per-user mutation limit and build the WriteContext for one write | done |
+| `write_context(request, user_id, key, route, params, body)` | Build the WriteContext for one write; run_write applies the mutation limit after the replay | done |
 
 ### backend/app/core/idempotency.py
 Idempotency key hashing, lookup, claim and store.
@@ -229,14 +229,14 @@ Read and write asyncpg pools (opened fully at startup, idle connections never re
 Write-transaction wrapper: idempotency claim, timeouts, retries, rollback on any error, in-flight cap.
 | Name | Purpose | Status |
 |---|---|---|
-| `WriteContext` | User id, idempotency key, request hash, request id and route name for one write | done |
+| `WriteContext` | User id, idempotency key, request hash, request id, route name and `limited` (False only for the Race lab) for one write | done |
 | `Outcome` | Status and JSON body of a write; `store=False` means nothing changed and nothing is stored | done |
 | `GuardFailed` | A guarded statement matched 0 rows; the transaction rolls back and the explanation runs | done |
 | `StateChanged` | The explanation found no reason for a failed guard; run_write retries the transaction | done |
 | `_Rollback` | Carries an outcome (replay or nothing-changed) out of a transaction that must not commit | done |
 | `configure(inflight_max)` | Set the per-worker in-flight write cap | done |
 | `replay_fast_path(ctx)` | Return a committed stored response for the key, or None; never decides business outcomes | done |
-| `run_write(ctx, body, explain)` | Run body in one transaction after claiming the key; store the response; retry deadlocks and StateChanged | done |
+| `run_write(ctx, body, explain, precheck)` | Replay a committed key, then apply the mutation limit and precheck, then run body in one transaction after claiming the key; store the response; retry deadlocks and StateChanged | done |
 | `run_plain_write(body)` | Run a small transaction without an idempotency claim (stale marking) | done |
 | `stats` | Counters for deadlock retries, state retries and busy responses | done |
 
@@ -385,7 +385,7 @@ Team rules and transactions (architecture.md 6.1, 6.2, 6.7 to 6.10).
 | `get_invite(tid, user_id)` | Return the invite code to a member | done |
 | `create_team(ctx, hid, name)` | Create a team with the caller as leader | done |
 | `_record_failed_code(user_id, ip)` | Count a failed invite code attempt against the user and IP limits | done |
-| `join_by_code(ctx, raw_code, ip)` | Normalize the code, check rate limits, then in one transaction take a seat and add the membership | done |
+| `join_by_code(ctx, raw_code, ip)` | Normalize the code, then in one transaction take a seat and add the membership; limits after the replay | done |
 | `_explain_join(code, user_id, ip)` | After a rolled-back join: 200 already member, 404, 409 finalized / full / already_in_team / not_registered, or StateChanged | done |
 | `_shrink(conn, ctx, team, leaver_id, action)` | Decrement a team after a member left or was removed; audit leader promotion and reopening | done |
 | `leave(ctx, tid)` | Remove the caller; promote a new leader or delete the team (tombstone version) | done |
@@ -692,6 +692,7 @@ Guarantee tests through dedicated servers (T-GUAR-01 to 07).
 | `tight_server` | Server with a 2-connection write pool, 0.2 s acquire timeout and in-flight cap 4 | done |
 | `limited_server` | Server with small mutation, login and signup limits | done |
 | `fault_db`, `fault_server` | Database with the fault trigger and a server on it | done |
+| `test_guar_02b_committed_key_replays_after_limits` | T-GUAR-02b: a committed key replays after the mutation and failed-code limits | done |
 | `_wait_for_lock_waiter(conn, app_name)` | Return the pid of the first backend of app_name that waits on a lock | done |
 
 ### backend/tests/api/test_input_errors.py

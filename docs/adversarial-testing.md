@@ -42,7 +42,7 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 | BRK-03 | low | An explicit `null` in a profile update returned 500 | B-38 | T-API-29b | fixed |
 | BRK-08 | low | A valid session for a deleted user returned 500 on writes | B-40 | T-API-50 | fixed |
 | BRK-09 | low | A NUL character in any text field returned 500 | B-39 | T-API-51 | fixed |
-| BRK-04 | low | A retry of a committed request could get 429 instead of its stored response | - | T-GUAR-02 | open |
+| BRK-04 | low | A retry of a committed request could get 429 instead of its stored response | B-41 | T-GUAR-02b | fixed |
 | BRK-05 | low | The hourly idempotency purge stopped working past a large backlog | - | purge test | open |
 
 ### BRK-10: half-open database links (B-34)
@@ -69,3 +69,9 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 - **How found:** probing request hashing (explicit nulls), schema fuzzing over every operation, and security probes (a forged-but-valid token for a deleted user, NUL bytes in text).
 - **Cause:** the API let through values the database refuses: a null for a NOT NULL column, U+0000 in `text`, and a user id with no row (sessions are checked without a database hit). The resulting database errors were not mapped, so they became 500.
 - **Fix:** refuse them at the boundary: explicit nulls are 400, every request body rejects U+0000 through one shared base model, and a session whose user is gone gets 401. A 22021 handler stays as a backstop for text outside bodies.
+
+### BRK-04: a retry of a committed request was rate limited (B-41)
+
+- **How found:** idempotency probes: commit a join or a create with key K, exhaust a limit with other requests, then retry K.
+- **Cause:** the limits ran before the replay fast path, so a request that had already succeeded was refused on retry.
+- **Fix:** limits run after the replay and before the claim, so a committed key always returns its stored response and new work is still limited.

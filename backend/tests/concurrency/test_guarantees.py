@@ -242,3 +242,31 @@ async def test_guar_07_read_timeout_is_busy(server: str, users: Users, clean_db:
         await holder.close()
     assert response.status_code == 503, response.text
     assert response.json()["error"]["code"] == "busy" and response.headers["retry-after"] == "1"
+
+
+async def test_guar_02b_committed_key_replays_after_limits(limited_server: str, users: Users, clean_db: str) -> None:
+    """T-GUAR-02b (B-41): a committed key replays its stored response after the user hit each rate limit."""
+    hid = await make_hackathon(clean_db, min_size=1, max_size=4)
+    limited = Users(limited_server)
+    try:
+        (creator,) = await limited.bulk(clean_db, 1, hid)
+        create_key = key()
+        created = await creator.post(f"/api/hackathons/{hid}/teams", {"name": "Replay"}, idem=create_key)
+        assert created.status_code == 201, created.text
+        statuses = [(await creator.patch(f"/api/hackathons/{hid}/me", {"looking": i % 2 == 0})).status_code
+                    for i in range(5)]
+        assert statuses[-1] == 429, statuses
+        replay = await creator.post(f"/api/hackathons/{hid}/teams", {"name": "Replay"}, idem=create_key)
+        assert (replay.status_code, replay.content) == (201, created.content)
+    finally:
+        await limited.close()
+
+    leader, joiner = await users.bulk(clean_db, 2, hid)
+    _, code = await create_team(leader, hid)
+    join_key = key()
+    joined = await joiner.post("/api/teams/join", {"code": code}, idem=join_key)
+    assert joined.status_code == 200, joined.text
+    wrong = [(await joiner.post("/api/teams/join", {"code": "ZZZZZ-ZZZZZ"})).status_code for _ in range(6)]
+    assert wrong[-1] == 429, wrong
+    replay = await joiner.post("/api/teams/join", {"code": code}, idem=join_key)
+    assert (replay.status_code, replay.content) == (200, joined.content)

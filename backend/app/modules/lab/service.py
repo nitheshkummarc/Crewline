@@ -26,7 +26,8 @@ _running = asyncio.Lock()
 def context(user_id: UUID, route: str, body: Any, key: str | None = None) -> WriteContext:
     """Build the WriteContext a real request would carry (fresh idempotency key unless one is given)."""
     return WriteContext(user_id=user_id, key=key or uuid.uuid4().hex, route=route,
-                        request_hash=request_hash("POST", route, {}, body), request_id=f"lab-{route}")
+                        request_hash=request_hash("POST", route, {}, body), request_id=f"lab-{route}",
+                        limited=False)
 
 
 def since(t0: float) -> float:
