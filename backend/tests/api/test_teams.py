@@ -253,3 +253,37 @@ async def test_api_37_39_audit_and_invite_visibility(users: Users, clean_db: str
     assert (await member.get(f"/api/teams/{tid}/invite")).json()["code"] == code
     detail = await outsider.get(f"/api/teams/{tid}")
     assert detail.status_code == 200 and "invite_code" not in detail.text
+
+
+async def test_api_22b_member_removed_audit_names_the_member(users: Users, clean_db: str) -> None:
+    """T-API-22b: the member_removed audit row names the removed member, not the leader who removed them."""
+    hid = await make_hackathon(clean_db)
+    leader, member = await users.new(hackathon=hid), await users.new(hackathon=hid)
+    tid, code = await create_team(leader, hid)
+    await join(member, code)
+    assert (await leader.delete(f"/api/teams/{tid}/members/{member.id}")).status_code == 200
+    rows = await query(clean_db, "SELECT actor_id::text, payload->>'user_id' AS user_id FROM audit_events "
+                                 "WHERE team_id = $1 AND action = 'member_removed'", uuid.UUID(tid))
+    assert [(r["actor_id"], r["user_id"]) for r in rows] == [(leader.id, member.id)]
+
+
+async def test_api_27b_same_key_other_path_is_422(users: Users, clean_db: str) -> None:
+    """T-API-27b: the same key and body sent to another team id in the path is 422, not a replay."""
+    hid = await make_hackathon(clean_db)
+    lead_a, lead_b, asker = (await users.new(hackathon=hid), await users.new(hackathon=hid),
+                             await users.new(hackathon=hid))
+    tid_a, _ = await create_team(lead_a, hid, "A")
+    tid_b, _ = await create_team(lead_b, hid, "B")
+    fixed = key()
+    assert (await asker.post(f"/api/teams/{tid_a}/requests", {}, idem=fixed)).status_code == 201
+    other = await asker.post(f"/api/teams/{tid_b}/requests", {}, idem=fixed)
+    assert other.status_code == 422 and other.json()["error"]["code"] == "idempotency_key_mismatch"
+
+
+async def test_api_28b_key_shorter_than_16_is_400(users: Users, clean_db: str) -> None:
+    """T-API-28b: a 15-character Idempotency-Key is 400 idempotency_key_required; 16 characters is accepted."""
+    hid = await make_hackathon(clean_db)
+    user = await users.new(hackathon=hid)
+    short = await user.patch(f"/api/hackathons/{hid}/me", {"looking": False}, idem="k" * 15)
+    assert short.status_code == 400 and short.json()["error"]["code"] == "idempotency_key_required"
+    assert (await user.patch(f"/api/hackathons/{hid}/me", {"looking": False}, idem="k" * 16)).status_code == 200

@@ -81,3 +81,27 @@ Data never became invalid: no finding broke an invariant. The breaks were in ava
 - **How found:** idempotency probes inserted 300k, 1M and 2M expired keys and called the real purge on a pool with the write pool's settings. 300k were deleted; 1M and 2M were cancelled with nothing deleted.
 - **Cause:** the purge was one DELETE under the write pool's 3 s statement timeout. A cancelled DELETE rolls back completely, and the next hourly run faced a bigger backlog, so it could never catch up.
 - **Fix:** the purge runs in its own transaction that raises the timeout for that one statement only. Deleting in batches was measured and rejected: it slowed down as the backlog grew.
+
+## Gaps in this repo's own tests (mutation testing)
+
+The campaign broke one guard at a time in a copy of the code and ran this repo's suite against it. 16 of 21 mutants were caught; 5 survived. Each now has a test, and each test was run against its mutant applied to the current code and failed there:
+
+| Mutant | What it broke | Test that now kills it |
+|---|---|---|
+| M-A7 | `member_removed` audit named the leader instead of the removed member | T-API-22b |
+| M-C3 | The request hash ignored path parameters, so one key could replay across teams | T-API-27b |
+| M-C4 | A duplicate that lost the key claim ran the body again instead of replaying | T-RACE-21 |
+| M-C5 | Keys of 1 to 15 characters were accepted | T-API-28b |
+| M-K3 | Create request read the team without `FOR SHARE`, so it could slip in while a join held the last seat | T-RACE-22 |
+
+## Known gaps (not fixed in this round)
+
+| Item | Trigger | Severity | Covered by |
+|---|---|---|---|
+| T-RACE-14 randomized mix not in this repo's suite | Many operation kinds at once on shared teams and users | test gap | Breaker area B seeds 3 and 4 run clean on the fixed code |
+| T-CHAOS-02 PostgreSQL restart under load not in this repo's suite | Neon compute restart while requests run | test gap | Breaker D06 on the fixed code: 0 x 500 across a restart, every committed 200 replays |
+| O-03 per-IP limit keyed by raw header text | An edge that forwards a client-set IP header | hardening | Safe while the edge overwrites `cf-connecting-ip` |
+| O-04 invisible or bidi-override team names | A name made only of a zero-width space | hardening | None yet |
+| O-05 form tokens reusable | One token used for several signups | hardening | Signup limit 10 per hour per IP |
+| O-06 `/metrics` public | Anyone can read pool and route counters | ops | Documented in api.md |
+| O-07 SSE open uses a read connection | 700 simultaneous reconnects got one 503 | low | The web client retries with backoff |

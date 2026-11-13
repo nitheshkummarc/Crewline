@@ -52,12 +52,15 @@ Seed caveat for I7: `database/seed.py` writes `team_created` and `member_joined_
 | T-API-20 | Leader leaves with 3 members | Earliest joined member becomes leader, audit `leader_promoted` actor null | passing |
 | T-API-21 | Last member leaves | Team row gone, its requests gone, audit `member_left` and `team_deleted` remain | passing |
 | T-API-22 | Leader removes a member; non-leader tries; leader removes self | 200; 403 `not_leader`; 409 `cannot_remove_self` | passing |
+| T-API-22b | Leader removes a member | The `member_removed` audit row has the leader as actor and the removed member as `user_id` (kills breaker mutant M-A7) | passing |
 | T-API-23 | Finalize below min size; at min size | 409 `below_min_size`; 200, status finalized | passing |
 | T-API-24 | Member leaves a finalized team | Status back to forming, audit `team_reopened` | passing |
 | T-API-25 | Regenerate invite code | Old code 404, new code works, audit has no code in payload | passing |
 | T-API-26 | Same key, same body, sent twice in sequence | Second response identical to the first, one effect | passing |
 | T-API-27 | Same key, different body | 422 `idempotency_key_mismatch` | passing |
+| T-API-27b | Same key and body, another team id in the path | 422 `idempotency_key_mismatch`: path parameters are part of the request hash (kills M-C3) | passing |
 | T-API-28 | Mutation without `Idempotency-Key` | 400 `idempotency_key_required` | passing |
+| T-API-28b | 15-character and 16-character `Idempotency-Key` | 400 `idempotency_key_required`, then 200 (kills M-C5) | passing |
 | T-API-29 | Validation: bad UUID, name too long, limit 500, message 281 chars, unknown IANA time zone | 400 `validation_error` each (never FastAPI's default 422) | passing |
 | T-API-29b | Explicit null for `display_name`, `skills`, `timezone` on `PATCH /api/users/me` (B-38) | 400 `validation_error` each; 500 on the old code | passing |
 | T-API-50 | Valid session token for a user id with no row: register, create team, profile update (B-40) | 401 `unauthenticated` each; 500 on the old code | passing |
@@ -114,6 +117,8 @@ Setup: real uvicorn subprocess, write pool 60, one client per user, `asyncio.Eve
 | T-RACE-18 | One user fires 8 create-request calls to 8 teams at once | Exactly 5 pending, 3 × 409 `too_many_pending_requests` | passing |
 | T-RACE-19 | Profile update vs the same user's code join (even rounds) or accept (odd rounds), 20 rounds, two HTTP connections per user (B-36) | Both 200; the team's last event equals `team_snapshot()` (E1); no version maps to two snapshots (E2); deadlock retry counter unchanged; invariants clean. Fails on the old code (last team event is stale) | passing |
 | T-RACE-20 | Profile update vs the same user's leave, 20 rounds (B-37) | Both 200; no `member_profile_updated` for that user after their `member_left` in the team; E1, E2; no deadlock retry; invariants clean. Fails on the old code | passing |
+| T-RACE-21 | Duplicates of an in-flight key: an external lock on the creator's participant row holds a create team after its key claim; 3 duplicates with the same key queue on the key row; the lock is released | All four 201 with identical bytes; exactly one team (kills M-C4: a lost claim must replay, not run the body again) | passing |
+| T-RACE-22 | Request vs an uncommitted last seat: an external lock on the joiner's participant row holds a last-seat join after its seat update; a request for that team is sent; the lock is released | Join 200; request 409 `team_full`, because create request waits on the team row `FOR SHARE` (kills M-K3) | passing |
 
 ## 3b. Guarantee tests (dedicated servers)
 

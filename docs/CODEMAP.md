@@ -719,6 +719,13 @@ Profile update against the same user's join, accept and leave: T-RACE-19, T-RACE
 | `_assert_events_match(db_url, team_id)` | Assert E1 and E2 for one team | done |
 | `test_race_19_profile_update_vs_join_and_accept`, `test_race_20_profile_update_vs_leave` | T-RACE-19, T-RACE-20 | done |
 
+### backend/tests/concurrency/test_scheduled_locks.py
+Scheduled overlaps forced with an external row lock: T-RACE-21 (in-flight key claim), T-RACE-22 (request vs seat).
+| Name | Purpose | Status |
+|---|---|---|
+| `wait_for_waiters(conn, count)` | Wait until count write backends wait on a lock (poll up to 2 s) | done |
+| `test_race_21_duplicates_of_an_in_flight_key_replay`, `test_race_22_request_waits_for_an_uncommitted_last_seat` | T-RACE-21, T-RACE-22 | done |
+
 ### backend/tests/concurrency/test_half_open.py
 Half-open database links (T-CHAOS-03, B-34): 503 within the command timeout, recovery, resync.
 | Name | Purpose | Status |
