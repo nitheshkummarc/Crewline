@@ -40,9 +40,18 @@ The task was to let people create teams, join by invite code or by request, leav
 
 ## Try it
 
-Live: https://crewline-20bm.onrender.com (free host, so the first visit after 15 quiet minutes takes about a minute to wake up)
+Live: https://crewline-20bm.onrender.com (free host, so the first visit after 15 quiet minutes takes about a minute to wake up). It works on a phone too.
 
-1. Sign in as user00000@example.com or user00001@example.com, password crewline-demo-1.
+**Demo accounts** (shared, on demo data):
+
+| Email | Password |
+|---|---|
+| user00000@example.com | crewline-demo-1 |
+| user00001@example.com | crewline-demo-1 |
+
+Every seeded account from user00000 to user00299 uses the same password, so you can sign in as a third or fourth person. You can also sign up with your own email.
+
+1. Sign in with a demo account.
 2. Open Race lab and run the last-seat race. One person wins and everyone else is told the team is full.
 3. Open the board in two browsers. Join a team in one and watch the other update by itself.
 

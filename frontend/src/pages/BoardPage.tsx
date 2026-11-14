@@ -107,7 +107,7 @@ export default function BoardPage() {
           {hackathon.data && <HeroFact>Invite codes last {hackathon.data.invite_ttl_hours} h</HeroFact>}
           {teams.isSuccess && <HeroFact>{loaded.length}{teams.hasNextPage ? '+' : ''} teams with open seats</HeroFact>}
         </>}>
-        <p className="max-w-[60ch] text-shell-ink2">Find a team that needs your skills, or fill the seats of yours. Every seat, team and request changes here the moment anyone acts.</p>
+        <p className="max-w-[60ch] text-shell-ink2">Find a team that needs your skills, or fill the seats of yours. Changes made by others appear here without a refresh.</p>
       </HeroBanner>
 
       <StatusPanel hid={hid} status={status.data} loading={status.isPending} />

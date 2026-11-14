@@ -93,10 +93,10 @@ export default function LabPage() {
   return (
     <div className="flex flex-col gap-6">
       <HeroBanner titleId="page-title" title="Watch one seat go to exactly one person"
-        facts={<><HeroFact>Real requests, real database</HeroFact><HeroFact>Up to {max} at the same instant</HeroFact><HeroFact>Every SQL statement shown</HeroFact></>}>
+        facts={<><HeroFact>Up to {max} people per run</HeroFact><HeroFact>Hidden lab hackathon</HeroFact><HeroFact>Read back from the database</HeroFact></>}>
         <p className="max-w-[60ch] text-shell-ink2">
-          Every run fires real requests at the same instant against the real database, through the same code the app uses,
-          in a hidden lab hackathon. Nothing here is simulated or replayed from a recording.
+          Each run sends its requests at the same moment, through the same code as the app, to a hidden lab hackathon.
+          The results below are read back from the database.
         </p>
       </HeroBanner>
 
@@ -121,8 +121,8 @@ export default function LabPage() {
             <Button variant="primary" busy={race.isPending} busyLabel="Racing" onClick={() => race.mutate(racers)}>Start the race</Button>
           </div>
           <p className="text-sm text-ink-2">
-            Why not 100,000 at once? Every attempt queues on the same team row, so the outcome does not depend on the count: one
-            UPDATE can see a free seat. Past {max} attempts a single demo run would only wait longer. Throughput at scale is measured separately by the k6 load test.
+            Runs are capped at {max} people. Every attempt queues on the same team row, so more people only make the run longer:
+            one UPDATE still sees the free seat. Load at scale is measured by the k6 load test.
           </p>
           <ErrorNotice error={race.error} />
           {race.data ? <RaceView result={race.data} /> : <EmptyState title="Press Start the race">Results, timing and the database read-back appear here.</EmptyState>}

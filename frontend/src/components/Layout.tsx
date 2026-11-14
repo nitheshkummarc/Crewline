@@ -60,21 +60,24 @@ export function Layout({ user, nav, context, onLogout, onOpenPalette, children }
         Skip to main content
       </a>
 
-      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 bg-shell px-4 py-5 text-shell-ink lg:flex">
-        <Link to="/" className="inline-flex min-h-touch items-center px-2" aria-label="Crewline home"><Wordmark /></Link>
-        {context && <div className="rounded-md bg-shell-2 px-3 py-2 text-sm">{context}</div>}
-        <button type="button" onClick={onOpenPalette}
-          className="press flex min-h-touch items-center gap-3 rounded border border-shell-2 bg-shell-2 px-3 text-sm text-shell-ink2 hover:border-shell-ink2 hover:text-shell-ink">
-          <Search size={16} aria-hidden="true" /> <span className="flex-1 text-left">Search or jump to</span>
-          <kbd className="inline-flex items-center gap-1 rounded-sm border border-shell-ink2 px-[6px] text-[12px]"><CommandIcon size={11} aria-hidden="true" />K</kbd>
-        </button>
-        <nav aria-label="Main" className="flex flex-col gap-1">
-          {nav.map((item) => <SideLink key={item.to} item={item} />)}
-        </nav>
-        <div className="mt-auto flex flex-col gap-4">
-          <ThemeToggle onShell className="self-start" />
-          <UserMenu user={user} onLogout={onLogout} />
-          <FooterLinks onShell />
+      {/* The column carries the navy background for the full page height; only the inner panel is sticky. */}
+      <aside className="hidden bg-shell text-shell-ink lg:block">
+        <div className="sticky top-0 flex h-dvh flex-col gap-6 overflow-y-auto px-4 py-5">
+          <Link to="/" className="inline-flex min-h-touch items-center px-2" aria-label="Crewline home"><Wordmark /></Link>
+          {context && <div className="rounded-md bg-shell-2 px-3 py-2 text-sm">{context}</div>}
+          <button type="button" onClick={onOpenPalette}
+            className="press flex min-h-touch items-center gap-3 rounded border border-shell-2 bg-shell-2 px-3 text-sm text-shell-ink2 hover:border-shell-ink2 hover:text-shell-ink">
+            <Search size={16} aria-hidden="true" /> <span className="flex-1 text-left">Search or jump to</span>
+            <kbd className="inline-flex items-center gap-1 rounded-sm border border-shell-ink2 px-[6px] text-[12px]"><CommandIcon size={11} aria-hidden="true" />K</kbd>
+          </button>
+          <nav aria-label="Main" className="flex flex-col gap-1">
+            {nav.map((item) => <SideLink key={item.to} item={item} />)}
+          </nav>
+          <div className="mt-auto flex flex-col gap-4">
+            <ThemeToggle onShell className="self-start" />
+            <UserMenu user={user} onLogout={onLogout} />
+            <FooterLinks onShell />
+          </div>
         </div>
       </aside>
 
