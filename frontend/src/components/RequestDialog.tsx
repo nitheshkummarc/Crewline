@@ -1,4 +1,7 @@
 // Dialog to send a join request with an optional message (max 280 characters).
+//
+// Contents:
+//   RequestDialog: Ask a team's leader to let the caller join; opens when `teamName` is set.
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState, type FormEvent } from 'react';
 import { LIMITS, requestMessageSchema, validate } from '../lib/validation';

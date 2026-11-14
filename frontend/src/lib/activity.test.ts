@@ -1,4 +1,7 @@
 // T-WEB-10 and T-WEB-11: activity items from team events, the feed store, and stable team band colors.
+//
+// Contents:
+//   itemFor: Return the activity item for an event, failing the test when there is none.
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TeamEvent } from '../api/types';
 import { team } from '../test/fixtures';

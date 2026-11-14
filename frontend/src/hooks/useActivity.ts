@@ -1,4 +1,7 @@
 // Read the live activity feed from the activity store.
+//
+// Contents:
+//   useActivity: Return the newest activity items; re-renders when a new item arrives.
 import { useSyncExternalStore } from 'react';
 import { activityStore, type ActivityItem } from '../lib/activity';
 

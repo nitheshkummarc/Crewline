@@ -1,4 +1,8 @@
 // Route table: the single list of client routes, used by the app and by the link checker test.
+//
+// Contents:
+//   page: Wrap a lazy page in Suspense with skeleton cards as the fallback.
+//   isKnownRoute: True if a path is served by a real route (not the 404 catch-all).
 import { lazy, Suspense, type ReactNode } from 'react';
 import { matchRoutes, type RouteObject } from 'react-router-dom';
 import { SkeletonCards } from './components/LoadState';
@@ -15,6 +19,7 @@ const TeamPage = lazy(() => import('./pages/TeamPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const LabPage = lazy(() => import('./pages/LabPage'));
 
+/** Wrap a lazy page in Suspense with skeleton cards as the fallback. */
 const page = (element: ReactNode) => <Suspense fallback={<SkeletonCards count={3} />}>{element}</Suspense>;
 
 export const routes: RouteObject[] = [

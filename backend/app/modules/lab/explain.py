@@ -1,4 +1,13 @@
-"""Race lab walkthrough: trace the SQL of one real join (success, retry, full team) and report measured latency."""
+"""Race lab walkthrough: trace the SQL of one real join (success, retry, full team) and report measured latency.
+
+Contents:
+    describe: Return a short label and the guarantee for one SQL statement.
+    traced_join: Run one real join by code with statement tracing; return the outcome and each statement with its
+        time.
+    run_walkthrough: Trace three real joins: a free seat, the same click retried with its key, and a team that is
+        already full.
+    latency: Measured server-side latency per route over its last requests, plus pool and transaction counters.
+"""
 
 import re
 import time

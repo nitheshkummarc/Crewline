@@ -1,4 +1,19 @@
-"""Join request SQL."""
+"""Join request SQL.
+
+Contents:
+    lock_participant: SELECT ... FOR NO KEY UPDATE on the participant row; False if the user is not registered.
+    count_pending_for_user: Count the caller's pending requests in a hackathon.
+    insert_request: Insert a pending request; return its id, or None if one is already pending for this team.
+    get_pending: Return the caller's pending request for a team, or None.
+    get_request: Return one request in the API shape, or None.
+    get_ids: Return the team, hackathon and requester ids of a request (they never change).
+    transition: Conditional status change of a request; return the requester id, or None if it was not in
+        from_status.
+    withdraw: Conditional withdraw by the requester; return the team and hackathon ids, or None.
+    mark_stale: Mark a pending request stale; return its team, hackathon and requester ids, or None.
+    list_pending_for_team: Pending requests for a team, oldest first, hiding users who already have a team in the
+        hackathon.
+"""
 
 from uuid import UUID
 

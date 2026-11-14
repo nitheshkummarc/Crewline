@@ -1,4 +1,11 @@
-"""Micro-cache with single-flight loading for board pages (per worker; never a source of truth)."""
+"""Micro-cache with single-flight loading for board pages (per worker; never a source of truth).
+
+Contents:
+    MicroCache: Hold (etag, bytes) per key for a short TTL; concurrent misses for one key share one load.
+    MicroCache.get_or_load: Return a cached entry or run one loader for all concurrent callers of the same key.
+    MicroCache.invalidate_hackathon: Drop every entry for one hackathon.
+    configure: Replace the board cache with one using the configured TTL.
+"""
 
 import asyncio
 import hashlib

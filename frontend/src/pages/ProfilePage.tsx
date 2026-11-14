@@ -1,4 +1,9 @@
 // Profile: name, skills and time zone with a live preview card; saving republishes the user's teams.
+//
+// Contents:
+//   profileChanges: Return only the fields that changed, or null when nothing changed.
+//   ProfileForm: Profile form for display name, skills and time zone; saves only changed fields.
+//   ProfilePage: The profile page.
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import type { Skill, User } from '../api/types';
@@ -24,6 +29,7 @@ export function profileChanges(user: User, values: { display_name: string; skill
   return Object.keys(patch).length ? patch : null;
 }
 
+/** Profile form for display name, skills and time zone; saves only changed fields. */
 function ProfileForm({ user }: { user: User }) {
   const meta = useMeta();
   const update = useUpdateProfile();

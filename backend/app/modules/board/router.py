@@ -1,4 +1,10 @@
-"""Board endpoints with ETag and 304 support."""
+"""Board endpoints with ETag and 304 support.
+
+Contents:
+    _cached: Return 304 when the client already has this ETag, else the cached bytes.
+    teams_board: GET /api/hackathons/{hid}/board/teams.
+    people_board: GET /api/hackathons/{hid}/board/people.
+"""
 
 from uuid import UUID
 

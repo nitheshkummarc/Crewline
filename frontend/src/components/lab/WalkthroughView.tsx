@@ -1,4 +1,8 @@
 // Walkthrough: the real SQL statements of one join, in order, with timing and what each one guarantees.
+//
+// Contents:
+//   Trace: One traced call: outcome header, then a numbered timeline of statements.
+//   WalkthroughView: The three traced joins side by side (stacked on phones).
 import clsx from 'clsx';
 import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import type { WalkPart, WalkthroughResult } from '../../api/types';

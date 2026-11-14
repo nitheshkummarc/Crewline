@@ -1,4 +1,10 @@
 // Team band colors: each team gets one of 8 band colors, picked from its id so every client shows the same color.
+//
+// Contents:
+//   bandIndex: Return a stable band index (0 to 7) for a team id (FNV-1a hash).
+//   bandColor: Return the CSS value of a team's band color.
+//   bandStyle: Return a style object that sets --band for `.band` and band-colored children.
+//   initials: Return up to two initials for a display name.
 
 export const BAND_COUNT = 8;
 

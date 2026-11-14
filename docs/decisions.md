@@ -67,7 +67,17 @@ Index:
 **Why.** Inserting a membership takes a `KEY SHARE` lock on the team row through the FK. A joiner that inserted a membership first and then updated the team could deadlock with a leaver that locked the team and then deleted it. Taking the team row first in every path removes the cycle.
 **Documented exception.** Withdraw touches only the request row and holds nothing else, so it cannot complete a cycle (architecture.md 6.6, 6.12).
 **Changed 10 Nov 2026.** Create request now locks the team row `FOR SHARE` first instead of relying on the FK `KEY SHARE` (which does not conflict with seat updates), and locks the participant row for the exact pending cap. Profile update locks the user's team rows in id order.
-**Changed 13 Nov 2026.** Profile update locks the user's participant rows `FOR UPDATE` first, in ascending `hackathon_id` order, then the user's team rows in ascending `(hackathon_id, id)` order, then the users row: the one path where a participant row precedes team rows, and the only path that locks more than one team row. `FOR UPDATE` conflicts with the FK `KEY SHARE` of a membership insert, so a profile change and the same user's join or accept serialize (B-36). No cycle: the profile then locks only teams the user already belongs to, and a path holding such a team that inserts this user's membership fails on the unique index before the FK check waits; create request rejects a member before it locks the participant row. Regression test T-RACE-19 runs the race against real PostgreSQL and asserts no deadlock retry and clean invariants.
+**Changed 13 Nov 2026 (B-36).** The profile update takes its locks in this order:
+
+1. the user's participant rows `FOR UPDATE`, ascending `hackathon_id`
+2. the user's team rows, ascending `(hackathon_id, id)`
+3. the users row
+
+It is the one path where a participant row comes before team rows, and the only path that locks more than one team row.
+
+- **Why:** `FOR UPDATE` conflicts with the FK `KEY SHARE` taken by a membership insert, so a profile change and the same user's join or accept serialize.
+- **No cycle:** the profile then locks only teams the user already belongs to. A path holding such a team that inserts this user's membership fails on the unique index before the FK check waits. Create request rejects a member before it locks the participant row.
+- **Test:** T-RACE-19 runs the race on real PostgreSQL and asserts no deadlock retry and clean invariants.
 **Consequences.** Code review checks statement order. CI asserts `pg_stat_database.deadlocks` does not increase.
 
 ## ADR-008 Denormalized member_count and a version column {#adr-008}
@@ -106,7 +116,11 @@ Index:
 
 **Decision.** `Idempotency-Key` required on every mutation. Claimed with `INSERT ... ON CONFLICT DO NOTHING` as the first statement of the write transaction. Success responses of committed changes are stored in the same transaction. Rejections (4xx), 503s and "nothing changed" 200s (already a member, existing pending request) are not stored. Keys kept 24 h. Request hash (method, route, params, canonical body) must match on reuse, else 422.
 **Why.** Claiming inside the transaction means a concurrent duplicate waits on the unique index and then replays; a crashed attempt leaves nothing behind. Not storing rejections is safe because a rejection changed nothing, and it avoids replaying an outdated "team full".
-**No business pre-checks (changed 10 Nov 2026).** Before the claim, only state-free checks (input format, rate-limit check) and the replay fast path (which can only return a really committed response) are allowed. Every state-dependent outcome (full, finalized, unknown code, already in a team) is decided after the claim. The earlier design ran "team full" and "unknown code" pre-checks before the claim; a retry racing its own original could then return 409 to the user who got the seat (bugs B-1, B-7). After the claim, the retry waits on the original's key row and replays.
+**No business pre-checks (changed 10 Nov 2026).**
+
+- Allowed before the claim: state-free checks (input format, rate limits) and the replay fast path, which can only return a response that really committed.
+- Decided after the claim: every state-dependent outcome (full, finalized, unknown code, already in a team).
+- Why: the earlier design ran "team full" and "unknown code" checks before the claim. A retry racing its own original could then return 409 to the user who got the seat (bugs B-1, B-7). After the claim, the retry waits on the original's key row and replays.
 **Cost.** Requests that end in rejection open a short write transaction. Measured in L-B.
 **Differs from Stripe**, which also stores failures. Stated as a trade-off.
 **Consequences.** Layer 2: natural idempotency (unique membership, joining your own team returns 200) protects even a client that sends no or new keys.
@@ -155,7 +169,10 @@ Index:
 **Why.** A join stampede cannot starve board reads (bulkhead). Server settings avoid a `SET LOCAL` round trip per transaction. Fast 503 is better than a hung request.
 **Rejected.** PgBouncer transaction mode (breaks LISTEN and prepared statements; not needed at this budget).
 **Consequences.** Pool sizes are starting values; tune from the load test and record before/after numbers.
-**Changed 10 Nov 2026 (bug B-20).** Pools open all their connections at startup (`min_size = max_size`) and never close idle ones (`max_inactive_connection_lifetime = 0`). A new PostgreSQL backend pays catalog loading and statement planning on first use (measured 60 to 130 ms vs 4 ms warm), and asyncpg's default 300 s idle reaping would recreate cold connections after every quiet period. Cost: the connections are held permanently, which on Neon keeps the compute awake (the LISTEN connection already does); counted in the connection budget.
+**Changed 10 Nov 2026 (bug B-20).** Pools open every connection at startup (`min_size = max_size`) and never close idle ones (`max_inactive_connection_lifetime = 0`).
+
+- Why: a new PostgreSQL backend pays for catalog loading and statement planning on first use, measured at 60 to 130 ms against 4 ms warm. asyncpg's default 300 s idle reaping would bring back cold connections after every quiet period.
+- Cost: the connections are held permanently. On Neon this keeps the compute awake (the LISTEN connection already does). They are counted in the connection budget.
 
 ## ADR-021 Board: keyset pagination, partial index, 1 s byte cache {#adr-021}
 
@@ -198,7 +215,12 @@ Index:
 
 ## ADR-027 Tests against real PostgreSQL through a real server {#adr-027}
 
-**Decision.** pytest with a real Postgres (`dev_db.py` or Compose locally; in CI `postgres:16` started with `docker run ... -c max_connections=300`, because a service container cannot pass server flags and the concurrency tests run several servers at once; changed 11 Nov 2026). Race tests send real HTTP to a uvicorn subprocess with a 60-connection write pool, release with a barrier, repeat 20 times. A naive check-then-insert implementation must fail the same test.
+**Decision.** pytest against a real PostgreSQL.
+
+- Locally: `dev_db.py` or Compose.
+- In CI: `postgres:16` started with `docker run ... -c max_connections=300`, because a service container cannot pass server flags and the concurrency tests run several servers at once (changed 11 Nov 2026).
+- Race tests send real HTTP to a uvicorn subprocess with a 60-connection write pool, release all requests with a barrier and repeat 20 times.
+- A naive check-then-insert implementation must fail the same test.
 **Why.** A race test that cannot fail proves nothing. In-process transports and small pools can serialize requests and hide races.
 
 ## ADR-028 Chaos test by hard-killing the API process {#adr-028}
@@ -233,7 +255,16 @@ Index:
 ## ADR-031 Frontend stack {#adr-031}
 
 **Decision.** Vite, React 18, TypeScript strict, React Router v6, TanStack Query v5, Tailwind CSS, Vitest. Changed 11 Nov 2026: added headless Radix primitives (dialog, tabs, dropdown menu, switch), `motion`, `lucide-react`, `zod`, the self-hosted Archivo font, Testing Library, eslint-plugin-jsx-a11y and Playwright. Still no styled component library.
-**Why.** TanStack Query gives caching, optimistic updates and rollback with little code. Tailwind is fast to write and keeps focus styles consistent. Radix gives correct focus trapping, keyboard handling and ARIA for dialogs, tabs and menus without imposing a look. `motion` animates rows entering and leaving the live board and honors reduced motion. `zod` keeps the client form limits in one place next to the API limits. Playwright runs the real flows on phone and laptop sizes against the real API.
+**Why.**
+
+| Library | What it gives |
+|---|---|
+| TanStack Query | Caching, optimistic updates and rollback with little code |
+| Tailwind | Fast to write; focus styles stay consistent |
+| Radix | Correct focus trapping, keyboard handling and ARIA for dialogs, tabs and menus, without imposing a look |
+| `motion` | Animates rows entering and leaving the live board; honors reduced motion |
+| `zod` | Client form limits in one place, next to the API limits |
+| Playwright | Runs the real flows on phone and laptop sizes against the real API |
 **Measured cost.** Main chunk 508 kB raw, 162.5 kB gzip after the redesign (473 kB / 151 kB before; React DOM, motion, zod and TanStack Query are most of it); pages are lazy chunks of 3 to 43 kB.
 **Changed 11 Nov 2026 (redesign).** Added `cmdk` (command palette with correct listbox semantics), `qrcode.react` (invite QR codes for in-person events) and Radix Popover (skill filter panel).
 
@@ -277,9 +308,20 @@ Index:
 
 ## ADR-038 Visual system: wristband team colors {#adr-038}
 
-**Decision.** Every team gets one of 8 band colors, picked from its id with a hash so every client shows the same color. The color follows the team everywhere: board card header, seat tabs, page hero, peek sheet, activity feed. Light theme by default, dark from the system setting; wide Archivo for headings; sidebar on laptops and bottom tabs on phones. The board is a card grid with search, skill filters and sort in the URL, a live activity feed, a peek sheet and a command palette.
+**Decision.**
+
+- Every team gets one of 8 band colors, picked from its id with a hash so every client shows the same color.
+- The color follows the team everywhere: board card header, seat tabs, page hero, peek sheet, activity feed.
+- Light theme by default, dark from the system setting. Wide Archivo for headings.
+- Sidebar on laptops, bottom tabs on phones.
+- The board is a card grid with search, skill filters and sort in the URL, a live activity feed, a peek sheet and a command palette.
 **Why.** The project owner reviewed the first version (a dark departure-board look, 11 Nov 2026) and found it plain and hard to scan. Team colors turn a list of names into something the eye can track while it changes live, and the feed makes the realtime system visible instead of silent.
-**Changed 12 Nov 2026.** Theme switch reduced to Light and Dark (owner's choice); the device setting still applies until a choice is saved. **Changed 11 Nov 2026 (event pass).** Owner picked a hackathon-event direction and allowed subtle non-purple gradients (rule 11 updated): dot-grid canvas, glowing navy banners with real facts (live status, team sizes, open teams), soft band gradients on team headers, sentence-case labels instead of uppercase eyebrows, login steps instead of decorative stripes. **Changed 11 Nov 2026 (later).** Navy brand shell (sidebar, login panel, page banners) and an orange primary action in both themes; a Light, Dark or System switch; dark mode is navy, never black; every blue at hue 194 to 210 so nothing reads as purple. **Changed 11 Nov 2026.** Replaced the concourse board look. Kept: one primary action per page, measured contrast, no gradients, no pill buttons, reduced motion respected.
+Changes, newest first:
+
+- **12 Nov 2026.** Theme switch reduced to Light and Dark (owner's choice). The device setting still applies until a choice is saved.
+- **11 Nov 2026 (event pass).** Owner picked a hackathon-event direction and allowed subtle non-purple gradients (rule 11 updated): dot-grid canvas, glowing navy banners with real facts (live status, team sizes, open teams), soft band gradients on team headers, sentence-case labels instead of uppercase eyebrows, login steps instead of decorative stripes.
+- **11 Nov 2026 (later).** Navy brand shell (sidebar, login panel, page banners) and an orange primary action in both themes; a Light, Dark or System switch; dark mode is navy, never black; every blue at hue 194 to 210 so nothing reads as purple.
+- **11 Nov 2026.** Replaced the concourse board look. Kept: one primary action per page, measured contrast, no gradients, no pill buttons, reduced motion respected.
 **Rejected.** Category-standard grey cards with one blue accent (plain), a dark-only board (heavy in daylight), server-side search on the board endpoint (would bypass the 1 s page cache; the client filters loaded pages and says so).
 **Consequences.** Filters search only loaded pages; the UI says how many loaded teams match and offers to load more. Activity is live only (no history across reloads), because there is no hackathon-wide audit endpoint.
 
@@ -287,12 +329,29 @@ Index:
 
 **Decision.** `core/headers.py` adds a Content-Security-Policy with `default-src 'self'`, scripts from `'self'` only, and `'unsafe-inline'` for styles, plus HSTS, nosniff, Referrer-Policy, X-Frame-Options and Permissions-Policy, to every response. The SPA shell is served `no-cache`; hashed assets `immutable`.
 **Why.** Architecture section 10 promised these headers but none were sent (bug B-23). A same-origin app with a self-hosted font needs nothing from other origins.
-**Changed 11 Nov 2026.** The first version also refused inline styles. A later run that opened dialogs showed violations: Radix dialogs lock page scroll through `react-remove-scroll`, which injects a `<style>` element at runtime, so scroll locking was silently broken (bug B-28). Nonces need per-request templating of index.html and hashes cannot cover content that changes with the scrollbar width, so styles allow `'unsafe-inline'`. Scripts stay `'self'` only, which is what stops injected code. Every e2e page now fails on any CSP violation.
+**Changed 11 Nov 2026 (B-28).** The first version also refused inline styles.
+
+- What broke: Radix dialogs lock page scroll through `react-remove-scroll`, which injects a `<style>` element at runtime. A run that opened dialogs showed CSP violations, and scroll locking was silently broken.
+- Why not nonces or hashes: nonces need per-request templating of index.html, and hashes cannot cover content that changes with the scrollbar width.
+- Result: styles allow `'unsafe-inline'`. Scripts stay `'self'` only, which is what stops injected code. Every e2e page now fails on any CSP violation.
 **Consequences.** No third-party scripts, fonts or analytics can be added without changing the policy on purpose. `no-cache` on the shell means a deploy is picked up on the next load.
 
 ## ADR-040 Race lab: show the guarantees with real concurrent writes {#adr-040}
 
-**Decision.** A signed-in page (`/lab`) asks the server to run experiments in a hidden lab hackathon: N people joining the last seat at the same instant, one person clicking join many times (same key and new keys), N join requests then two accepts, and three traced joins that list every SQL statement with its time. The server starts all attempts behind one asyncio event and calls the real `join_by_code`, `create_request` and `accept` services, so every attempt goes through `run_write`, the idempotency claim, the conditional UPDATE and the constraints. Results include facts read back from the database.
+**Decision.** A signed-in page (`/lab`) asks the server to run experiments in a hidden lab hackathon:
+
+- N people joining the last seat at the same instant
+- one person clicking join many times (same key and new keys)
+- N join requests, then two accepts
+- three traced joins that list every SQL statement with its time
+
+The server starts all attempts behind one asyncio event and calls the real `join_by_code`, `create_request` and `accept` services. Every attempt goes through `run_write`, the idempotency claim, the conditional UPDATE and the constraints. Results include facts read back from the database.
 **Why.** Judges look at correctness under concurrency first. The pytest race test proves it but nobody sees it. A browser cannot start 100,000 or even 50 truly simultaneous requests (about 6 connections per host), so a browser-driven demo would be a slow queue, not a race.
 **Rejected.** Animating recorded results (not real), firing requests from the browser (not simultaneous), running experiments on a real hackathon (would fill its board with test teams).
-**Consequences.** The lab module calls other modules' services, which the module rules forbid elsewhere; it is the one exception, because its purpose is to run those exact paths. Each run creates synthetic users that cannot log in; runs are capped (200 per run, 6 per user per minute, 120 per hour, one at a time per worker). Attempts above the write in-flight cap get 503 busy and retry with the same key, which the race shows as retries. On Windows, asyncpg's per-statement timer has 15.6 ms resolution, so the walkthrough reports the perf_counter gap between statements instead.
+**Consequences.**
+
+- The lab module calls other modules' services, which the module rules forbid elsewhere. It is the one exception, because its purpose is to run those exact paths.
+- Each run creates synthetic users that cannot log in.
+- Runs are capped: 200 per run, 6 per user per minute, 120 per hour, one at a time per worker.
+- Attempts above the write in-flight cap get 503 busy and retry with the same key; the race shows them as retries.
+- On Windows, asyncpg's per-statement timer has 15.6 ms resolution, so the walkthrough reports the perf_counter gap between statements instead.

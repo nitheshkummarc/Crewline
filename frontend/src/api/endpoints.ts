@@ -1,4 +1,46 @@
 // One typed function per endpoint in docs/api.md.
+//
+// Contents:
+//   q: Build a query string from the non-empty parameters.
+//   meta: GET /api/meta
+//   formToken: GET /api/auth/form-token
+//   signup: POST /api/auth/signup
+//   login: POST /api/auth/login
+//   logout: POST /api/auth/logout
+//   me: GET /api/auth/me
+//   updateMe: PATCH /api/users/me
+//   listHackathons: GET /api/hackathons
+//   getHackathon: GET /api/hackathons/{hid}
+//   register: POST /api/hackathons/{hid}/register
+//   myStatus: GET /api/hackathons/{hid}/me
+//   setLooking: PATCH /api/hackathons/{hid}/me
+//   teamsBoard: GET /api/hackathons/{hid}/board/teams
+//   peopleBoard: GET /api/hackathons/{hid}/board/people
+//   createTeam: POST /api/hackathons/{hid}/teams
+//   getTeam: GET /api/teams/{tid}
+//   updateTeam: PATCH /api/teams/{tid}
+//   joinByCode: POST /api/teams/join
+//   leaveTeam: POST /api/teams/{tid}/leave
+//   removeMember: DELETE /api/teams/{tid}/members/{uid}
+//   finalizeTeam: POST /api/teams/{tid}/finalize
+//   reopenTeam: POST /api/teams/{tid}/reopen
+//   getInvite: GET /api/teams/{tid}/invite
+//   regenerateInvite: POST /api/teams/{tid}/invite/regenerate
+//   teamAudit: GET /api/teams/{tid}/audit
+//   createRequest: POST /api/teams/{tid}/requests
+//   teamRequests: GET /api/teams/{tid}/requests
+//   myRequests: GET /api/hackathons/{hid}/my-requests
+//   acceptRequest: POST /api/requests/{rid}/accept
+//   declineRequest: POST /api/requests/{rid}/decline
+//   withdrawRequest: POST /api/requests/{rid}/withdraw
+//   suggestions: GET /api/hackathons/{hid}/suggestions
+//   eventsUrl: URL of the event stream for one hackathon (opened with EventSource in useEventStream).
+//   labInfo: GET /api/lab
+//   labRace: POST /api/lab/race
+//   labSpam: POST /api/lab/spam
+//   labQueue: POST /api/lab/queue
+//   labWalkthrough: POST /api/lab/walkthrough
+//   labLatency: GET /api/lab/latency
 import { request } from './client';
 import type {
   AuditEvent, FormToken, Hackathon, Invite, JoinRequest, LabInfo, LatencyReport, LeaveResult, LoginBody, Meta, MyStatus,
@@ -11,6 +53,7 @@ export interface Action {
   key?: string;
 }
 
+/** Build a query string from the non-empty parameters. */
 const q = (params: Record<string, string | number | null | undefined>) => {
   const search = new URLSearchParams();
   for (const [name, value] of Object.entries(params)) {

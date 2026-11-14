@@ -1,4 +1,7 @@
 // Text and action for each team confirmation dialog (leave, finalize, reopen, remove).
+//
+// Contents:
+//   teamConfirmCopy: Return the dialog text and action for the open confirmation, or null when none is open.
 import type { Member, TeamDetail } from '../api/types';
 
 export type Confirm = 'leave' | 'finalize' | 'reopen' | { remove: Member } | null;

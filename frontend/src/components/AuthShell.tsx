@@ -1,4 +1,7 @@
 // Layout for login and signup: the headline and how Crewline works on the lit navy panel, beside the form.
+//
+// Contents:
+//   AuthShell: Split screen: lit navy panel with the headline and three steps, then the form; stacked on phones.
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CONTACT_URL, Wordmark } from './Layout';

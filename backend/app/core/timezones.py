@@ -1,4 +1,11 @@
-"""IANA time zone validation and current offsets."""
+"""IANA time zone validation and current offsets.
+
+Contents:
+    _known: Return the set of known IANA zone names.
+    validate_timezone: Return the name if it is a known IANA zone, else raise ValueError.
+    _zone: Return a ZoneInfo, kept for the process lifetime (ZoneInfo's own cache holds only a few zones).
+    current_offset_hours: Return the UTC offset in hours of a zone at an instant (cached per zone and instant).
+"""
 
 from datetime import datetime
 from functools import cache, lru_cache

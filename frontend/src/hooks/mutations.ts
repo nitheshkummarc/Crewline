@@ -1,4 +1,28 @@
 // Mutation hooks: one Idempotency-Key per user action, optimistic accept and leave with rollback, one error path.
+//
+// Contents:
+//   useApiMutation: Wrap useMutation with the shared rules: no automatic mutation retries (the client retries with
+//       the same key), every error is announced once in the live region, and `refresh` keys are invalidated after
+//       the server answers.
+//   snapshot: Save the snapshots of some queries so an optimistic patch can be rolled back.
+//   restore: Roll back query data saved before an optimistic patch.
+//   useRegister: Register for a hackathon.
+//   useSetLooking: Show or hide the caller on the People board.
+//   useCreateTeam: Create a team; the caller becomes its leader.
+//   useJoinByCode: Join the team that owns an invite code. The target team is unknown until the server resolves
+//       the code, so no optimistic patch.
+//   useCreateRequest: Send a join request to a team.
+//   useWithdrawRequest: Withdraw one of the caller's pending requests.
+//   useAcceptRequest: Accept a request (leader): optimistic seat and list patch, rollback and refetch on error.
+//   useDeclineRequest: Decline a request (leader).
+//   useLeaveTeam: Leave a team: the caller's status shows no team at once; rollback on error.
+//   useRemoveMember: Remove a member (leader).
+//   useFinalizeTeam: Finalize a team (leader).
+//   useReopenTeam: Reopen a finalized team (leader).
+//   useUpdateTeam: Rename a team or change whether it is looking (leader).
+//   useRegenerateInvite: Replace the invite code (leader); the old code stops working.
+//   useUpdateProfile: Update the caller's name, skills or time zone.
+//   useLogout: Log out and clear every cached query.
 import { useMutation, useQueryClient, type QueryKey, type UseMutationOptions } from '@tanstack/react-query';
 import * as api from '../api/endpoints';
 import { newIdempotencyKey } from '../api/client';
@@ -38,6 +62,7 @@ function snapshot(client: ReturnType<typeof useQueryClient>, queryKeys: QueryKey
   return queryKeys.map((key) => [key, client.getQueryData(key)]);
 }
 
+/** Roll back query data saved before an optimistic patch. */
 function restore(client: ReturnType<typeof useQueryClient>, saved: Snapshot | undefined): void {
   for (const [key, value] of saved ?? []) client.setQueryData(key, value);
 }

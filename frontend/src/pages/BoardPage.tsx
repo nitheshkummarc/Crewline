@@ -1,4 +1,8 @@
 // Hackathon board: your status and one primary action, teams with search and filters, people, live activity, team peek.
+//
+// Contents:
+//   typing: True if a key press targets a text field (then "/" types a slash).
+//   BoardPage: The board page for one hackathon.
 import * as Tabs from '@radix-ui/react-tabs';
 import { Eye, Radio, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';

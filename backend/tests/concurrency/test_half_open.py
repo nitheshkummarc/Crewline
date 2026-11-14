@@ -1,4 +1,16 @@
-"""Half-open database links (T-CHAOS-03, B-34): requests fail fast with 503, pools recover, streams resync."""
+"""Half-open database links (T-CHAOS-03, B-34): requests fail fast with 503, pools recover, streams resync.
+
+Contents:
+    FreezeProxy: TCP proxy to PostgreSQL that can silently stop forwarding on every link open at that moment.
+    FreezeProxy.start: Listen on a free local port and return it.
+    FreezeProxy._handle: Connect upstream and pump both directions.
+    FreezeProxy._pump: Forward bytes until EOF; a frozen link swallows bytes and never sends FIN or RST.
+    FreezeProxy.freeze: Make every currently open link half-open; links opened later work normally.
+    FreezeProxy.close: Stop listening and close every socket.
+    _via: Return db_url with its host and port replaced by the local proxy.
+    test_chaos_03_half_open_links_fail_fast_and_recover: T-CHAOS-03: frozen links give 503 within the command
+        timeout, then reads recover and streams resync.
+"""
 
 import asyncio
 import time

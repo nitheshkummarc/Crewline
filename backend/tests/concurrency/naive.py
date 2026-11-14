@@ -1,4 +1,11 @@
-"""Test-only check-then-insert join used as the negative control. Never imported by the app."""
+"""Test-only check-then-insert join used as the negative control. Never imported by the app.
+
+Contents:
+    weaken_schema: Drop the capacity CHECK so only the application logic can prevent over-filling.
+    seed_team: Insert a team with `members` members and `racers` registered outsiders; return (team, code, racer
+        ids).
+    naive_join: Read count, sleep, insert membership, increment without a predicate; return True if it 'won'.
+"""
 
 import uuid
 

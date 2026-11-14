@@ -1,4 +1,7 @@
 // Side sheet (bottom sheet on phones) for peeking at a team without leaving the board; focus trapped, Escape closes.
+//
+// Contents:
+//   Sheet: A sheet that slides in from the right on wide screens and from the bottom on phones.
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';

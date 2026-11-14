@@ -1,4 +1,8 @@
 // Signed-in shell: session gate, layout, the one event stream for the current hackathon, and the command palette.
+//
+// Contents:
+//   isPaletteKey: True if a key press should open the palette (Ctrl+K or Cmd+K).
+//   AppShell: Gate every app route behind a session, open one event stream, and wrap the page in the layout.
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, FlaskConical, KeyRound, LayoutGrid, LogOut, Plus, Sparkles, UserRound, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';

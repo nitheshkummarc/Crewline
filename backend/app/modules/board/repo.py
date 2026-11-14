@@ -1,4 +1,10 @@
-"""Board SQL: keyset pages served by the teams_board and participants_board partial indexes."""
+"""Board SQL: keyset pages served by the teams_board and participants_board partial indexes.
+
+Contents:
+    teams_page: Keyset page of open teams as snapshots, newest first; fetches limit + 1 rows to detect a next page.
+    people_page: Keyset page of looking participants without a team, newest first; fetches limit + 1 rows.
+    hackathon_exists: True if the hackathon exists.
+"""
 
 from datetime import datetime
 from uuid import UUID

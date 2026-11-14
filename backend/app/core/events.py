@@ -1,4 +1,19 @@
-"""SSE hub: subscriptions per hackathon, public projection of audit notifications, fan-out."""
+"""SSE hub: subscriptions per hackathon, public projection of audit notifications, fan-out.
+
+Contents:
+    public_projection: Return (kind, data, audience) for a notification; data never holds codes or emails; None if
+        unknown.
+    Subscriber: One SSE stream: the hackathon it watches, its user and its bounded queue.
+    EventHub: Map hackathon id to subscriber queues and fan events out to them.
+    EventHub.connections: Number of open streams in this worker.
+    EventHub.subscribe: Register a queue; raise RateLimited past the per-user stream cap.
+    EventHub.unsubscribe: Remove a subscriber (idempotent).
+    EventHub._offer: Queue an event; a full queue means a slow client, which is closed so it reconnects and
+        refetches.
+    EventHub.publish: Project a notification and push it to the hackathon's subscribers, or only to its audience.
+    EventHub.broadcast_resync: Send a resync event to every subscriber.
+    configure: Replace the hub with one using the configured stream cap.
+"""
 
 import asyncio
 from collections import Counter, defaultdict

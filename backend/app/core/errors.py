@@ -1,4 +1,33 @@
-"""Domain error types and the HTTP error envelope."""
+"""Domain error types and the HTTP error envelope.
+
+Contents:
+    DomainError: Base error with status, code and message; rendered as the error envelope.
+    ValidationFailed: 400 validation_error: Invalid input
+    IdempotencyKeyRequired: 400 idempotency_key_required: Idempotency-Key header is required
+    BotCheckFailed: 400 bot_check_failed: Form check failed. Wait a moment and submit again
+    Unauthenticated: 401 unauthenticated: Log in to continue
+    InvalidCredentials: 401 invalid_credentials: Wrong email or password
+    NotLeader: 403 not_leader: Only the team leader can do this
+    MembersOnly: 403 members_only: Only team members can see this
+    NotFound: 404 not_found: Not found
+    InviteInvalid: 404 invite_invalid: Invite code is invalid or expired
+    EmailTaken: 409 email_taken: Email is already registered
+    NotRegistered: 409 not_registered: Register for this hackathon first
+    AlreadyInTeam: 409 already_in_team: You are already in a team in this hackathon
+    TeamFull: 409 team_full: Team is full
+    TeamFinalized: 409 team_finalized: Team is finalized
+    NotFinalized: 409 not_finalized: Team is not finalized
+    BelowMinSize: 409 below_min_size: Team is below the minimum size
+    RequestNotPending: 409 request_not_pending: Request is no longer pending
+    NotAMember: 409 not_a_member: User is not a member of this team
+    CannotRemoveSelf: 409 cannot_remove_self: Use leave to remove yourself
+    TooManyPendingRequests: 409 too_many_pending_requests: You already have 5 pending requests
+    IdempotencyKeyMismatch: 422 idempotency_key_mismatch: Idempotency-Key was used for a different request
+    RateLimited: 429 rate_limited: Too many requests
+    Busy: 503 busy: Server is busy, retry shortly
+    error_response: Build the error envelope response with the request id.
+    install_error_handlers: Register handlers that render DomainError as the envelope and validation errors as 400.
+"""
 
 import logging
 

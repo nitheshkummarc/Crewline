@@ -1,4 +1,8 @@
 // Board toolbar: search box ("/" focuses it), skill filter chips with needs or has, sort; all state lives in the URL.
+//
+// Contents:
+//   SearchBox: A search input with an icon, a clear button and a "/" hint.
+//   BoardToolbar: Search, filter and sort controls for the teams board.
 import * as Popover from '@radix-ui/react-popover';
 import clsx from 'clsx';
 import { Search, SlidersHorizontal, X } from 'lucide-react';

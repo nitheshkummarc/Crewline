@@ -1,4 +1,9 @@
-"""Seed data: T-UNIT-08 (every seeded account passes the login model, bug B-22)."""
+"""Seed data: T-UNIT-08 (every seeded account passes the login model, bug B-22).
+
+Contents:
+    test_unit_08_seeded_emails_can_log_in: T-UNIT-08: seeded emails are accepted by LoginIn (a reserved TLD such as
+        .test is refused by EmailStr).
+"""
 
 import random
 

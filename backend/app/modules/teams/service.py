@@ -1,4 +1,26 @@
-"""Team rules and transactions (architecture.md 6.1, 6.2, 6.7 to 6.10)."""
+"""Team rules and transactions (architecture.md 6.1, 6.2, 6.7 to 6.10).
+
+Contents:
+    _reraise_constraint: Raise StateChanged for an invite code collision, the mapped DomainError, or the original
+        error.
+    _explain_leader_failure: Raise 404 or 403 after a 0-row leader update; return the team state for further checks.
+    get_team: Return team detail or raise 404.
+    get_invite: Return the invite code to a member.
+    create_team: Create a team with the caller as leader.
+    _record_failed_code: Count a failed invite code attempt against the user and IP limits.
+    join_by_code: Normalize the code, then in one transaction take a seat and add the membership; limits after the
+        replay.
+    _explain_join: After a rolled-back join: 200 already member, 404, 409 finalized / full / already_in_team /
+        not_registered.
+    _shrink: Decrement a team after a member left or was removed; audit leader promotion and reopening.
+    leave: Remove the caller; promote a new leader or delete the team.
+    remove_member: Leader removes a member.
+    finalize: Leader finalizes a team that meets min size.
+    reopen: Leader reopens a finalized team.
+    regenerate_invite: Leader replaces the invite code; the old code stops working immediately.
+    update_team: Leader changes name or looking flag.
+    team_audit: Return a page of the team's audit events to a member.
+"""
 
 from uuid import UUID
 

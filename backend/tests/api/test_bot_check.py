@@ -1,4 +1,13 @@
-"""Signup and login bot checks: T-API-46 (form token and minimum fill time), T-API-47 (honeypot and forged tokens)."""
+"""Signup and login bot checks: T-API-46 (form token and minimum fill time), T-API-47 (honeypot and forged tokens).
+
+Contents:
+    _signup_body: Return a valid signup body without bot-check fields.
+    _code: Return the error code of an error response.
+    test_api_46_form_token_minimum_fill_time: T-API-46: a token used under 2 s after issue is rejected; the same
+        token works after 2 s.
+    test_api_47_honeypot_and_forged_tokens: T-API-47: filled honeypot, wrong secret, expired token or a session
+        token all return bot_check_failed.
+"""
 
 import asyncio
 import time

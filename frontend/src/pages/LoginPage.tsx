@@ -1,4 +1,8 @@
 // Login form with client validation, honeypot and form token; signed-in users go straight to the app.
+//
+// Contents:
+//   safeNext: Return a safe in-app path from ?next=, or "/".
+//   LoginPage: The login page.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';

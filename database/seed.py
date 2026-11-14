@@ -3,6 +3,12 @@
 Usage: python database/seed.py --users 10000 --teams 2000 [--url URL] [--tokens loadtest/tokens.json]
 Every invariant holds on the result (counts, leaders, finalized sizes, creating audit events).
 Seeded users share the password given by --password (default: crewline-demo-1).
+
+Contents:
+    build: Build all rows in memory: team sizes sum to at most half the users so the people board stays populated.
+    seed: Insert one hackathon and all rows with COPY in a single transaction; return the built data.
+    write_tokens: Write pre-minted session JWTs and the hackathon id for k6.
+    main: CLI entry point.
 """
 
 import argparse

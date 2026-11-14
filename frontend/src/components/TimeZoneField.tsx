@@ -1,4 +1,7 @@
 // Time zone select: every IANA zone the browser knows, each shown with its current UTC offset.
+//
+// Contents:
+//   TimeZoneField: A labeled select of IANA zones; keeps an unknown saved value selectable.
 import { useMemo } from 'react';
 import { allTimeZones, formatZone } from '../lib/time';
 import { SelectField } from './Field';

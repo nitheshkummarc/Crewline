@@ -1,4 +1,13 @@
-"""Hackathon endpoints and the meta endpoint."""
+"""Hackathon endpoints and the meta endpoint.
+
+Contents:
+    meta: GET /api/meta: skill taxonomy and core roles.
+    list_hackathons: GET /api/hackathons.
+    get_hackathon: GET /api/hackathons/{hid}.
+    register: POST /api/hackathons/{hid}/register.
+    my_status: GET /api/hackathons/{hid}/me.
+    set_looking: PATCH /api/hackathons/{hid}/me.
+"""
 
 from uuid import UUID
 

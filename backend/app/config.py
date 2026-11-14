@@ -1,4 +1,10 @@
-"""Settings loaded from environment variables."""
+"""Settings loaded from environment variables.
+
+Contents:
+    Settings: Typed settings with defaults from architecture.md section 14.
+    Settings.listen_url: Return the connection string used for LISTEN.
+    get_settings: Return the cached Settings instance.
+"""
 
 from functools import lru_cache
 

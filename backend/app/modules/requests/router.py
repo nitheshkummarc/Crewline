@@ -1,4 +1,14 @@
-"""Join request endpoints."""
+"""Join request endpoints.
+
+Contents:
+    _respond: Render a write outcome.
+    create_request: POST /api/teams/{tid}/requests.
+    list_for_team: GET /api/teams/{tid}/requests (leader only).
+    list_mine: GET /api/hackathons/{hid}/my-requests.
+    accept: POST /api/requests/{rid}/accept.
+    decline: POST /api/requests/{rid}/decline.
+    withdraw: POST /api/requests/{rid}/withdraw.
+"""
 
 from uuid import UUID
 

@@ -1,4 +1,29 @@
-"""Team and membership SQL."""
+"""Team and membership SQL.
+
+Contents:
+    insert_team: Insert a team copying sizes and invite TTL from the hackathon; None if the hackathon does not
+        exist.
+    insert_membership: Insert a membership row (unique per hackathon and user).
+    take_seat_by_code: Conditional seat UPDATE by invite code; return id, hackathon, count, version or None.
+    take_seat_as_leader: Conditional seat UPDATE for an accept by the leader; return hackathon, count, version or
+        None.
+    lock_team: SELECT ... FOR UPDATE on the team row (used by paths that may delete the team).
+    lock_team_shared: SELECT ... FOR SHARE on the team row (blocks seat and leader changes, not other readers).
+    delete_membership: Delete one membership; return True if a row was deleted.
+    shrink_team: Decrement count, reopen, promote the earliest member if the leader left; return the new state.
+    delete_team: Delete the team row (requests cascade) and return its last version.
+    set_status: Conditional status change by the leader (finalizing needs member_count >= min_size); return the new
+        state.
+    set_invite: Replace the invite code and expiry by the leader; return the new code and expiry or None.
+    update_fields: Update name or looking by the leader; return the hackathon id or None.
+    find_by_code: Return the team for an invite code with an `active` flag for expiry.
+    get_state: Return id, hackathon, leader, counts, sizes and status for error explanation.
+    get_membership: Return the caller's team id in a hackathon, or None.
+    is_member: True if the user is a member of the team.
+    is_registered: True if the user is a participant of the hackathon.
+    get_invite: Return the invite code and expiry of a team.
+    get_detail: Return the team snapshot with its members, leader first by join order, or None.
+"""
 
 from uuid import UUID
 

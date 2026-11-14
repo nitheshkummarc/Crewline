@@ -1,4 +1,16 @@
-"""Fixtures for the test database, a real API server and per-test cleanup."""
+"""Fixtures for the test database, a real API server and per-test cleanup.
+
+Contents:
+    admin_url: Return a server URL from TEST_DATABASE_URL, or start the local test instance (database/dev_db.py).
+    server_url: Return the PostgreSQL server URL used by the test session.
+    db_url: Create a fresh test database with all migrations applied.
+    fake_web_build: Write a minimal built web app (index.html and one hashed asset) so SPA serving is tested without
+        npm.
+    server: Run one real API server for the whole session (serving a small fake web build) and return its base URL.
+    users: Factory for signed-up users; closes their clients after the test.
+    truncate: Remove all rows from every application table.
+    clean_db: Empty the database before a test and assert the invariants after it.
+"""
 
 import asyncio
 import os

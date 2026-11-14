@@ -1,4 +1,8 @@
-"""Join request models."""
+"""Join request models.
+
+Contents:
+    CreateRequestIn: Body for POST /api/teams/{tid}/requests.
+"""
 
 from pydantic import ConfigDict, Field
 

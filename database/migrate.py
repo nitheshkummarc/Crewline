@@ -1,6 +1,10 @@
 """Apply SQL migrations in order.
 
 Usage: python database/migrate.py [--url URL]   (default: $DATABASE_URL)
+
+Contents:
+    apply_migrations: Apply files not yet in schema_migrations; return the versions applied.
+    main: CLI entry point.
 """
 
 import argparse

@@ -47,7 +47,8 @@ load-c:           ## k6 scenario L-C (10-minute soak)
 chaos:            ## Kill the API three times under a join workload, then check invariants
 	$(PY) backend/scripts/chaos.py
 
-lint:             ## ruff, mypy, eslint
+lint:             ## ruff, file headers, mypy, eslint
 	$(UV) run --project backend ruff check backend database
+	$(PY) backend/scripts/file_headers.py --check
 	cd backend && $(UV) run mypy app
 	npm --prefix frontend run lint

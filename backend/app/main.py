@@ -1,4 +1,10 @@
-"""App factory: lifespan, middleware, routers, static web files."""
+"""App factory: lifespan, middleware, routers, static web files.
+
+Contents:
+    lifespan: Open pools and start background tasks; close them on shutdown.
+    mount_web: Serve the built SPA at / with index.html as the fallback for client routes.
+    create_app: Build the FastAPI app with middleware, routers and the SPA mount.
+"""
 
 import asyncio
 import contextlib

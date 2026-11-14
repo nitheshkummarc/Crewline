@@ -1,4 +1,10 @@
-"""JSON logging setup."""
+"""JSON logging setup.
+
+Contents:
+    JsonFormatter: Format log records as one JSON line.
+    JsonFormatter.format: Return the record as a JSON string with extra fields included.
+    configure_logging: Install the JSON formatter on the root logger.
+"""
 
 import logging
 import sys

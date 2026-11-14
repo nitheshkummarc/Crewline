@@ -1,4 +1,9 @@
-"""T-UNIT-04 and T-UNIT-05: request hashing and constraint error mapping."""
+"""T-UNIT-04 and T-UNIT-05: request hashing and constraint error mapping.
+
+Contents:
+    test_unit_04_hash_ignores_key_order: T-UNIT-04: key order does not change the hash; a body change does.
+    test_unit_05_constraint_mapping: T-UNIT-05: each constraint name maps to the right domain error.
+"""
 
 from types import SimpleNamespace
 

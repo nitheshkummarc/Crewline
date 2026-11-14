@@ -1,4 +1,8 @@
 // Page header on the navy brand field lit by soft warm and cool glows, with an optional row of facts.
+//
+// Contents:
+//   HeroBanner: A colored page header: big title, supporting text, and real facts underneath.
+//   HeroFact: One fact chip on the banner (real data only).
 import type { ReactNode } from 'react';
 
 interface Props {

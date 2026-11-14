@@ -1,4 +1,11 @@
 // Seats as tear-off tabs in the team's band color, a live dot, and status tags.
+//
+// Contents:
+//   SeatTabs: One tab per seat: band color when taken (band ink on a band surface), dashed when open; the last
+//       open seat is marked.
+//   teamState: The state of a team for the caller.
+//   StateTag: A small tag for a team's state.
+//   LiveDot: A pulsing dot and label for the live connection.
 import clsx from 'clsx';
 import type { TeamSummary } from '../api/types';
 

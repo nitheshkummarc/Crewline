@@ -1,6 +1,30 @@
 """System guarantees through real servers: overload fails fast (T-GUAR-01), per-user limits (T-GUAR-02),
 all-or-nothing transactions under an injected failure (T-GUAR-03, 04), lost connections and read timeouts
-answer 503 (T-GUAR-06, 07)."""
+answer 503 (T-GUAR-06, 07).
+
+Contents:
+    tight_server: A server with a 2-connection write pool, 0.2 s acquire timeout and an in-flight cap of 4.
+    limited_server: A server with production-like small rate limits.
+    fault_db: A database whose audit insert fails for users listed in fault_users.
+    fault_server: A server on the fault database.
+    test_guar_01_overload_fails_fast_and_stays_correct: T-GUAR-01: a burst over the pool and in-flight cap gets fast
+        503s, never 500; retries keep one winner.
+    test_guar_02_per_user_limits: T-GUAR-02: 6th mutation in a minute is 429 for that user only; login and signup
+        limits also apply.
+    test_guar_05_forwarded_for_cannot_dodge_ip_limits: T-GUAR-05: a new fake X-Forwarded-For on every login still
+        hits the per-IP login limit (B-33).
+    test_guar_03_join_is_all_or_nothing: T-GUAR-03: a failure at the last statement of a join leaves no seat, no
+        member and no stored key.
+    test_guar_04_accept_is_all_or_nothing: T-GUAR-04: a failure at the last statement of an accept leaves the
+        request pending and the count unchanged.
+    _wait_for_lock_waiter: Return the pid of the first backend of app_name that waits on a lock (poll up to 2 s).
+    test_guar_06_lost_write_connection_is_busy: T-GUAR-06: a write whose backend is terminated mid-transaction gets
+        503 busy; the same key then succeeds.
+    test_guar_07_read_timeout_is_busy: T-GUAR-07: a read blocked past the read pool statement_timeout gets 503 busy,
+        not 500.
+    test_guar_02b_committed_key_replays_after_limits: T-GUAR-02b (B-41): a committed key replays its stored response
+        after the user hit each rate limit.
+"""
 
 import asyncio
 import time

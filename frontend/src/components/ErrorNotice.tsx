@@ -1,4 +1,7 @@
 // The one error display: the exact API error code and one line saying what happened and what to do.
+//
+// Contents:
+//   ErrorNotice: Show an API error: code tag, one-line message, and the request id for server errors.
 import { CircleAlert } from 'lucide-react';
 import { ApiError } from '../api/client';
 import { errorCode, messageFor } from '../lib/errors';

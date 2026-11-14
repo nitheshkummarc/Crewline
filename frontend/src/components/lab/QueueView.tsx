@@ -1,4 +1,7 @@
 // Request queue: the order join requests reach the leader, and what happens when the leader accepts the first two.
+//
+// Contents:
+//   QueueView: The leader's queue after a burst of requests, with the two decisions.
 import clsx from 'clsx';
 import type { QueueResult } from '../../api/types';
 import { Proof, Stat } from './RaceView';

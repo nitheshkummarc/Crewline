@@ -290,6 +290,8 @@ Auth request and response models.
 |---|---|---|
 | `_unique_skills(skills)` | Return the skills without duplicates, keeping order | done |
 | `SignupIn`, `LoginIn`, `UpdateMeIn`, `UserOut` | Validated models with limits from api.md (extra fields rejected); signup and login carry `form_token` and the honeypot `company`; `UpdateMeIn` refuses explicit nulls | done |
+| `UpdateMeIn._tz` | Validate the time zone as an IANA name. | done |
+| `UpdateMeIn._not_empty` | Require at least one field and refuse explicit nulls. | done |
 
 ### backend/app/modules/auth/service.py
 Signup, login and profile rules.
@@ -375,6 +377,7 @@ Team request models (responses are the `team_snapshot` shape plus `members`).
 | `CreateTeamIn` | Body for POST /api/hackathons/{hid}/teams | done |
 | `UpdateTeamIn` | Body for PATCH /api/teams/{tid}; at least one field | done |
 | `JoinIn` | Body for POST /api/teams/join | done |
+| `UpdateTeamIn._not_empty` | Require a name or a looking flag. | done |
 
 ### backend/app/modules/teams/service.py
 Team rules and transactions (architecture.md 6.1, 6.2, 6.7 to 6.10).
@@ -761,6 +764,20 @@ Bulk seed data with COPY and a k6 tokens file; every invariant holds on the resu
 | `write_tokens(path, user_ids, hackathon_id, secret, count, team_codes)` | Write pre-minted session JWTs, the hackathon id and open team codes for k6 | done |
 | `main()` | CLI entry point | done |
 
+### backend/scripts/file_headers.py
+Write a Contents list (each function and its one-line purpose) under the header of every source file; `--check` exits 1 if one is out of date.
+| Name | Purpose | Status |
+|---|---|---|
+| `tracked(dirs, exts)` | List tracked and new (not ignored) files under dirs with one of the given extensions | done |
+| `first_line(doc)` | Return the first non-empty line of a docstring, or an empty string | done |
+| `entry_lines(entries, prefix)` | Format name: purpose entries, wrapped at WIDTH with a hanging indent | done |
+| `py_entries(tree)` | Top-level functions and classes, plus each class's methods, with their purposes | done |
+| `error_summary(node)` | Describe an error class by its `status, code, message = ...` line, as in core/errors.py | done |
+| `py_header(path)` | Return the file text with an up-to-date Contents section, or None when the file has no docstring | done |
+| `jsdoc_before(lines, i)` | Return the first line of the /** */ comment that ends right above line i | done |
+| `js_header(path)` | Return the file text with an up-to-date Contents section, or None when the file has no header comment | done |
+| `main()` | Update or check the Contents section of every tracked source file | done |
+
 ### backend/scripts/latency_probe.py
 Latency probe: every endpoint uncontended plus the board under concurrent users; server-side numbers from the access log.
 | Name | Purpose | Status |
@@ -865,6 +882,7 @@ App root: query client with the session rule, live region, motion settings and t
 |---|---|---|
 | `createQueryClient()` | Build the query client; any 401 refetches the session so the app shell sends the user to login | done |
 | `App` | The whole app (query client, LazyMotion, MotionConfig reduced motion, live region, router, dev-only devtools) | done |
+| `Routes` | Render the route table. | done |
 
 ### frontend/src/routes.tsx
 Route table: the single list of client routes, used by the app and by the link checker test.
@@ -872,6 +890,7 @@ Route table: the single list of client routes, used by the app and by the link c
 |---|---|---|
 | `routes` | `/login`, `/signup`, `/privacy`, `/terms`, signed-in `/`, `/h/:hid`, `/h/:hid/teams/new`, `/h/:hid/join`, `/teams/:tid`, `/me`, `/lab`, and the `*` 404 | done |
 | `isKnownRoute(path)` | True if a path is served by a real route (not the 404 catch-all) | done |
+| `page` | Wrap a lazy page in Suspense with skeleton cards as the fallback. | done |
 
 ### frontend/src/api/client.ts
 Fetch wrapper: same-origin credentials, Idempotency-Key on mutations, error envelope, retry of 503 and network errors.
@@ -890,6 +909,7 @@ One typed function per endpoint in docs/api.md.
 |---|---|---|
 | `meta`, `formToken`, `signup`, `login`, `logout`, `me`, `updateMe`, `listHackathons`, `getHackathon`, `register`, `myStatus`, `setLooking`, `teamsBoard`, `peopleBoard`, `createTeam`, `getTeam`, `updateTeam`, `joinByCode`, `leaveTeam`, `removeMember`, `finalizeTeam`, `reopenTeam`, `getInvite`, `regenerateInvite`, `teamAudit`, `createRequest`, `teamRequests`, `myRequests`, `acceptRequest`, `declineRequest`, `withdrawRequest`, `suggestions` | Typed endpoint calls (every `/api` route) | done |
 | `eventsUrl(hid)` | URL of the event stream for one hackathon | done |
+| `q` | Build a query string from the non-empty parameters. | done |
 
 ### frontend/src/api/types.ts
 API payload types matching docs/api.md.
@@ -922,6 +942,7 @@ Event stream hook: patches cached board and team data from SSE events, refetches
 | `applyRequestEvent(client, hid, event)` | Refresh that team's request list and the caller's own requests | done |
 | `knownTeamName(client, hid, teamId)` | Return the cached name of a team (for deletion events, which carry no snapshot) | done |
 | `useEventStream(hid)` | Open one EventSource; refetch on open, merge team events and feed the activity store, handle people, request and resync; reconnect with backoff; return the stream status | done |
+| `parse` | Parse an SSE message's JSON data; null if it is not valid JSON. | done |
 
 ### frontend/src/hooks/useShell.ts
 Shell context shared by signed-in pages.
@@ -975,6 +996,7 @@ Version-based merging of live events and refetched snapshots, with tombstones fo
 | `onBoard(team)` | True if a team belongs on the teams board (forming, looking, not full) | done |
 | `mergeBoardPage(items, teamId, incoming, isFirstPage, isLastPage)` | Patch in place, remove, or insert one team inside the page's range (bug B-26) | done |
 | `mergeFetchedPage(fresh, cached)` | Merge a refetched page: higher version wins, tombstoned and off-board teams dropped | done |
+| `newestFirst` | Board order: newest team first, then by id. | done |
 
 ### frontend/src/lib/teamColor.ts
 Team band colors and initials.
@@ -993,6 +1015,7 @@ Board filters over loaded teams and people.
 | `isFiltering(filter)` | True if search text or skills narrow the list | done |
 | `filterTeams(teams, filter)` | Search, filter by needs or has, sort by open seats; input unchanged | done |
 | `filterPeople(people, q, skills)` | Search people by name and required skills | done |
+| `matchesText` | True if text contains the search query, ignoring case and outer spaces. | done |
 
 ### frontend/src/lib/activity.ts
 Live activity feed items and store.
@@ -1067,7 +1090,7 @@ Presentational components (no data fetching).
 | `ConfirmDialog.tsx` | `ConfirmDialog`, `DIALOG_CLASS` | done |
 | `ErrorNotice.tsx` | `ErrorNotice`: the one error display (code tag, one-line message, request id for 5xx) | done |
 | `Field.tsx` | `FieldShell`, `TextField`, `TextAreaField`, `SelectField`, `FieldError`, `Honeypot` | done |
-| `Layout.tsx` | `Layout` (sidebar on laptops; top bar and bottom tabs on phones), `Wordmark`, `FooterLinks`, `ActionBar`, `CONTACT_URL`, `SOURCE_URL` | done |
+| `Layout.tsx` | `Layout` (sidebar on laptops; top bar and bottom tabs on phones), `SideLink`, `TabLink`, `UserMenu` and `AccountMenuContent` (navigation and account menu), `Wordmark`, `FooterLinks`, `ActionBar`, `CONTACT_URL`, `SOURCE_URL` | done |
 | `LiveRegion.tsx` | `LiveRegionProvider` (the page's single polite live region), `useAnnounce` | done |
 | `LoadState.tsx` | `SkeletonCards`, `LoadError`, `EmptyState` | done |
 | `People.tsx` | `PersonCard`, `PeopleGrid`, `SuggestionList`, `ScoreBar` (stacked bar of the weighted score parts), `localTime(timezone)` | done |
@@ -1095,7 +1118,7 @@ One file per route; files without a route hold sections or helpers of one page.
 | `TeamPage.tsx` | Team hero in the band color, members, leader tools, invite and actions | done |
 | `TeamSections.tsx` | `Section`, `RequestsSection`, `InviteSection`, `SettingsSection`, `SuggestionsSection`, `AuditSection` | done |
 | `teamConfirm.ts` | `teamConfirmCopy(args)`: text and action for leave, finalize, reopen and remove dialogs; `Confirm` | done |
-| `ProfilePage.tsx` | Edit name, skills, time zone with a live preview card; `profileChanges(user, values)` | done |
+| `ProfilePage.tsx` | Edit name, skills, time zone with a live preview card; `ProfileForm` (saves only changed fields), `profileChanges(user, values)` | done |
 | `LegalPages.tsx` | `PrivacyPage`, `TermsPage`, `NotFoundPage`, `LEGAL_UPDATED` | done |
 | `LabPage.tsx` | Race lab: five tabs, size slider, one Run button per tab; `percentile(sorted, fraction)` | done |
 
@@ -1117,5 +1140,5 @@ One file per route; files without a route hold sections or helpers of one page.
 ### frontend/e2e/
 | File | Purpose | Status |
 |---|---|---|
-| `helpers.ts` | `unique`, `hackathonId`, `people` (real signups with the bot check, registered, one signed-in page each), `inviteCode`, `watch` and `assertClean` (CSP violations, page errors, horizontal overflow) | done |
+| `helpers.ts` | `unique`, `hackathonId`, `signupThroughApi`, `people` (real signups with the bot check, registered, one signed-in page each), `inviteCode`, `watch` and `assertClean` (CSP violations, page errors, horizontal overflow) | done |
 | `crewline.spec.ts` | E2E-01 to E2E-10 | done |

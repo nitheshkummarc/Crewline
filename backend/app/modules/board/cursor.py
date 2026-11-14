@@ -1,4 +1,9 @@
-"""Opaque keyset cursors: base64url of '<iso timestamp>|<uuid>'."""
+"""Opaque keyset cursors: base64url of '<iso timestamp>|<uuid>'.
+
+Contents:
+    encode_cursor: Return a base64url cursor for a (timestamp, id) position.
+    decode_cursor: Return (timestamp, id) from a cursor or raise validation_error.
+"""
 
 import base64
 import binascii

@@ -1,107 +1,111 @@
 # Adversarial testing: what held, what broke, how it was found
 
-After modules 1 to 9 passed their own tests, a separate attack campaign tried to break Crewline. It ran from its own repository (kept outside this one) against a frozen copy of commit `de0059f`, so the product could not be adjusted to pass it. Every finding below has a reproduction that failed on that commit, a root cause proven with logs or SQL, and a regression test in this repo that fails on the old code.
+After the project passed all its own tests, a separate attack campaign tried to break it on purpose.
+
+- The attacks ran from a separate project against a frozen copy of the code, so the code could not be tweaked to pass them.
+- Every bug below was first reproduced on that frozen copy, its cause was proven from logs or database records, and it got a new test in this project that fails on the old code.
 
 ## How the bugs were found
 
-| Technique | What it does | Found |
+| Method | What it does | What it found |
 |---|---|---|
-| Pairwise overlap (area A) | Two write paths on the same team or user, 30 repetitions each through the real server with a barrier | BRK-01, BRK-02 |
-| Schedule exploration (area A) | Runs the real services in process, pauses each transaction before every statement, and replays every interleaving with at most 2 preemptions (1,215 schedules). Any failure is replayable from its schedule string | BRK-01, BRK-02 (exact schedules) |
-| Randomized mixes (area B) | 16 random operations at once per step over 12 kinds, all checks after every step | BRK-01 again, on its own (seed 3, step 65) |
-| Idempotency probes (area C) | Replays, duplicate keys, changed bodies, retries after limits, large purge backlogs | BRK-03, BRK-04, BRK-05 |
-| Fault injection (area D) | `pg_terminate_backend` on a waiting write, `LOCK TABLE` against reads, PostgreSQL restart under 40-client churn | BRK-06, BRK-07 |
-| Network faults (area E) | A TCP proxy between the API and PostgreSQL adds latency, resets links, or makes them half-open | BRK-10, BRK-06 under resets |
-| Security probes (area F) | Forged and orphaned tokens, IDOR, CSRF, NUL bytes, huge bodies, timing of invite errors | BRK-08, BRK-09 |
-| Schema fuzzing (area G) | 9,600 requests generated from the API schema | BRK-03 again |
-| Mutation testing (area K) | Breaks one guard at a time in a copy and checks that the product's own suite notices | 5 surviving mutants (gaps in this repo's tests) |
+| Overlapping pairs | Runs two actions on the same team or person at the same instant, 30 times each, through the real server | BRK-01, BRK-02 |
+| Every ordering | Pauses each action before every database step and tries every way two actions can interleave (1,215 orderings). Any failure can be replayed exactly | BRK-01, BRK-02, with the exact ordering |
+| Random mixes | 16 random actions of 12 kinds at once, checking everything after each round | BRK-01 again, without being told where to look |
+| Repeated clicks | Retries, duplicate keys, changed requests, retries after hitting a limit, huge piles of old keys | BRK-03, BRK-04, BRK-05 |
+| Database faults | Killing a database connection mid-action, blocking reads, restarting the database under load | BRK-06, BRK-07 |
+| Network faults | A relay between the server and the database that slows, cuts or silently freezes the connection | BRK-10, BRK-06 again |
+| Security probes | Forged and leftover sessions, other people's data, cross-site requests, odd characters, huge requests | BRK-08, BRK-09 |
+| Random requests | 9,600 requests generated from the API description | BRK-03 again |
+| Breaking the code on purpose | Breaks one safety check at a time in a copy of the code and checks whether this project's tests notice | 5 checks the tests missed |
 
-Checks applied after every run: the invariant checker (I1 to I10), event checks (the last team event equals the database snapshot; one version never maps to two snapshots; audit rows name the right user), allowed status codes only, `pg_stat_database.deadlocks` unchanged, and no traceback in the server log.
+After every run the harness checked that: the 10 consistency checks found nothing, the live board matched the database, every answer was an allowed one, nothing got stuck, and the server logged no crash.
 
-## What held under attack
+## What held
 
-- **Last-seat race:** exactly one winner in every pair and mix; no team ever over capacity.
-- **19 write-path pairs** (join vs leave, delete, finalize, reopen, regenerate; accept vs withdraw, decline, code joiners; two leaders accepting the same user; and more), 30 repetitions each: all held, 0 deadlocks.
-- **Idempotency:** replays byte-identical on 15 endpoints, also with 15 ms of injected latency per database message.
-- **Crash and restart:** 3 hard kills of the API (9,643 actions, 0 replay mismatches); a PostgreSQL restart under load left every committed 200 replaying byte-identical and the invariants clean.
-- **Realtime:** 400 streams, a reader that never reads, a 400-stream reconnect storm, a killed LISTEN backend: every stream got its events or a resync.
-- **Security:** forged, expired and `alg: none` tokens rejected; no invite code or email leaks; unknown and expired invites indistinguishable by body and timing.
-- **Load:** about 1,000 board requests/s with p95 141 ms at 100 virtual users, 0 failures.
+- **Last seat:** exactly one winner in every run. No team ever went over its size.
+- **Overlapping actions:** 19 pairs, such as join against leave, delete, finalize or a new invite code, and two leaders accepting the same person, 30 times each. All held and nothing got stuck.
+- **Repeated clicks:** the same answer every time on 15 actions, even with every database message slowed by 15 ms.
+- **Crashes:** the server was killed 3 times during 9,643 actions, and the database was restarted under load. Every saved answer came back unchanged and the data stayed correct.
+- **Live updates:** 400 open streams, a browser that never reads, 400 reconnecting at once, and a killed database listener. Every stream got its updates or was told to reload.
+- **Security:** forged and expired sessions were refused. No invite code or email leaked. Unknown and expired invite codes looked the same, even by response time.
+- **Load:** about 1,000 board requests a second, 95 % under 141 ms, with no failures.
 
 ## What broke
 
-Data never became invalid: no finding broke an invariant. The breaks were in availability, in the live view and in the error contract.
+The data never became wrong. The bugs were about the server staying available, the live board staying current, and errors being answered properly.
 
-| ID | Severity | What broke | Bug diary | Regression test | Status |
-|---|---|---|---|---|---|
-| BRK-10 | high (conditional) | A silently dead database link hung requests, then exhausted the pool for good; live updates stopped without a resync | B-34 | T-CHAOS-03 | fixed |
-| BRK-06 | medium | A lost connection mid-request (backend killed, PostgreSQL restart, socket reset) returned 500, not 503 | B-35 | T-GUAR-06 | fixed |
-| BRK-07 | low | A read blocked past the read `statement_timeout` returned 500 | B-35 | T-GUAR-07 | fixed |
-| BRK-01 | medium | A profile change overlapping the same user's join or accept left the team's last live event with the old skills | B-36 | T-RACE-19 | fixed |
-| BRK-02 | low | A profile change overlapping the same user's leave audited and bumped the team they had just left | B-37 | T-RACE-20 | fixed |
-| BRK-03 | low | An explicit `null` in a profile update returned 500 | B-38 | T-API-29b | fixed |
-| BRK-08 | low | A valid session for a deleted user returned 500 on writes | B-40 | T-API-50 | fixed |
-| BRK-09 | low | A NUL character in any text field returned 500 | B-39 | T-API-51 | fixed |
-| BRK-04 | low | A retry of a committed request could get 429 instead of its stored response | B-41 | T-GUAR-02b | fixed |
-| BRK-05 | low | The hourly idempotency purge stopped working past a large backlog | B-42 | T-OPS-06 | fixed |
-
-### BRK-10: half-open database links (B-34)
-
-- **How found:** a proxy stopped forwarding on its open connections without closing them. Reads, writes and `/readyz` got no answer within 25 s; 35 s later every request got 503 because every pool connection was stuck; the open stream never got a resync.
-- **Cause:** no client-side timeout on either pool, and `statement_timeout` cannot fire when the server never receives the statement. The listener keepalive had no timeout and swallowed errors.
-- **Fix:** `command_timeout=5` on both pools; the keepalive gives up after 5 s and terminates the link, so the existing reconnect and resync path runs.
-
-### BRK-06 and BRK-07: transient database errors were 500 (B-35)
-
-- **How found:** terminating a write backend while it waited on a lock gave 500 (a retry with the same key then succeeded). A PostgreSQL restart under load gave 139 x 500. Reads blocked by `LOCK TABLE teams` gave 500.
-- **Cause:** only lock, statement and pool timeouts counted as busy. A connection lost inside a transaction block surfaces as asyncpg `InterfaceError`, with the real error hidden in `__context__`. Reads do not pass through `run_write`, where timeouts become 503.
-- **Fix:** killed backends, restarts, lost sockets and `InternalClientError` count as busy; the check walks the exception chain; the generic error handler answers 503 for the same chain. The client already retries 503 with the same key, so the user sees the result instead of an error.
-
-### BRK-01 and BRK-02: profile change racing the same user's join, accept or leave (B-36, B-37)
-
-- **How found:** pairwise overlap through the real server (27 of 30 and 16 of 30 repetitions), then the schedule explorer pinned exact interleavings, for example `A A A A A A A A B B B B B B B B B A` (A: profile update, B: join; A stops just before COMMIT, B runs and commits, A commits). A randomized mix found BRK-01 again without being pointed at it.
-- **Cause (BRK-01):** the profile and the join shared no lock. Each read the other's data before it committed, so the join's live event carried the old skills at the same version the database now shows with the new skills. Clients only apply a higher version, so every live board stayed stale.
-- **Cause (BRK-02):** PostgreSQL re-checks a waiting row lock only against the locked table's row, not the joined membership row, so a membership deleted by a leave still matched.
-- **Fix:** the profile update locks the user's participant rows first; a membership insert needs a `KEY SHARE` on that row, which `FOR UPDATE` blocks, so the two serialize. The version bump runs in a new statement that re-checks membership. The documented lock order changed for this one path (ADR-007), with the argument for why it cannot deadlock; 1,215 explored schedules and the race tests show 0 deadlocks.
-
-### BRK-03, BRK-08, BRK-09: inputs that reached the database and answered 500 (B-38 to B-40)
-
-- **How found:** probing request hashing (explicit nulls), schema fuzzing over every operation, and security probes (a forged-but-valid token for a deleted user, NUL bytes in text).
-- **Cause:** the API let through values the database refuses: a null for a NOT NULL column, U+0000 in `text`, and a user id with no row (sessions are checked without a database hit). The resulting database errors were not mapped, so they became 500.
-- **Fix:** refuse them at the boundary: explicit nulls are 400, every request body rejects U+0000 through one shared base model, and a session whose user is gone gets 401. A 22021 handler stays as a backstop for text outside bodies.
-
-### BRK-04: a retry of a committed request was rate limited (B-41)
-
-- **How found:** idempotency probes: commit a join or a create with key K, exhaust a limit with other requests, then retry K.
-- **Cause:** the limits ran before the replay fast path, so a request that had already succeeded was refused on retry.
-- **Fix:** limits run after the replay and before the claim, so a committed key always returns its stored response and new work is still limited.
-
-### BRK-05: the idempotency purge stopped working past a large backlog (B-42)
-
-- **How found:** idempotency probes inserted 300k, 1M and 2M expired keys and called the real purge on a pool with the write pool's settings. 300k were deleted; 1M and 2M were cancelled with nothing deleted.
-- **Cause:** the purge was one DELETE under the write pool's 3 s statement timeout. A cancelled DELETE rolls back completely, and the next hourly run faced a bigger backlog, so it could never catch up.
-- **Fix:** the purge runs in its own transaction that raises the timeout for that one statement only. Deleting in batches was measured and rejected: it slowed down as the backlog grew.
-
-## Gaps in this repo's own tests (mutation testing)
-
-The campaign broke one guard at a time in a copy of the code and ran this repo's suite against it. 16 of 21 mutants were caught; 5 survived. Each now has a test, and each test was run against its mutant applied to the current code and failed there:
-
-| Mutant | What it broke | Test that now kills it |
-|---|---|---|
-| M-A7 | `member_removed` audit named the leader instead of the removed member | T-API-22b |
-| M-C3 | The request hash ignored path parameters, so one key could replay across teams | T-API-27b |
-| M-C4 | A duplicate that lost the key claim ran the body again instead of replaying | T-RACE-21 |
-| M-C5 | Keys of 1 to 15 characters were accepted | T-API-28b |
-| M-K3 | Create request read the team without `FOR SHARE`, so it could slip in while a join held the last seat | T-RACE-22 |
-
-## Known gaps (not fixed in this round)
-
-| Item | Trigger | Severity | Covered by |
+| ID | How bad | What broke | Fixed in |
 |---|---|---|---|
-| T-RACE-14 randomized mix not in this repo's suite | Many operation kinds at once on shared teams and users | test gap | Breaker area B seeds 3 and 4 run clean on the fixed code |
-| T-CHAOS-02 PostgreSQL restart under load not in this repo's suite | Neon compute restart while requests run | test gap | Breaker D06 on the fixed code: 0 x 500 across a restart, every committed 200 replays |
-| O-03 per-IP limit keyed by raw header text | An edge that forwards a client-set IP header | hardening | Safe while the edge overwrites `cf-connecting-ip` |
-| O-04 invisible or bidi-override team names | A name made only of a zero-width space | hardening | None yet |
-| O-05 form tokens reusable | One token used for several signups | hardening | Signup limit 10 per hour per IP |
-| O-06 `/metrics` public | Anyone can read pool and route counters | ops | Documented in api.md |
-| O-07 SSE open uses a read connection | 700 simultaneous reconnects got one 503 | low | The web client retries with backoff |
+| BRK-10 | High, but needs a rare network fault | A database connection that silently froze made requests hang until the server ran out of connections. Live updates stopped | B-34 |
+| BRK-06 | Medium | A lost database connection during a request gave a server error instead of "try again" | B-35 |
+| BRK-07 | Low | A read blocked for too long gave a server error | B-35 |
+| BRK-01 | Medium | A profile edit at the same moment as the same person's join left old skills on the live board | B-36 |
+| BRK-02 | Low | A profile edit at the same moment as the same person's leave updated the team they had just left | B-37 |
+| BRK-03 | Low | Sending an empty value in a profile edit gave a server error | B-38 |
+| BRK-08 | Low | A valid session for a deleted account gave a server error | B-40 |
+| BRK-09 | Low | An invisible null character in any text gave a server error | B-39 |
+| BRK-04 | Low | A retry of a successful action could be refused for too many requests | B-41 |
+| BRK-05 | Low | The hourly cleanup of old click keys stopped working once too many piled up | B-42 |
+
+All ten are fixed, each with a test. The bug numbers refer to rows in [bug-diary.md](bug-diary.md), which have the full cause and proof.
+
+### BRK-10: a silently frozen database connection
+
+- **Found by:** a relay stopped passing data on open connections without closing them. Requests got no answer for 25 seconds, then every request failed because every connection was stuck. The live stream never recovered.
+- **Cause:** the server had no time limit of its own on database calls, and the database's time limit cannot help when the request never reaches it. The live listener's health check had no time limit either.
+- **Fix:** every database call now gives up after 5 seconds, and the listener drops a silent connection after 5 seconds and reconnects, telling browsers to reload.
+
+### BRK-06 and BRK-07: temporary database problems gave server errors
+
+- **Found by:** killing a database connection while it waited gave a server error, although a retry then worked. A database restart under load gave 139 server errors. Blocked reads gave server errors.
+- **Cause:** only a few kinds of timeout were treated as "busy". A lost connection shows up as a different error, with the real cause hidden underneath. Reads did not go through the code that turns timeouts into "try again".
+- **Fix:** killed connections, restarts and lost network links now all count as "busy", including when hidden underneath another error, on reads and writes. The browser already retries "busy" with the same click key, so the person sees the result, not an error.
+
+### BRK-01 and BRK-02: profile edit at the same moment as a join or leave
+
+- **Found by:** overlapping pairs failed 27 of 30 and 16 of 30 times. The every-ordering tool then found the exact ordering: the profile edit pauses just before saving, the join runs and saves, then the profile edit saves. Random mixes found the same bug on their own.
+- **Cause:** the two actions never waited for each other. Each read the other's data before it was saved, so the join's live update carried the old skills. Browsers only accept newer versions, so they kept showing old skills. In the leave case, the database rechecked only the team, not the membership, so the profile edit still touched a team the person had just left.
+- **Fix:** the profile edit now locks the person's registration first, which a join also needs, so the two take turns. The team update is a separate step that sees the finished leave. This changes the lock order for this one action; decision ADR-007 explains why it cannot get stuck. 1,215 orderings and the race tests confirm it.
+
+### BRK-03, BRK-08, BRK-09: inputs the database refused
+
+- **Found by:** checking empty values, random requests, a valid session for a deleted account, and invisible null characters in text.
+- **Cause:** the server let through values the database refuses. The resulting errors were not translated, so they came out as server errors.
+- **Fix:** the server now refuses them first: empty values and null characters get "invalid input", and a session for a deleted account must sign in again.
+
+### BRK-04: a retry was refused for too many requests
+
+- **Found by:** saving a join, using up the request limit with other actions, then retrying the join.
+- **Cause:** the limit was checked before looking up the saved answer.
+- **Fix:** the saved answer is looked up first. A click that already succeeded always gets its answer back; new work is still limited.
+
+### BRK-05: the cleanup of old click keys stopped working
+
+- **Found by:** creating 300 thousand, 1 million and 2 million old keys and running the real cleanup. 300 thousand were deleted; 1 and 2 million timed out with nothing deleted.
+- **Cause:** the cleanup had a 3 second limit. A cleanup that times out undoes itself completely, and the next hourly run faced an even bigger pile, so it could never catch up.
+- **Fix:** the cleanup now has its own 5 minute limit. Deleting in small batches was measured and turned down, because it got slower as the pile grew.
+
+## Gaps in this project's own tests
+
+The harness broke one safety check at a time in a copy of the code and ran this project's tests. 16 of 21 breaks were caught; 5 were not. Each now has a test, and each test was confirmed to fail when its check is broken.
+
+| Break | What it did | New test |
+|---|---|---|
+| M-A7 | The history entry for a removed member named the leader instead | T-API-22b |
+| M-C3 | One click key could be reused across different teams | T-API-27b |
+| M-C4 | A duplicate click ran the action again instead of returning the saved answer | T-RACE-21 |
+| M-C5 | Click keys that were too short were accepted | T-API-28b |
+| M-K3 | A join request could slip in while a join was taking the last seat | T-RACE-22 |
+
+## Known gaps, not fixed in this round
+
+| Item | Risk | Covered today by |
+|---|---|---|
+| The random-mix test is not in this project's test suite | Test gap | The harness's random mixes pass on the fixed code |
+| The database-restart test is not in this project's test suite | Test gap | The harness's restart test passes on the fixed code |
+| Per-address limits trust the host's address header | Hardening | Safe while the host sets that header itself |
+| Team names made only of invisible characters are allowed | Hardening | None yet |
+| A signup form token can be reused | Hardening | Signups are limited to 10 per hour per address |
+| The metrics page is public | Operations | Documented in api.md |
+| Opening a live stream uses a read connection | Low | 700 reconnects at once gave one "try again"; browsers retry |

@@ -1,4 +1,9 @@
-"""Request id, access log and request-duration metrics middleware (pure ASGI, safe for streaming)."""
+"""Request id, access log and request-duration metrics middleware (pure ASGI, safe for streaming).
+
+Contents:
+    RequestIdMiddleware: Accept or create X-Request-ID, attach it to the request and response, log one line per
+        request.
+"""
 
 import logging
 import time

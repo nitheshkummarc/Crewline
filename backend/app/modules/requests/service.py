@@ -1,4 +1,17 @@
-"""Join request rules and transactions (architecture.md 6.3 to 6.6)."""
+"""Join request rules and transactions (architecture.md 6.3 to 6.6).
+
+Contents:
+    _request_body: Return a request in the API shape; StateChanged (retry) if it vanished inside the transaction.
+    create_request: Lock the team (forming, not full) and the participant row (cap 5), then create a pending
+        request.
+    accept: Leader accepts: seat, request transition, membership; a requester already in a team makes it stale.
+    _explain_accept: After a 0-row seat update on accept: 404, 403, 409 finalized or full, or StateChanged.
+    _mark_stale: Follow-up transaction that marks a request stale and audits it (no idempotency claim).
+    decline: Leader declines a pending request.
+    withdraw: Requester withdraws a pending request.
+    list_for_team: Pending requests for the leader, hiding users already in a team.
+    list_mine: The caller's requests in a hackathon, newest first.
+"""
 
 from uuid import UUID
 

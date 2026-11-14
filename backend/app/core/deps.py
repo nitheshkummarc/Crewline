@@ -1,4 +1,12 @@
-"""FastAPI dependencies shared by routers."""
+"""FastAPI dependencies shared by routers.
+
+Contents:
+    current_user_id: Return the user id from the session cookie or raise 401.
+    idempotency_key: Validate and return the Idempotency-Key header or raise 400.
+    client_ip: Return the client IP for per-IP rate limits: the configured edge header if present, else the socket
+        peer.
+    write_context: Build the WriteContext for one write; run_write applies the mutation limit after the replay.
+"""
 
 import re
 from typing import Any

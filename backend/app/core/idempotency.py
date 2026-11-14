@@ -1,4 +1,14 @@
-"""Idempotency key hashing, lookup, claim and store."""
+"""Idempotency key hashing, lookup, claim and store.
+
+Contents:
+    request_hash: Return sha256 of the canonical request.
+    lookup: Return the stored row for a key, or None.
+    claim: Insert the key row; return False if it already exists (waits for an in-flight owner).
+    store: Save the success response on the claimed row as exact JSON text (key order preserved).
+    purge_expired: Delete keys older than the TTL in one transaction with its own timeouts; return the number
+        deleted.
+    purge_loop: Run purge_expired every hour.
+"""
 
 import asyncio
 import hashlib

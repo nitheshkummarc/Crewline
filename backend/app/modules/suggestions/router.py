@@ -1,4 +1,8 @@
-"""Suggestions endpoint."""
+"""Suggestions endpoint.
+
+Contents:
+    suggestions: GET /api/hackathons/{hid}/suggestions.
+"""
 
 from uuid import UUID
 

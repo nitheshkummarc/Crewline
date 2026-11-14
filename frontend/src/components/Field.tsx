@@ -1,4 +1,12 @@
 // Labeled form controls with the field error under the control, linked by aria-describedby.
+//
+// Contents:
+//   FieldShell: Label above, control, hint and error below; the control gets the right ids.
+//   FieldError: The error line under a field: a red mark and the message.
+//   TextField: A labeled text input.
+//   TextAreaField: A labeled multi-line input.
+//   SelectField: A labeled native select.
+//   Honeypot: Hidden honeypot field `company` for signup and login: off-screen, not focusable, never autofilled.
 import clsx from 'clsx';
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 

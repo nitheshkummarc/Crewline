@@ -1,4 +1,8 @@
 // Team peek: a sheet with a team's members and needs, opened from a board card without leaving the board.
+//
+// Contents:
+//   PeekMembers: Members of the peeked team (loaded when the sheet opens).
+//   BoardPeek: The peek sheet for one team.
 import { ArrowRight } from 'lucide-react';
 import type { TeamSummary } from '../api/types';
 import { Avatar } from '../components/Avatar';

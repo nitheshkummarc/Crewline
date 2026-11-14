@@ -1,4 +1,8 @@
 // Team cards on the board: a band header in the team's color, seat tabs, skills and missing roles, actions.
+//
+// Contents:
+//   TeamCard: One team: band header with the name and state, seat tabs, skills it has and roles it still needs.
+//   TeamGrid: The teams board as a card grid; cards animate in and out as live events arrive.
 import { AnimatePresence, m } from 'motion/react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';

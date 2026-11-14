@@ -1,4 +1,8 @@
 // UI messages for API error codes (one per code in docs/api.md, plus the client's network_error).
+//
+// Contents:
+//   errorCode: Return the error code of any thrown value.
+//   messageFor: Return the message to show for any thrown value; validation errors keep the server's text.
 import { ApiError } from '../api/client';
 import type { ErrorCode } from '../api/types';
 

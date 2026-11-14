@@ -1,4 +1,13 @@
-"""Overlapping operations: T-RACE-04, 08, 09."""
+"""Overlapping operations: T-RACE-04, 08, 09.
+
+Contents:
+    test_race_04_one_user_joins_two_teams: T-RACE-04: one user joins two teams at the same instant; exactly one
+        membership, the other team unchanged.
+    test_race_08_leader_leaves_while_users_join: T-RACE-08: the leader leaves while 8 users join; the new leader is
+        always a member (I3 via clean_db).
+    test_race_09_last_member_leaves_while_users_join: T-RACE-09: the only member leaves while 10 users join; no
+        deadlock or 500, outcomes stay consistent.
+"""
 
 import asyncio
 import os

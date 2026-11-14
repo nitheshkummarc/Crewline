@@ -1,4 +1,10 @@
 // Public pages: privacy notice, terms of use, and the 404 page.
+//
+// Contents:
+//   ReadingPage: Reading layout for the legal pages, usable signed in or out.
+//   PrivacyPage: What Crewline stores, why, for how long, and the one cookie it sets.
+//   TermsPage: Acceptable use, accounts, invite codes and requests, no warranty.
+//   NotFoundPage: The 404 page for unknown client routes: an empty seat with a way home.
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ButtonLink } from '../components/Button';

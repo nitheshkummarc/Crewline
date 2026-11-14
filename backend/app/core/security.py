@@ -1,4 +1,14 @@
-"""Password hashing and JWT session tokens."""
+"""Password hashing and JWT session tokens.
+
+Contents:
+    hash_password: Hash a password with argon2id in a threadpool.
+    verify_password: Check a password against its argon2id hash in a threadpool; a missing hash still costs one
+        verify.
+    issue_token: Create a signed JWT with sub, iat and exp.
+    decode_token: Verify a JWT and return the user id, or None if invalid or expired.
+    set_session_cookie: Set the httpOnly session cookie.
+    clear_session_cookie: Remove the session cookie.
+"""
 
 import time
 from uuid import UUID

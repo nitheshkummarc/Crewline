@@ -1,4 +1,8 @@
 // The page's single polite live region and the hook that writes to it.
+//
+// Contents:
+//   LiveRegionProvider: Provide `useAnnounce` and render the one visually hidden aria-live="polite" region.
+//   useAnnounce: Return a function that announces a message in the live region.
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 
 type Announce = (message: string) => void;

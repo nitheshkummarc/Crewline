@@ -1,4 +1,14 @@
 // App shell: skip link, navy sidebar on wide screens, navy top bar and bottom tab bar on phones, theme switch, footer links.
+//
+// Contents:
+//   Wordmark: The Crewline wordmark: three seat tabs, the last one open, and the name.
+//   Layout: Sidebar layout on wide screens, top bar plus bottom tabs on phones.
+//   SideLink: Sidebar link with an icon; highlighted on the current page.
+//   TabLink: Bottom tab bar link for phones: icon and label.
+//   UserMenu: Sidebar account button with avatar, name and email; opens the account menu.
+//   AccountMenuContent: Account menu items: Profile and Log out.
+//   FooterLinks: Privacy, terms, contact and source links; `onShell` for the navy sidebar.
+//   ActionBar: The page's primary action: a bar above the tab bar on phones, inline on wide screens.
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import clsx from 'clsx';
 import { Command as CommandIcon, FlaskConical, Home, LayoutGrid, LogOut, Search, UserRound, Users } from 'lucide-react';
@@ -99,6 +109,7 @@ export function Layout({ user, nav, context, onLogout, onOpenPalette, children }
   );
 }
 
+/** Sidebar link with an icon; highlighted on the current page. */
 function SideLink({ item }: { item: NavItem }) {
   const Icon = ICONS[item.icon];
   return (
@@ -110,6 +121,7 @@ function SideLink({ item }: { item: NavItem }) {
   );
 }
 
+/** Bottom tab bar link for phones: icon and label. */
 function TabLink({ item }: { item: NavItem }) {
   const Icon = ICONS[item.icon];
   return (
@@ -128,6 +140,7 @@ function TabLink({ item }: { item: NavItem }) {
   );
 }
 
+/** Sidebar account button with avatar, name and email; opens the account menu. */
 function UserMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <Menu.Root>
@@ -143,6 +156,7 @@ function UserMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
   );
 }
 
+/** Account menu items: Profile and Log out. */
 function AccountMenuContent({ onLogout }: { user: User; onLogout: () => void }) {
   const item = 'flex min-h-touch cursor-pointer items-center gap-3 rounded px-3 text-[15px] outline-none data-[highlighted]:bg-surface-2';
   return (

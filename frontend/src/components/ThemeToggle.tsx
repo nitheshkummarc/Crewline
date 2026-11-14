@@ -1,4 +1,7 @@
 // Light or dark theme switch as a radio group (arrow keys move between options).
+//
+// Contents:
+//   ThemeToggle: Two-way theme switch; `onShell` styles it for the navy brand shell.
 import clsx from 'clsx';
 import { Moon, Sun } from 'lucide-react';
 import type { KeyboardEvent } from 'react';

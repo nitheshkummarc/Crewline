@@ -1,4 +1,8 @@
-"""Build the caller's group, fetch candidates, rank them."""
+"""Build the caller's group, fetch candidates, rank them.
+
+Contents:
+    suggest: Return the context (team id, missing roles) and ranked candidates for the caller.
+"""
 
 from datetime import UTC, datetime
 from uuid import UUID

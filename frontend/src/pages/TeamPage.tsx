@@ -1,4 +1,7 @@
 // Team page: hero in the team's band color, members and leader tools, invite and actions on the side.
+//
+// Contents:
+//   TeamPage: The page for one team.
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';

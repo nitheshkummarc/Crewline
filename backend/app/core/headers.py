@@ -1,4 +1,9 @@
-"""Security headers on every response and cache rules for the built web app (pure ASGI, safe for streaming)."""
+"""Security headers on every response and cache rules for the built web app (pure ASGI, safe for streaming).
+
+Contents:
+    cache_control: Return the Cache-Control for a web app response, or None to leave the response as it is.
+    SecurityHeadersMiddleware: Add the security headers to every HTTP response and cache rules to web app files.
+"""
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 

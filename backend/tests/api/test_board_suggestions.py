@@ -1,4 +1,17 @@
-"""Board and suggestions: T-API-31, 32, 33, 39 (board part), 44."""
+"""Board and suggestions: T-API-31, 32, 33, 39 (board part), 44.
+
+Contents:
+    test_api_31_teams_board_pagination: T-API-31: pages do not overlap, full and finalized teams are excluded,
+        next_cursor ends as null.
+    test_api_32_board_etag: T-API-32: a repeat request with If-None-Match gets 304 and no body.
+    test_board_errors: Unknown hackathon is 404, a bad cursor or limit is 400, no session is 401.
+    test_people_board: People board lists looking participants without a team, newest first, with public fields
+        only.
+    test_api_33_suggestions_rank_complementary_people: T-API-33: covering missing roles ranks first; breakdown and
+        reasons are present; order is stable.
+    test_api_44_suggestions_without_team: T-API-44: a caller without a team is a one-person group; unregistered
+        callers get 409.
+"""
 
 import uuid
 

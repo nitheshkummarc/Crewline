@@ -4,6 +4,11 @@ Usage: python backend/scripts/sse_listeners.py --base http://127.0.0.1:8000 --to
                                                [--streams 50] [--seconds 80]
 Each stream uses a different seeded user (the server caps streams per user). Exits 1 if any stream failed to open,
 dropped before the end, or received no team event.
+
+Contents:
+    listen: Read one stream for `seconds`; return its status, event counts by kind, and whether it stayed open.
+    run: Open all streams at once, wait for them, print a summary and return the exit code.
+    main: CLI entry point; reads the tokens file.
 """
 
 import argparse

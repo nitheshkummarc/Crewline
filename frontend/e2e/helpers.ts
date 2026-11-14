@@ -1,4 +1,16 @@
 // End-to-end helpers: create real users through the API (with the real bot check) and open browsers as them.
+//
+// Contents:
+//   unique: Return a short unique suffix for names and emails.
+//   hackathonId: Return the id of the first hackathon (the seeded one).
+//   signupThroughApi: Sign up one user through the API, waiting out the bot check's minimum fill time.
+//   people: Sign up and register people through the API in parallel, then open a signed-in page for each at the
+//       project's viewport.
+//   inviteCode: Read the invite code shown on a team page.
+//   watch: Record CSP violations and uncaught errors on a page (bug B-28); `assertClean` fails the test if any
+//       happened.
+//   assertClean: Fail if the page logged a CSP violation or an uncaught error, or scrolls sideways at its
+//       viewport.
 import { expect, request, type Browser, type BrowserContext, type Page, type ViewportSize } from '@playwright/test';
 
 export const PASSWORD = 'e2e-password-1';
@@ -26,6 +38,7 @@ export async function hackathonId(baseURL: string): Promise<string> {
   return first?.id ?? '';
 }
 
+/** Sign up one user through the API, waiting out the bot check's minimum fill time. */
 async function signupThroughApi(api: Awaited<ReturnType<typeof request.newContext>>, email: string, name: string) {
   const token = (await (await api.get('/api/auth/form-token')).json() as { token: string }).token;
   await new Promise((resolve) => setTimeout(resolve, MIN_FILL_MS));

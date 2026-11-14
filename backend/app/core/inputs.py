@@ -1,4 +1,10 @@
-"""Base model for request bodies: unknown fields and NUL characters are rejected."""
+"""Base model for request bodies: unknown fields and NUL characters are rejected.
+
+Contents:
+    _has_nul: True when a string, or any string inside a list or dict, contains U+0000.
+    InputModel: Request body base; PostgreSQL text cannot store U+0000, so it is refused as 400 here (B-39).
+    InputModel._no_nul: Reject a body that carries U+0000 in any text.
+"""
 
 from typing import Any
 

@@ -1,4 +1,11 @@
 // Team page parts: member cards, pending requests, invite card with copy and QR code, history timeline.
+//
+// Contents:
+//   MemberList: Team members as cards with the leader marked; the leader sees a remove button for everyone else.
+//   RequestList: Pending join requests, oldest first, with accept (disabled while the team is full) and decline.
+//   InviteCard: The invite code with copy buttons, a scannable QR code of the join link, and its expiry; members
+//       only.
+//   AuditTimeline: Team audit events as a timeline, newest first: who did what and when.
 import { Check, Copy, Crown, QrCode, Link as LinkIcon } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';

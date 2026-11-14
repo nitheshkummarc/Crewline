@@ -1,4 +1,15 @@
-"""Hackathons, registration and the looking flag: T-API-05 and the audit side of T-API-40."""
+"""Hackathons, registration and the looking flag: T-API-05 and the audit side of T-API-40.
+
+Contents:
+    test_list_get_and_meta: Hackathons list and get return the configured sizes; unknown id is 404; meta lists
+        skills.
+    test_api_05_register_twice: T-API-05: registering twice gives 200 both times, one participant row, one audit
+        event.
+    test_register_unknown_hackathon: Registering for a hackathon that does not exist returns 404.
+    test_api_40_looking_flag_is_audited: T-API-40 (audit part): a looking change writes participant_updated; an
+        unchanged value writes nothing.
+    test_looking_requires_registration: Changing the looking flag without registering returns 409 not_registered.
+"""
 
 from helpers import Users, make_hackathon, query
 

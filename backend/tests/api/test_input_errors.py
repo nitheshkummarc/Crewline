@@ -1,4 +1,13 @@
-"""Input and session edge cases that used to answer 500: T-API-29 nulls (B-38), T-API-50 (B-40), T-API-51 (B-39)."""
+"""Input and session edge cases that used to answer 500: T-API-29 nulls (B-38), T-API-50 (B-40), T-API-51 (B-39).
+
+Contents:
+    test_api_29_explicit_nulls_are_400: T-API-29 (B-38): explicit null for display_name, skills or timezone on PATCH
+        /api/users/me is 400.
+    test_api_50_session_for_missing_user_is_401: T-API-50 (B-40): a valid token for a user row that does not exist
+        gets 401 on every write.
+    test_api_51_nul_in_text_is_400: T-API-51 (B-39): U+0000 in a team name, display name or request message is 400,
+        nothing stored.
+"""
 
 import uuid
 

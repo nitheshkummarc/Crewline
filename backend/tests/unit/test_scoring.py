@@ -1,4 +1,16 @@
-"""T-UNIT-01: suggestion scoring."""
+"""T-UNIT-01: suggestion scoring.
+
+Contents:
+    test_circular_hours_wraps_the_date_line: UTC+14 and UTC-11 are 1 hour apart on the circle, not 25.
+    test_dst_changes_the_overlap: New York to London is 4 h apart in late March and 5 h in November.
+    test_kiritimati_and_pago_pago_are_neighbours: Pacific/Kiritimati (UTC+14) and Pacific/Pago_Pago (UTC-11) share 8
+        working hours.
+    test_complement_redundancy_and_full_coverage: Complement counts missing core roles; with nothing missing, new
+        skills get half credit.
+    test_rank_order_clamp_and_ties: Covering missing roles beats duplicating skills; ties fall back to time zone
+        then user id.
+    test_one_person_group_reasons: A caller without a team is a one-person group and the reasons say 'you'.
+"""
 
 from datetime import UTC, datetime
 

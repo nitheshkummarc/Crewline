@@ -1,4 +1,11 @@
 // People cards (looking for a team) and ranked suggestion cards with a stacked score bar.
+//
+// Contents:
+//   localTime: Return the person's local time now, such as "14:05".
+//   PersonCard: One person who is looking: avatar, name, time zone with their local time, skills.
+//   PeopleGrid: People who are looking, as a card grid.
+//   ScoreBar: The score as a stacked bar of its weighted parts (redundancy subtracted), with a legend.
+//   SuggestionList: Ranked suggestions: rank, person, score, reasons, and the score bar.
 import type { PublicUser, Suggestion } from '../api/types';
 import { formatZone } from '../lib/time';
 import { Avatar } from './Avatar';

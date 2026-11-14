@@ -1,4 +1,13 @@
-"""Auth and profile endpoints."""
+"""Auth and profile endpoints.
+
+Contents:
+    form_token: GET /api/auth/form-token.
+    signup: POST /api/auth/signup.
+    login: POST /api/auth/login.
+    logout: POST /api/auth/logout.
+    me: GET /api/auth/me.
+    update_me: PATCH /api/users/me.
+"""
 
 from uuid import UUID
 

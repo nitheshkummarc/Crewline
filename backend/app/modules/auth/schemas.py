@@ -1,4 +1,14 @@
-"""Auth request and response models."""
+"""Auth request and response models.
+
+Contents:
+    _unique_skills: Return the skills without duplicates, keeping order.
+    SignupIn: Signup body.
+    LoginIn: Login body.
+    UpdateMeIn: Profile update body; at least one field.
+    UpdateMeIn._tz: Validate the time zone as an IANA name.
+    UpdateMeIn._not_empty: Require at least one field and refuse explicit nulls.
+    UserOut: The signed-in user.
+"""
 
 from uuid import UUID
 
@@ -53,10 +63,12 @@ class UpdateMeIn(InputModel):
     @field_validator("timezone")
     @classmethod
     def _tz(cls, value: str | None) -> str | None:
+        """Validate the time zone as an IANA name."""
         return validate_timezone(value) if value is not None else None
 
     @model_validator(mode="after")
     def _not_empty(self) -> "UpdateMeIn":
+        """Require at least one field and refuse explicit nulls."""
         if not self.model_fields_set:
             raise ValueError("provide at least one field")
         # Every column is NOT NULL; an explicit null is refused here, not by PostgreSQL (B-38).

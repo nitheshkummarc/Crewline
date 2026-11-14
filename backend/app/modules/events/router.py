@@ -1,4 +1,8 @@
-"""SSE endpoint: one stream per browser tab, events for one hackathon."""
+"""SSE endpoint: one stream per browser tab, events for one hackathon.
+
+Contents:
+    stream: GET /api/events: subscribe and yield events with heartbeats; never holds a database connection.
+"""
 
 from collections.abc import AsyncIterator
 from uuid import UUID

@@ -1,4 +1,17 @@
-"""Read and write asyncpg pools."""
+"""Read and write asyncpg pools.
+
+Contents:
+    init_connection: Register orjson codecs for json/jsonb and decode uuid to the standard uuid.UUID
+        (orjson-serializable).
+    Pools: Holds the read and write pools and the acquire timeout.
+    create_pools: Open both pools fully at startup and never reap idle connections (cold backends cost 20-70 ms on
+        first use).
+    close_pools: Close both pools.
+    pools: Return the open pools.
+    _release: Return a connection to the pool; one that died during the reset is dropped, not raised.
+    read_conn: Acquire a read connection; timeouts and lost connections raise 503 busy.
+    write_conn: Acquire a write connection; acquire timeouts and refused reconnects raise 503 busy.
+"""
 
 import asyncio
 import logging

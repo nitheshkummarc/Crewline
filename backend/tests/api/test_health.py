@@ -1,4 +1,15 @@
-"""Health, readiness, request id and error envelope checks."""
+"""Health, readiness, request id and error envelope checks.
+
+Contents:
+    test_healthz_and_readyz: Both health endpoints answer 200 with ok true.
+    test_request_id_is_echoed: A provided X-Request-ID comes back in the response header.
+    test_unknown_api_route_uses_error_envelope: Unknown API paths return 404 in the error envelope with a request
+        id.
+    test_api_48_security_headers_and_web_cache_rules: T-API-48: every response carries the security headers; the SPA
+        shell revalidates, hashed assets are immutable.
+    test_api_49_head_requests_on_health_and_web: T-API-49: HEAD answers 200 on health checks, the SPA shell, client
+        routes and assets (B-32); unknown API 404.
+"""
 
 import httpx
 from helpers import SHARED_TLS

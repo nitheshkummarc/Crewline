@@ -4,6 +4,19 @@ Usage: python backend/scripts/latency_probe.py --base http://127.0.0.1:8000 --to
        [--server-log path]   adds server-side p50/p95/p99 per route from the JSON access log (LOG_LEVEL=INFO)
 Needs a seeded database (database/seed.py --tokens ...). Client numbers include Python client overhead;
 server-side numbers are the ones to compare with targets. k6 (loadtest/) is the official load test.
+
+Contents:
+    percentiles: Format n, p50, p95, p99 and max of a list of milliseconds.
+    Probe: Clients for seeded users and a per-route latency record.
+    Probe.client: Return a client authenticated with a seeded user's token.
+    Probe.call: Send one request and record its client-side latency under a label.
+    Probe.every_endpoint: Exercise each endpoint sequentially with fresh users (no contention).
+    Probe.board_load: users concurrent clients loop on the teams board (70% first page, 30% follow a cursor) for
+        seconds.
+    server_side: Read per-route server durations (ms) from the JSON access log written after `since` (epoch
+        seconds).
+    run: Run both phases, print the report, and return the raw phase 2 latencies.
+    main: CLI entry point.
 """
 
 import argparse

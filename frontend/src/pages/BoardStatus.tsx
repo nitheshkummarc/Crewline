@@ -1,4 +1,8 @@
 // Board status panel (register, your team, or create and join with the looking switch) and the caller's requests.
+//
+// Contents:
+//   StatusPanel: The caller's place in the hackathon with the page's one primary action.
+//   MyRequests: The caller's join requests with their status and withdraw for pending ones.
 import * as Switch from '@radix-ui/react-switch';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { ArrowRight, KeyRound, Plus } from 'lucide-react';

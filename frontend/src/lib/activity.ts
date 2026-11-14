@@ -1,4 +1,9 @@
 // Live activity feed: turns team events into readable items and keeps the last ones in a small external store.
+//
+// Contents:
+//   activityFromEvent: Return a feed item for a team event, or null for events that are not news (profile edits,
+//       invite changes).
+//   activityText: One line of text for a feed item.
 import type { TeamEvent } from '../api/types';
 
 export type ActivityKind = 'created' | 'joined' | 'full' | 'left' | 'finalized' | 'reopened' | 'deleted';

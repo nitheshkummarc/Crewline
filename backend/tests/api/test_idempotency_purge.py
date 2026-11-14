@@ -1,4 +1,9 @@
-"""Idempotency purge (T-OPS-06, B-42): a backlog larger than one pool statement timeout is still deleted."""
+"""Idempotency purge (T-OPS-06, B-42): a backlog larger than one pool statement timeout is still deleted.
+
+Contents:
+    test_ops_06_purge_outlasts_the_pool_timeouts: T-OPS-06: on a pool whose statement timeout is 1 ms, every expired
+        key is still purged.
+"""
 
 import asyncpg
 from helpers import query

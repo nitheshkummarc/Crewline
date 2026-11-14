@@ -1,5 +1,9 @@
 // Render public/favicon-32.png, public/apple-touch-icon.png and public/og-image.png from favicon.svg and an HTML card.
 // Usage: node scripts/make-images.mjs  (needs Chrome or `npx playwright install chromium`)
+//
+// Contents:
+//   shoot: Screenshot an HTML string at the given size into public/.
+//   icon: HTML page that shows the favicon SVG at the given size.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +37,7 @@ h1 { font-stretch: 118%; font-weight: 760; font-size: 72px; line-height: 78px; l
 </body></html>`;
 
 const browser = await chromium.launch({ channel: process.env.PW_CHANNEL ?? 'chrome' });
+/** Screenshot an HTML string at the given size into public/. */
 const shoot = async (html, width, height, file) => {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
   await page.setContent(html, { waitUntil: 'load' });
@@ -41,6 +46,7 @@ const shoot = async (html, width, height, file) => {
   await page.screenshot({ path: join(root, 'public', file), omitBackground: false });
   await page.close();
 };
+/** HTML page that shows the favicon SVG at the given size. */
 const icon = (size) => `<!doctype html><html><body style="margin:0;background:#111317">${svg.replace('<svg ', `<svg width="${size}" height="${size}" `)}</body></html>`;
 await shoot(icon(32), 32, 32, 'favicon-32.png');
 await shoot(icon(180), 180, 180, 'apple-touch-icon.png');

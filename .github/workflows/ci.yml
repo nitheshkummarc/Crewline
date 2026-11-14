@@ -42,6 +42,8 @@ jobs:
       - run: uv sync --project backend --locked
       - name: ruff
         run: uv run --project backend ruff check backend database
+      - name: file headers
+        run: uv run --project backend python backend/scripts/file_headers.py --check
       - name: mypy
         working-directory: backend
         run: uv run mypy app

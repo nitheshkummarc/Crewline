@@ -1,4 +1,8 @@
 // Live activity feed: newest first, entries slide in, times refresh every 20 s.
+//
+// Contents:
+//   ago: Return "now", "45 s", "3 min" for a timestamp.
+//   ActivityFeed: The feed of what is happening across the hackathon, from the event stream.
 import { AnimatePresence, m } from 'motion/react';
 import { Radio } from 'lucide-react';
 import { useEffect, useState } from 'react';

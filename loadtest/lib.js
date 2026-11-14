@@ -1,4 +1,11 @@
 // Shared k6 helpers: seeded tokens and codes, base URL, request params with route tags, idempotency keys, busy retries.
+//
+// Contents:
+//   loadData: Seeded data written by database/seed.py --tokens: { hackathon_id, tokens: [...], codes: [...] }.
+//   params: Request params with the session cookie and a route tag for per-route thresholds.
+//   postAction: POST one logical action; on 503 busy wait Retry-After plus jitter and resend with the same
+//       Idempotency-Key.
+//   idempotencyKey: A random 32-character hex key, one per logical action.
 import http from 'k6/http';
 import { sleep } from 'k6';
 import { Counter } from 'k6/metrics';

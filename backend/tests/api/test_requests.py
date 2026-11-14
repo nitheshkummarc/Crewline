@@ -1,4 +1,26 @@
-"""Join request endpoints: T-API-14 to 18, 29 (request cases), 42 (audience), 43 and the pending cap."""
+"""Join request endpoints: T-API-14 to 18, 29 (request cases), 42 (audience), 43 and the pending cap.
+
+Contents:
+    _code: Return the error code of an error response body.
+    _team: Create a hackathon and a team; return (hid, tid, code, leader).
+    test_api_14_create_request_twice: T-API-14: creating a request twice returns 201 then 200 with the same request.
+    test_api_43_create_request_rejections: T-API-43: full team 409 team_full; finalized 409; already in a team 409;
+        unregistered 409; unknown 404.
+    test_accept_happy_path: Accept adds the requester, marks the request accepted and audits request_accepted with
+        the user id.
+    test_api_15_accept_by_non_leader: T-API-15: a non-leader accept is 403 and changes nothing.
+    test_accept_when_full_keeps_request_pending: Accepting into a team that filled after the request was made is 409
+        team_full; the request stays pending.
+    test_api_16_decline: T-API-16: decline works once; again is 409 request_not_pending; a non-leader gets 403.
+    test_api_17_withdraw: T-API-17: withdraw own request works once; someone else's is 404; again is 409.
+    test_api_18_accept_stale_request: T-API-18: accepting a user who joined another team is 409; the request becomes
+        stale; counts unchanged.
+    test_team_request_list_is_leader_only: The team request list is visible to the leader only.
+    test_pending_cap: A user can hold 5 pending requests per hackathon; the 6th is 409 too_many_pending_requests.
+    test_api_42_request_event_audience: T-API-42 (payload part): request events carry an audience of team members
+        plus the requester.
+    test_api_29_request_validation: T-API-29: a 281-character message and a bad request id are 400 validation_error.
+"""
 
 import uuid
 

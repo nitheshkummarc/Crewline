@@ -1,4 +1,18 @@
-"""Auth and profile: T-API-01 to 04, 26 to 29 on PATCH /api/users/me."""
+"""Auth and profile: T-API-01 to 04, 26 to 29 on PATCH /api/users/me.
+
+Contents:
+    test_api_01_signup_creates_user_and_session: T-API-01: signup returns 201 with the user and a session cookie
+        that works.
+    test_api_01_signup_validation: T-API-01 / T-API-29: invalid signup bodies return 400 validation_error, never
+        422.
+    test_api_02_duplicate_email_is_case_insensitive: T-API-02: the same email in another case returns 409
+        email_taken.
+    test_api_03_login: T-API-03: wrong password and unknown email both return 401 invalid_credentials; right one
+        logs in.
+    test_api_04_unauthenticated: T-API-04: missing, expired or logged-out sessions return 401 unauthenticated.
+    test_api_26_27_28_profile_update_idempotency: T-API-26/27/28: replay with the same key, 422 on a different body,
+        400 without a key.
+"""
 
 import time
 

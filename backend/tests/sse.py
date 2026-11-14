@@ -1,4 +1,12 @@
-"""Test helper: read a server-sent event stream in the background and wait for events by kind."""
+"""Test helper: read a server-sent event stream in the background and wait for events by kind.
+
+Contents:
+    SseReader: Collect (event, data) pairs from one SSE stream; use `async with`.
+    SseReader._pump: Parse event/data lines into the queue; comment lines (heartbeats) are ignored.
+    SseReader.next: Return the data of the next event of this kind, skipping others; raise TimeoutError if none
+        arrives.
+    SseReader.nothing: True if no event of this kind arrives within the given time.
+"""
 
 import asyncio
 import contextlib

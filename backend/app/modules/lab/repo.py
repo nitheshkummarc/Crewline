@@ -1,4 +1,12 @@
-"""Race lab SQL: the hidden lab hackathon, synthetic participants, and the facts read back after an experiment."""
+"""Race lab SQL: the hidden lab hackathon, synthetic participants, and the facts read back after an experiment.
+
+Contents:
+    ensure_lab_hackathon: Return the lab hackathon id, creating it once (hackathons_one_lab keeps it unique).
+    create_participants: Insert synthetic users that cannot log in (no valid password hash) and register them;
+        return id and name.
+    team_facts: Read member_count, max_size, the membership rows and the join audit events of a team.
+    user_facts: Read how many memberships and join events one user has (to prove a spammed join counted once).
+"""
 
 from uuid import UUID
 

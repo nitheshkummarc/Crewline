@@ -1,4 +1,7 @@
 // Signup form: name, email, password, skills, time zone, agreement to terms and privacy; bot-checked.
+//
+// Contents:
+//   SignupPage: The signup page.
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';

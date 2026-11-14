@@ -1,6 +1,11 @@
 """Invariant checker: runs every query in invariants.sql; each must return zero rows.
 
 Usage: python database/invariants.py [--url URL]   (default: $DATABASE_URL); exits 1 on any violation.
+
+Contents:
+    load_checks: Return (id, description, query) for each invariant block.
+    run_checks: Run every invariant query and return violations keyed by invariant id.
+    main: Print violations and exit non-zero if any.
 """
 
 import argparse

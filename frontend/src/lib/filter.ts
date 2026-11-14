@@ -1,4 +1,12 @@
 // Board filters: search by name, filter by skills a team needs or has, sort; pure functions over loaded teams.
+//
+// Contents:
+//   filterFromParams: Read a filter from URL search params (unknown values fall back to defaults).
+//   filterToParams: Write a filter into URL search params, dropping default values.
+//   isFiltering: True if the filter narrows the list (search text or skills).
+//   matchesText: True if text contains the search query, ignoring case and outer spaces.
+//   filterTeams: Apply search, skill filter and sort to teams; does not change the input array.
+//   filterPeople: Search people by name and keep those who have every chosen skill.
 import type { PublicUser, Skill, TeamSummary } from '../api/types';
 import { isSkill, missingRoles } from './skills';
 
@@ -42,6 +50,7 @@ export function filterToParams(filter: TeamFilter, params: URLSearchParams): URL
 /** True if the filter narrows the list (search text or skills). */
 export const isFiltering = (filter: TeamFilter) => filter.q.trim() !== '' || filter.skills.length > 0;
 
+/** True if text contains the search query, ignoring case and outer spaces. */
 const matchesText = (text: string, q: string) => text.toLowerCase().includes(q.trim().toLowerCase());
 
 /** Apply search, skill filter and sort to teams; does not change the input array. */

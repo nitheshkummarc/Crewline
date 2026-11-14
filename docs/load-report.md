@@ -92,7 +92,14 @@ All in milliseconds. Targets: writes p95 < 150 ms uncontended, suggestions p95 <
 
 Spec target: board p95 < 200 ms at 100 concurrent users. Met with every load client configuration that is not CPU-saturated, and server-side p95 is 15.7 to 24 ms.
 
-Why the single-process client numbers are not the board's latency: during the run the load client used a full core while the server used about 35 % of one (6.9 CPU-s in 20 s) and PostgreSQL 0.2 CPU-s (the board cache serves most reads). A second server worker did not raise throughput (652 to 663 req/s), which confirms the client was the limit. Splitting the same 100 users over 4 client processes doubled throughput and cut p95 to 114.5 ms. With a closed loop, latency is about users / throughput (100 / 652 req/s ≈ 153 ms), so a saturated client caps it. The official number comes from k6, which uses far less CPU per request.
+Why the single-process client numbers are not the board's latency:
+
+- During the run the load client used a full core. The server used about 35 % of one (6.9 CPU-s in 20 s) and PostgreSQL 0.2 CPU-s, because the board cache serves most reads.
+- A second server worker did not raise throughput (652 to 663 req/s), which confirms the client was the limit.
+- Splitting the same 100 users over 4 client processes doubled throughput and cut p95 to 114.5 ms.
+- In a closed loop, latency is about users / throughput (100 / 652 req/s ≈ 153 ms), so a saturated client caps it.
+
+The official number comes from k6, which uses far less CPU per request.
 
 ## k6 smoke in CI (L-A1 shortened, every push)
 
@@ -135,12 +142,23 @@ All in milliseconds. Spec target p95 < 200 ms: met in both runs. The two runs di
 
 ## L-LIVE: the deployed URL (free tier), 12 Nov 2026
 
-Target https://crewline-20bm.onrender.com: Render free web service (Singapore, 1 uvicorn worker, 0.1 CPU) and Neon free PostgreSQL 18 (Singapore), seeded with 300 users and 40 teams. Client: k6 v2.3.0 on the dev laptop in India over a home connection (TCP connect to the site about 66 ms). Sessions: 20 seeded users logged in through the API (`live_tokens.py` in the session scratchpad, not in the repo) and shared by the 100 VUs. Command: `k6 run -e BASE_URL=<live> -e TOKENS=<file> -e RAMP=10s -e DURATION=30s [-e THINK=1] loadtest/board.js`.
+| Setting | Value |
+|---|---|
+| Target | https://crewline-20bm.onrender.com: Render free web service (Singapore, 1 uvicorn worker, 0.1 CPU) and Neon free PostgreSQL 18 (Singapore) |
+| Data | 300 users and 40 teams |
+| Client | k6 v2.3.0 on the dev laptop in India over a home connection (TCP connect to the site about 66 ms) |
+| Sessions | 20 seeded users logged in through the API (`live_tokens.py` in the session scratchpad, not in the repo), shared by the 100 VUs |
+| Command | `k6 run -e BASE_URL=<live> -e TOKENS=<file> -e RAMP=10s -e DURATION=30s [-e THINK=1] loadtest/board.js` |
 
 | Run | p50 | p95 | p99 | max | req/s | Requests | Errors | p95 < 200 ms |
 |---|---|---|---|---|---|---|---|---|
 | 100 VUs, 1 s think time (people reading the board) | 68.8 | 101.0 | 314.6 | 414.0 | 80 | 3,291 | 0 | met |
 | 100 VUs, no think time (stress) | 893.7 | 1,110.6 | 1,307.9 | 1,507.4 | 124 | 5,073 | 0 | not met |
 
-Why the stress run is slow, from the measurements: the API's own timing for the board (Race lab latency window, last 1,000 requests) was p50 7.3 ms and p95 107.5 ms, so most of the 1.1 s is queueing in front of the handler. In a closed loop, latency is about users divided by throughput (100 / 124 req/s, about 0.8 s), and throughput is capped by the free plan's 0.1 CPU: the same code on 4 vCPU served 1,643 req/s at p95 80.1 ms (L-A1 above). A paid instance or a second worker raises the cap; the code does not change.
+Why the stress run is slow, from the measurements:
+
+- The API's own timing for the board (Race lab latency window, last 1,000 requests) was p50 7.3 ms and p95 107.5 ms. Most of the 1.1 s is queueing in front of the handler.
+- In a closed loop, latency is about users divided by throughput (100 / 124 req/s, about 0.8 s).
+- Throughput is capped by the free plan's 0.1 CPU. The same code on 4 vCPU served 1,643 req/s at p95 80.1 ms (L-A1 above).
+- A paid instance or a second worker raises the cap; the code does not change.
 

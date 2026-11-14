@@ -1,4 +1,10 @@
 // Skill taxonomy (same 12 as backend/app/core/skills.py), short codes and color families for board labels.
+//
+// Contents:
+//   skillFamily: Return the color family of a skill.
+//   skillCode: Return the short board code of a skill.
+//   isSkill: True if the value is one of the 12 skills.
+//   missingRoles: Return the core roles not covered by any of the given skills, in taxonomy order.
 import type { Skill } from '../api/types';
 
 export const SKILLS: readonly Skill[] = [

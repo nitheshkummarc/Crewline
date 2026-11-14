@@ -1,4 +1,10 @@
-"""Board pages through the micro-cache, rendered once to bytes."""
+"""Board pages through the micro-cache, rendered once to bytes.
+
+Contents:
+    _page: Serialize a board page with its next cursor.
+    teams_page: Return (etag, bytes) for a teams board page.
+    people_page: Return (etag, bytes) for a people board page.
+"""
 
 from uuid import UUID
 

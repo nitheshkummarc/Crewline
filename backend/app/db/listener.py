@@ -1,4 +1,15 @@
-"""Dedicated LISTEN connection with reconnect; clears the board cache and feeds the event hub."""
+"""Dedicated LISTEN connection with reconnect; clears the board cache and feeds the event hub.
+
+Contents:
+    EventListener: Owns the LISTEN connection; a supervisor task reconnects with backoff and announces resync.
+    EventListener.start: Connect, LISTEN, and start the supervisor.
+    EventListener.stop: Stop the supervisor and close the connection.
+    EventListener._connect: Open the connection and LISTEN on the channel.
+    EventListener._on_notify: Clear the hackathon's board cache, then publish to the hub (cache first, so refetches
+        are fresh).
+    EventListener._supervise: Detect a closed connection, reconnect with backoff (0.5 s doubling to 10 s), then
+        broadcast resync.
+"""
 
 import asyncio
 import contextlib

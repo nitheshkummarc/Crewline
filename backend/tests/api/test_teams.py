@@ -1,4 +1,43 @@
-"""Team endpoints: T-API-06 to 13, 19 to 26, 29, 30, 37, 39, 45."""
+"""Team endpoints: T-API-06 to 13, 19 to 26, 29, 30, 37, 39, 45.
+
+Contents:
+    _code: Return the error code of an error response body.
+    test_api_06_create_team: T-API-06: the creator is leader and only member; status forming; audit team_created
+        with user_id.
+    test_api_07_second_team_and_not_registered: T-API-07: a second team in the same hackathon is 409
+        already_in_team; unregistered is 409 not_registered.
+    test_api_08_join_with_code: T-API-08: joining with a valid code (any case, with dash) adds a member and an audit
+        event.
+    test_api_09_10_expired_and_unknown_codes_look_the_same: T-API-09/10: expired and unknown codes both return 404
+        invite_invalid with the same message.
+    test_api_11_12_13_full_own_and_finalized: T-API-11/12/13: full team 409; joining your own team 200 without
+        changes; finalized team 409.
+    test_api_19_member_leaves: T-API-19: a non-leader leaves; count drops, leader unchanged, audit member_left.
+    test_api_20_leader_handover: T-API-20: when the leader leaves, the earliest joined member leads; leader_promoted
+        has a null actor.
+    test_api_21_45_last_member_deletes_team: T-API-21/45: the last member leaving deletes the team; audit stays;
+        team_deleted carries a tombstone version.
+    test_api_22_remove_member: T-API-22: leader removes a member; non-leader gets 403; leader removing self gets
+        409.
+    test_api_23_24_finalize_and_reopen_on_leave: T-API-23/24: finalize below min is 409; at min it works; a member
+        leaving reopens the team.
+    test_api_25_regenerate_invite: T-API-25: the old code stops working, the new one works, the audit payload has no
+        code.
+    test_api_26_27_join_replay_and_mismatch: T-API-26/27: the same key replays the identical response; the same key
+        with another body is 422.
+    test_api_29_team_validation: T-API-29: team name too long, empty update and bad UUIDs return 400
+        validation_error.
+    test_api_30_code_guessing_is_rate_limited: T-API-30: the 6th wrong code in a minute returns 429 with
+        Retry-After.
+    test_api_37_39_audit_and_invite_visibility: T-API-37/39: members see the audit newest first and the invite code;
+        non-members get 403.
+    test_api_22b_member_removed_audit_names_the_member: T-API-22b: the member_removed audit row names the removed
+        member, not the leader who removed them.
+    test_api_27b_same_key_other_path_is_422: T-API-27b: the same key and body sent to another team id in the path is
+        422, not a replay.
+    test_api_28b_key_shorter_than_16_is_400: T-API-28b: a 15-character Idempotency-Key is 400
+        idempotency_key_required; 16 characters is accepted.
+"""
 
 import uuid
 

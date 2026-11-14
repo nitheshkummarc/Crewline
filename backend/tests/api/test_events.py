@@ -1,4 +1,23 @@
-"""Realtime: T-API-35, 36, 38, 40, 41, 42, 45, stream cap, and listener reconnect (B-3)."""
+"""Realtime: T-API-35, 36, 38, 40, 41, 42, 45, stream cap, and listener reconnect (B-3).
+
+Contents:
+    _events_url: Return the SSE URL for a hackathon.
+    test_api_35_join_event_and_fresh_board: T-API-35 and B-2: a join reaches subscribers with a newer version, and
+        the board is fresh right after.
+    test_api_36_no_event_after_rollback: T-API-36: a rejected join (409) publishes nothing.
+    test_api_40_people_events: T-API-40: registration and a looking change each publish a people event.
+    test_api_41_profile_change_republishes_team: T-API-41: a member's skill change publishes the team with the new
+        skills and a higher version.
+    test_api_42_request_events_reach_only_their_audience: T-API-42: the leader and the requester get request events;
+        an outsider does not.
+    test_api_45_deletion_tombstone: T-API-45: the last member leaving publishes team_deleted with team null and
+        version last + 1.
+    test_stream_cap_and_errors: Three streams per user are allowed, the fourth is 429; unknown hackathon 404; no
+        session 401.
+    test_api_38_metrics: T-API-38: /metrics exposes pool gauges, route histograms and SSE counts.
+    test_b3_listener_reconnect_sends_resync: B-3: killing the LISTEN backend triggers a resync event, and events
+        keep flowing afterwards.
+"""
 
 import uuid
 

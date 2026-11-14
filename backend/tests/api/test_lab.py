@@ -1,4 +1,17 @@
-"""Race lab: T-LAB-01 to T-LAB-05 (race, spam clicks, request queue, traced walkthrough, hidden lab, limits)."""
+"""Race lab: T-LAB-01 to T-LAB-05 (race, spam clicks, request queue, traced walkthrough, hidden lab, limits).
+
+Contents:
+    test_lab_01_race_has_exactly_one_winner: T-LAB-01: 40 people join a 3 of 4 team at once: one 200, 39 team_full,
+        4 members, one new join event.
+    test_lab_02_spam_clicks_join_once: T-LAB-02: 12 clicks with one key replay one stored answer; 12 clicks with new
+        keys still make one membership.
+    test_lab_03_request_queue_order_and_full_team: T-LAB-03: 8 requests reach the leader oldest first; the first
+        accept fills the team, the second is team_full.
+    test_lab_04_walkthrough_traces_the_real_statements: T-LAB-04: the traced join claims the key, takes the seat,
+        adds the membership, audits, commits; retry replays.
+    test_lab_05_hidden_hackathon_limits_and_latency: T-LAB-05: the lab hackathon is unlisted, sizes over the cap are
+        refused, latency is reported, auth required.
+"""
 
 import httpx
 from helpers import SHARED_TLS, Users

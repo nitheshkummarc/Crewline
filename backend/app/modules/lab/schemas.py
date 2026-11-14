@@ -1,4 +1,10 @@
-"""Race lab request models: how many attempts, clicks or requests to fire (upper bound checked against settings)."""
+"""Race lab request models: how many attempts, clicks or requests to fire (upper bound checked against settings).
+
+Contents:
+    RaceIn: Body for POST /api/lab/race.
+    SpamIn: Body for POST /api/lab/spam.
+    QueueIn: Body for POST /api/lab/queue.
+"""
 
 from pydantic import ConfigDict, Field
 

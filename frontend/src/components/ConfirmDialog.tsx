@@ -1,4 +1,8 @@
 // Confirmation dialog for actions that change the team for others (leave, remove, regenerate, finalize, reopen).
+//
+// Contents:
+//   ConfirmDialog: A modal that asks once before an action that changes the team for others; focus trapped, Escape
+//       closes.
 import * as Dialog from '@radix-ui/react-dialog';
 import type { ReactNode } from 'react';
 import { Button } from './Button';

@@ -1,4 +1,9 @@
 // Buttons and button-styled links: primary (one per page), secondary, ghost, danger; 44 px targets, 6 px radius.
+//
+// Contents:
+//   buttonClass: Class list for a button of a variant and size.
+//   Button: A button that is disabled and relabeled while its action is in flight.
+//   ButtonLink: A router link styled as a button.
 import clsx from 'clsx';
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { Link, type LinkProps } from 'react-router-dom';

@@ -1,4 +1,11 @@
 // Fetch wrapper: same-origin credentials, Idempotency-Key on mutations, error envelope, retry of 503 and network errors.
+//
+// Contents:
+//   ApiError: Error with the HTTP status and the API error code.
+//   newIdempotencyKey: Return a random key for one user action (32 hex characters, inside the 16 to 64 limit).
+//   retryDelay: Return the delay before retry number `attempt` (1-based), honoring Retry-After in seconds.
+//   toApiError: Parse the error envelope into an ApiError.
+//   request: Send one API request; retry network errors and 503 up to 3 times with the same Idempotency-Key.
 import type { ErrorCode } from './types';
 
 export type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -44,6 +51,7 @@ export function retryDelay(attempt: number, retryAfter: number | null): number {
   return base + timing.jitter();
 }
 
+/** Parse the error envelope into an ApiError. */
 async function toApiError(response: Response): Promise<ApiError> {
   const retryAfter = Number(response.headers.get('Retry-After')) || null;
   try {

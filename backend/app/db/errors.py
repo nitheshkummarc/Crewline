@@ -1,4 +1,11 @@
-"""Map PostgreSQL errors to domain errors by constraint name and SQLSTATE."""
+"""Map PostgreSQL errors to domain errors by constraint name and SQLSTATE.
+
+Contents:
+    constraint_of: Return the constraint name carried by an integrity error, if any.
+    to_domain_error: Convert an asyncpg integrity error to a DomainError, or return None.
+    is_retryable: True for 40P01 and 40001.
+    is_busy: True for timeouts, connection exhaustion and lost connections anywhere in the cause chain.
+"""
 
 import asyncio
 import logging

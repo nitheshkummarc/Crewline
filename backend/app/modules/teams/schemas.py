@@ -1,4 +1,11 @@
-"""Team request models."""
+"""Team request models.
+
+Contents:
+    CreateTeamIn: Body for POST /api/hackathons/{hid}/teams.
+    UpdateTeamIn: Body for PATCH /api/teams/{tid}; at least one field.
+    UpdateTeamIn._not_empty: Require a name or a looking flag.
+    JoinIn: Body for POST /api/teams/join.
+"""
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -21,6 +28,7 @@ class UpdateTeamIn(InputModel):
 
     @model_validator(mode="after")
     def _not_empty(self) -> "UpdateTeamIn":
+        """Require a name or a looking flag."""
         if self.name is None and self.looking is None:
             raise ValueError("provide name or looking")
         return self

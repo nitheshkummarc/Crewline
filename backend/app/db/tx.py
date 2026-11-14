@@ -1,4 +1,20 @@
-"""Write-transaction wrapper: idempotency claim, timeouts, retries, rollback on any error."""
+"""Write-transaction wrapper: idempotency claim, timeouts, retries, rollback on any error.
+
+Contents:
+    WriteContext: User id, idempotency key, request hash, request id and route name for one write.
+    Outcome: Status and JSON body of a write; store=False means nothing changed and nothing is stored.
+    GuardFailed: A guarded statement matched 0 rows; the transaction rolls back and the explanation runs.
+    StateChanged: The explanation found no reason for a failed guard; run_write retries the transaction.
+    _Rollback: Carries an outcome out of a transaction that must not commit.
+    configure: Set the per-worker in-flight write cap.
+    _json: Normalize a body to plain JSON types so first responses and replays are identical.
+    _replay: Return the stored response for a key, or raise 422 if the request hash differs.
+    replay_fast_path: Return a committed stored response for the key, or None; never decides business outcomes.
+    _attempt: Run one transaction: claim the key, run the body, store the response, commit.
+    run_write: Run body in one transaction after claiming the key; store the response; retry deadlocks and
+        StateChanged.
+    run_plain_write: Run a small transaction without an idempotency claim (stale marking).
+"""
 
 import asyncio
 import logging

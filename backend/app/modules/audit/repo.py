@@ -1,4 +1,10 @@
-"""Audit SQL."""
+"""Audit SQL.
+
+Contents:
+    record: Insert an audit event; add the team snapshot, and the audience for request actions, in the same
+        statement.
+    list_for_team: Keyset page of a team's audit events, newest first.
+"""
 
 from typing import Any
 from uuid import UUID

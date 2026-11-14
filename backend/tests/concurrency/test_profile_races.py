@@ -1,4 +1,15 @@
-"""Profile update against the same user's join, accept and leave: T-RACE-19, T-RACE-20 (B-36, B-37)."""
+"""Profile update against the same user's join, accept and leave: T-RACE-19, T-RACE-20 (B-36, B-37).
+
+Contents:
+    _warm_twice: Open two HTTP connections per user, so both requests of one user start at the barrier.
+    _deadlock_retries: Return the server's deadlock retry counter from /metrics.
+    _assert_clean: Assert no deadlock was retried during the test and every invariant query returns zero rows.
+    _assert_events_match: Assert E1 and E2 for one team.
+    test_race_19_profile_update_vs_join_and_accept: T-RACE-19 (B-36): profile change vs the same user's join or
+        accept; last event current, no deadlock.
+    test_race_20_profile_update_vs_leave: T-RACE-20 (B-37): profile change vs the same user's leave never audits or
+        bumps the team they left.
+"""
 
 import asyncio
 import os

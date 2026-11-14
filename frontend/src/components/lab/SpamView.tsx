@@ -1,4 +1,8 @@
 // Spam clicks: every click's answer, and proof from the database that the person joined once.
+//
+// Contents:
+//   Phase: One way of clicking: a chip per click and what the database holds afterwards.
+//   SpamView: Both ways of spamming the join button.
 import clsx from 'clsx';
 import type { SpamPhase, SpamResult } from '../../api/types';
 import { Proof } from './RaceView';

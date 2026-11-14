@@ -1,4 +1,12 @@
 // Scenario L-B: 100 board readers, a 50-user stampede on a fresh one-seat team every 5 s, and team-creation churn.
+//
+// Contents:
+//   setup: Create one team per stampede with 3 of 4 seats taken (leader plus two joins); return their invite
+//       codes.
+//   boardReader: Board reader: same mix as L-A without think time.
+//   stampede: Iteration i: all 50 stampede VUs join team i with fresh users; after busy retries only 200 or 409,
+//       one 200 per team.
+//   churn: Churn: fresh users create teams at 2 per second.
 import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 import { Counter } from 'k6/metrics';

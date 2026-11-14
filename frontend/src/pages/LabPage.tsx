@@ -1,4 +1,9 @@
 // Race lab page: runs real concurrent experiments on the server and shows how the backend answers each one.
+//
+// Contents:
+//   percentile: Return the nearest-rank percentile of sorted numbers.
+//   SizeControl: A labeled number slider for the size of an experiment.
+//   LabPage: The Race lab.
 import * as Tabs from '@radix-ui/react-tabs';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';

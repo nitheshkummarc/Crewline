@@ -1,4 +1,10 @@
-"""Schema guarantees: migrations, append-only audit, capacity backstop."""
+"""Schema guarantees: migrations, append-only audit, capacity backstop.
+
+Contents:
+    test_migrations_are_idempotent: Running migrations again applies nothing.
+    test_api_34_audit_is_append_only: T-API-34: UPDATE and DELETE on audit_events raise.
+    test_capacity_check_is_a_backstop: teams_cap rejects a member_count above max_size even from raw SQL.
+"""
 
 import asyncpg
 import pytest

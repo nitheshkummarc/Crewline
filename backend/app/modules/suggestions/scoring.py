@@ -1,4 +1,18 @@
-"""Pure scoring functions for teammate suggestions (formula in architecture.md section 11)."""
+"""Pure scoring functions for teammate suggestions (formula in architecture.md section 11).
+
+Contents:
+    Group: The caller's team, or the caller alone: union of skills and each member's time zone.
+    circular_hours: Hour distance between two UTC offsets on a 24 h circle.
+    overlap_hours: Worst-case shared working hours between the candidate and any group member at an instant.
+    tz_overlap: Worst-case working-window overlap with the group at an instant, 0 to 1.
+    missing_roles: Core roles the group does not cover yet, in taxonomy order.
+    complement: Share of missing core roles the candidate covers; half credit for new non-core skills when none are
+        missing.
+    redundancy: Share of candidate skills the group already has.
+    completeness: Profile completeness, 0 to 1 (three skills or more is complete).
+    score_candidate: Weighted score, breakdown and plain-language reasons for one candidate.
+    rank: Score candidates and sort by score, then time zone overlap, then user id; cut to limit.
+"""
 
 from dataclasses import dataclass
 from datetime import datetime

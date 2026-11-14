@@ -4,6 +4,15 @@ Usage:
   python database/dev_db.py start [--name dev]   initialize if needed, start, print DATABASE_URL
   python database/dev_db.py stop  [--name dev]   stop the server
 Data lives in .devdb/<name>/ (git-ignored). Each name has a fixed port: dev 54329, test 54330.
+
+Contents:
+    data_dir: Return the data directory for a named dev database.
+    _bin: Return the path of a bundled PostgreSQL binary.
+    _run: Run a PostgreSQL tool without pipes (a started server would inherit them and keep them open).
+    _port: Return the fixed port for a named instance.
+    start: Initialize the data directory if needed, start the server and return its connection URL.
+    stop: Stop the server with pg_ctl.
+    main: CLI entry point.
 """
 
 import argparse

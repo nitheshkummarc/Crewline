@@ -1,4 +1,12 @@
 // Form schemas with the same limits as the API models (auth, teams, requests schemas in backend/app/modules).
+//
+// Contents:
+//   normalizeCode: Normalize an invite code like the server: uppercase, drop dashes and spaces, O to 0, I and L to
+//       1; null if malformed.
+//   isTimeZone: True if the value is an IANA zone name the browser knows; offsets such as +05:30 are refused like
+//       the server does.
+//   validate: Validate values against a schema; return the parsed data or the first error per field.
+//   apiFieldError: Map an API `validation_error` message ("field: reason") to the field it names, if any.
 import { z } from 'zod';
 import { SKILLS } from './skills';
 import type { Skill } from '../api/types';

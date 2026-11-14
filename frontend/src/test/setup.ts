@@ -1,4 +1,7 @@
 // Vitest setup: DOM matchers, a fake EventSource, cleanup between tests, fresh tombstones.
+//
+// Contents:
+//   FakeEventSource: EventSource stand-in for jsdom: records instances so tests can emit events.
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';

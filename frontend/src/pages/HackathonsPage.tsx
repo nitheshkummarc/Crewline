@@ -1,4 +1,7 @@
 // Hackathon list: one card per hackathon in its band color, with team size rules and a link to its board.
+//
+// Contents:
+//   HackathonsPage: The home page for signed-in users.
 import { ArrowRight, CalendarClock, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ButtonLink } from '../components/Button';

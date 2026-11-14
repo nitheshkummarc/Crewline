@@ -1,4 +1,8 @@
-"""Hackathon request and response models."""
+"""Hackathon request and response models.
+
+Contents:
+    SetLookingIn: Body for PATCH /api/hackathons/{hid}/me.
+"""
 
 from pydantic import ConfigDict
 

@@ -1,6 +1,11 @@
 // Print WCAG contrast ratios for every text and background token pair; exits 1 if any pair is below its floor.
 // Usage: node scripts/contrast.mjs [--all]  (values mirror src/styles/tokens.css)
+//
+// Contents:
+//   lum: Return the relative luminance of a hex color.
+//   ratio: Return the WCAG contrast ratio of two hex colors.
 
+/** Return the relative luminance of a hex color. */
 const lum = (hex) => {
   const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
   const [r, g, b] = c.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));

@@ -1,4 +1,9 @@
 // Skill chips (family color dot), "needs" chips, and the toggle-button skill picker.
+//
+// Contents:
+//   SkillChip: One skill as a chip; `need` shows it as a missing role (dashed).
+//   SkillList: A row of skill chips; a short note when empty.
+//   SkillPicker: Toggle buttons for skills (aria-pressed), grouped in a fieldset with an error line.
 import clsx from 'clsx';
 import { Check } from 'lucide-react';
 import type { Skill } from '../api/types';

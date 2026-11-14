@@ -1,4 +1,18 @@
 // Version-based merging of live events and refetched snapshots, with tombstones for deleted teams.
+//
+// Contents:
+//   recordTombstone: Record that a team was deleted at a version; keeps the highest version seen.
+//   isTombstoned: True if a snapshot is older than (or as old as) the team's deletion.
+//   clearTombstones: Forget every tombstone (tests, logout).
+//   mergeTeam: Keep the higher version of two snapshots of the same team.
+//   onBoard: True if a team belongs on the teams board: forming, looking and not full (api.md, Board).
+//   newestFirst: Board order: newest team first, then by id.
+//   mergeBoardPage: Patch, insert or remove one team in a board page. `incoming` null means deleted. A team
+//       already in the page keeps its position (columns never move); a new team is inserted in board order only
+//       when it falls inside the page's range: the first page also takes newer teams, and the last page (no next
+//       cursor) also takes older ones.
+//   mergeFetchedPage: Merge a refetched board page with the cached one: per team the higher version wins,
+//       tombstoned teams are dropped, and a newer cached snapshot that left the board stays out.
 import type { TeamSummary } from '../api/types';
 
 const deaths = new Map<string, number>();
@@ -33,6 +47,7 @@ export function onBoard(team: TeamSummary): boolean {
   return team.status === 'forming' && team.looking && team.member_count < team.max_size;
 }
 
+/** Board order: newest team first, then by id. */
 const newestFirst = (a: TeamSummary, b: TeamSummary) =>
   b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
 

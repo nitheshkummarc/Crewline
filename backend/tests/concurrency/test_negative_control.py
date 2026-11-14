@@ -1,4 +1,15 @@
-"""Negative control: T-RACE-02 (naive join over-fills) and T-RACE-03 (real join holds on the same weak schema)."""
+"""Negative control: T-RACE-02 (naive join over-fills) and T-RACE-03 (real join holds on the same weak schema).
+
+Contents:
+    weak_db: A separate database with the full schema minus the teams_cap CHECK.
+    weak_server: A second real API server running against the weak database.
+    weak_conn: A connection to the weak database with a fresh hackathon id stored on it.
+    _hackathon: Insert a hackathon with max team size 4 and return its id.
+    test_race_02_naive_join_overfills: T-RACE-02: the naive check-then-insert join lets more than one of 50 racers
+        take the last seat.
+    test_race_03_real_join_on_weak_schema: T-RACE-03: on the same weak schema, the real join still admits exactly
+        one of 50 racers.
+"""
 
 import asyncio
 import os

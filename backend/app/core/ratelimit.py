@@ -1,4 +1,14 @@
-"""In-process sliding-window rate limiter (per worker; abuse protection, not correctness)."""
+"""In-process sliding-window rate limiter (per worker; abuse protection, not correctness).
+
+Contents:
+    SlidingWindowLimiter: Count events per key within a time window.
+    SlidingWindowLimiter._trim: Drop events older than the window and return the remaining ones.
+    SlidingWindowLimiter.check: Return seconds to wait without recording, 0 if under the limit.
+    SlidingWindowLimiter.hit: Record an event; return seconds to wait if over the limit, else 0.
+    Limiters: Configured limiter instances.
+    configure: Create the limiters from settings.
+    get: Return the configured limiters.
+"""
 
 import time
 from collections import defaultdict, deque

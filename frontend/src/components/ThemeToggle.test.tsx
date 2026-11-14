@@ -1,4 +1,7 @@
 // T-WEB-12: the theme switch offers only Light and Dark; the device setting applies until a choice is saved.
+//
+// Contents:
+//   deviceIsDark: Make the fake device report a dark or light preference.
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ThemeToggle } from './ThemeToggle';

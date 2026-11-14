@@ -4,7 +4,18 @@ Written Tue 10 Nov 2026. Deadline Sun 15 Nov 2026, 11:59 PM IST. Target submit: 
 
 ## Progress (resume here)
 
-Last checkpoint: Thu 12 Nov 2026, module 8 plus redesign, Race lab (ADR-040), Light or Dark theme (System option removed 12 Nov) and the hackathon-event look. Backend: 110 tests pass (74 API, 15 unit, 21 concurrency), ruff and mypy clean. Web: 70 Vitest tests, 10 Playwright flows on 360 px and 1280 px. Module 9 step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven. Step 2 done: Dockerfile and Compose, verified by the CI compose smoke job. Step 3 done: live at https://crewline-20bm.onrender.com (Render, Singapore) on Neon PostgreSQL 18, demo data seeded (all users in Asia/Kolkata), live checks passed (reviewer login, board, SSE through Render, Race lab 50-way race with one winner, B-32 and B-33 fixed and verified live). Step 4 done: k6 L-A1, L-A2, L-B, L-C in load run 43194526097, all thresholds met. L-LIVE done (p95 101 ms at 1 s think time; CPU-bound at 124 req/s without). Next: keep-awake ping for judging, manual checks M-01 to M-07, video, tag and submit.
+Last checkpoint: Fri 13 Nov 2026.
+
+- Modules 1 to 8 done, plus the redesign, Race lab (ADR-040), Light or Dark theme and the hackathon-event look.
+- Backend: 125 tests pass (81 API, 15 unit, 29 concurrency); ruff and mypy clean.
+- Web: 70 Vitest tests, 10 Playwright flows on 360 px and 1280 px.
+- Module 9:
+  - Step 1 done: GitHub Actions CI (lint, API, race, web, e2e, k6 smoke) green on `main`, Makefile, T-OPS-04 proven.
+  - Step 2 done: Dockerfile and Compose, verified by the CI compose smoke job.
+  - Step 3 done: live at https://crewline-20bm.onrender.com (Render, Singapore) on Neon PostgreSQL 18, demo data seeded (all users in Asia/Kolkata). Live checks passed: reviewer login, board, SSE through Render, Race lab 50-way race with one winner, B-32 and B-33 fixed and verified live.
+  - Step 4 done: k6 L-A1, L-A2, L-B, L-C in load run 43194526097, all thresholds met. L-LIVE done (p95 101 ms at 1 s think time; CPU-bound at 124 req/s without).
+  - Adversarial campaign done (13 Nov): bugs B-34 to B-42 fixed with regression tests, 5 surviving mutants killed ([adversarial-testing.md](adversarial-testing.md)).
+- Next: keep-awake ping for judging, manual checks M-01 to M-07, video, tag and submit.
 
 | Module | Scope | Status |
 |---|---|---|

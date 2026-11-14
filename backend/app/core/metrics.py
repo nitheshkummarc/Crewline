@@ -1,4 +1,13 @@
-"""Prometheus metrics: request durations per route plus pool, transaction, cache and SSE gauges read at scrape."""
+"""Prometheus metrics: request durations per route plus pool, transaction, cache and SSE gauges read at scrape.
+
+Contents:
+    observe_request: Record one request duration (status grouped as 2xx, 4xx, 5xx) and keep it for percentiles.
+    percentile: Return the nearest-rank percentile of sorted values.
+    latency_summary: Return count, p50, p95, p99 and max in ms per route over its last requests, busiest route
+        first.
+    collect: Update the gauges from live objects right before a scrape.
+    render: Return the Prometheus text exposition and its content type.
+"""
 
 import math
 from collections import defaultdict, deque

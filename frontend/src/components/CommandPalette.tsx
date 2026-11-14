@@ -1,4 +1,7 @@
 // Command palette (Ctrl+K or Cmd+K): jump to pages and teams or run actions from the keyboard.
+//
+// Contents:
+//   CommandPalette: A searchable list of actions in a dialog; arrow keys move, Enter runs, Escape closes.
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
 import { Search } from 'lucide-react';

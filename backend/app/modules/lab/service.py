@@ -1,4 +1,26 @@
-"""Race lab experiments: real concurrent writes through run_write in the hidden lab hackathon, and their results."""
+"""Race lab experiments: real concurrent writes through run_write in the hidden lab hackathon, and their results.
+
+Contents:
+    context: Build the WriteContext a real request would carry (fresh idempotency key unless one is given).
+    since: Milliseconds since t0, rounded to 0.01.
+    call: Run one write like the web client: retry 503 busy with the same key; report status, code and timing.
+    guarded: Check the lab is on, the size cap and the rate limits; run one experiment at a time per worker.
+    lab_hackathon: Return the hidden lab hackathon id.
+    new_people: Create synthetic registered participants for an experiment.
+    make_team: Create a team through the real services: a leader, then members join by code until `filled` seats are
+        taken.
+    facts: Read the team's committed state after an experiment.
+    join_call: Return a call that joins by code as one person (same key on every call when `key` is given).
+    request_call: Return a call that sends one join request to a team.
+    accept_call: Return a call in which the leader accepts one request.
+    fire_together: Start every call at the same moment (all tasks wait on one event) and return results in call
+        order.
+    run_race: A team with 3 of 4 seats taken; `attempts` people join by code at the same instant. Exactly one may
+        win.
+    run_spam: One person clicks join `clicks` times at once: first with one key (a double click), then a new key per
+        click.
+    run_queue: `requests` people ask to join a 3 of 4 team at once; the leader accepts the first two in queue order.
+"""
 
 import asyncio
 import random

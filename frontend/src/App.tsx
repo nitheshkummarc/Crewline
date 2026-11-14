@@ -1,4 +1,10 @@
 // App root: query client with the session rule, live region, motion settings and the router.
+//
+// Contents:
+//   createQueryClient: Build the query client; any 401 refetches the session so the app shell sends the user to
+//       login.
+//   Routes: Render the route table.
+//   App: The whole app.
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { lazy, Suspense, useState } from 'react';
@@ -27,6 +33,7 @@ export function createQueryClient(): QueryClient {
   return client;
 }
 
+/** Render the route table. */
 function Routes() {
   return useRoutes(routes);
 }

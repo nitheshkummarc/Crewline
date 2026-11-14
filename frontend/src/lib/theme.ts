@@ -1,4 +1,10 @@
 // Theme preference: light or dark, stored per browser (a convenience, not app data); the device setting applies until a choice is saved.
+//
+// Contents:
+//   deviceTheme: Return the device's preferred theme (light when the browser cannot tell).
+//   savedTheme: Return the saved theme, or the device's theme when none is saved or storage is blocked.
+//   applyTheme: Apply a theme to the document and remember it (storage failures are ignored).
+//   useTheme: Return the current theme and a setter that applies it.
 import { useCallback, useState } from 'react';
 
 export type ThemeMode = 'light' | 'dark';

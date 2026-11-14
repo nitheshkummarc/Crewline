@@ -1,4 +1,13 @@
-"""Race lab endpoints: info, last-seat race, spam clicks, request queue, traced join walkthrough, latency."""
+"""Race lab endpoints: info, last-seat race, spam clicks, request queue, traced join walkthrough, latency.
+
+Contents:
+    info: GET /api/lab.
+    race: POST /api/lab/race.
+    spam: POST /api/lab/spam.
+    queue: POST /api/lab/queue.
+    walkthrough: POST /api/lab/walkthrough.
+    latency: GET /api/lab/latency.
+"""
 
 from uuid import UUID
 

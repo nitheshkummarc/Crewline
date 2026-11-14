@@ -1,4 +1,12 @@
-"""Start and stop real API servers and create databases for tests."""
+"""Start and stop real API servers and create databases for tests.
+
+Contents:
+    database_url: Return a server URL pointed at another database.
+    create_database: Drop and recreate a database, apply all migrations, and return its URL.
+    free_port: Return a free local TCP port.
+    start_server: Start uvicorn as a subprocess and wait until /readyz answers.
+    stop_server: Stop a server subprocess.
+"""
 
 import os
 import socket

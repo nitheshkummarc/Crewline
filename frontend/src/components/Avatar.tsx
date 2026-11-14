@@ -1,4 +1,7 @@
 // Initials avatar in the person's band color (picked from their user id).
+//
+// Contents:
+//   Avatar: A round avatar with initials; decorative, so the name must be shown next to it.
 import clsx from 'clsx';
 import { bandStyle, initials } from '../lib/teamColor';
 

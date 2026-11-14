@@ -1,4 +1,14 @@
-"""T-UNIT-02 invite codes, T-UNIT-03 cursors, T-UNIT-06 time zones, T-UNIT-07 rate limiter."""
+"""T-UNIT-02 invite codes, T-UNIT-03 cursors, T-UNIT-06 time zones, T-UNIT-07 rate limiter.
+
+Contents:
+    test_unit_02_invite_codes: Codes use the Crockford alphabet, normalize confusable input, and match the database
+        CHECK.
+    test_unit_03_cursor_round_trip_and_tamper: A cursor decodes to the same position; tampered or naive cursors are
+        rejected.
+    test_unit_06_timezone_validation: IANA names pass; offsets and unknown names fail.
+    test_unit_07_sliding_window_limiter: The limiter allows `limit` events per window per key, then returns a
+        positive wait.
+"""
 
 import re
 from datetime import UTC, datetime

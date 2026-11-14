@@ -1,4 +1,9 @@
 // Race lab hooks: lab info, measured latency, and one mutation per experiment (errors take the shared path).
+//
+// Contents:
+//   useLabInfo: Lab settings and the hidden lab hackathon id.
+//   useLabLatency: Server-side latency per route over its recent requests.
+//   useLabRun: Run one lab experiment; errors are announced once and shown by the page with ErrorNotice.
 import { useQuery } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import * as api from '../api/endpoints';

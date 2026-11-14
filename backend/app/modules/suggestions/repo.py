@@ -1,4 +1,11 @@
-"""Suggestions SQL."""
+"""Suggestions SQL.
+
+Contents:
+    is_registered: True if the user is a participant of the hackathon.
+    group_members: Return the caller's team id and its members' (id, skills, timezone); the caller alone when
+        teamless.
+    candidates: Looking participants without a team, ordered by missing-skill overlap then recency (max 500).
+"""
 
 from uuid import UUID
 

@@ -1,4 +1,13 @@
 // Team page sections that own their data: requests (leader), invite, settings (leader), suggestions, audit.
+//
+// Contents:
+//   Section: A titled section of the team page.
+//   RequestsSection: Pending requests with accept and decline; focus moves to the next request or the heading
+//       after each decision.
+//   InviteSection: Invite code for members; the leader can replace it after a confirmation.
+//   SettingsSection: Leader settings: rename and whether the team shows on the board.
+//   SuggestionsSection: Ranked people who would fill the team's missing roles.
+//   AuditSection: The team's audit log with paging.
 import * as Switch from '@radix-ui/react-switch';
 import { useRef, useState, type FormEvent } from 'react';
 import type { JoinRequest, TeamDetail } from '../api/types';

@@ -1,4 +1,9 @@
 // Loading skeletons, the empty state and load errors, shared by every page.
+//
+// Contents:
+//   SkeletonCards: Placeholder cards while data loads (no spinner in the middle of content).
+//   LoadError: A load error with the code, the one-line message and a retry button.
+//   EmptyState: An empty list that says what would fill it and what to do.
 import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { ErrorNotice } from './ErrorNotice';

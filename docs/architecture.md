@@ -325,7 +325,14 @@ HTTP request
 ### Why no business pre-checks before the claim
 
 Every state-dependent decision (team full, finalized, unknown code, already in a team) is made after the key is claimed.
-A pre-check outside the transaction breaks the retry contract: request A and its retry B (same key) arrive together; B finds no committed key, A takes the last seat and commits, then B's "team full" pre-check returns 409 even though B must replay A's 200. After the claim, B waits on A's uncommitted key row and then replays. The same applies to create team, accept and every other mutation (review finding P0, bug B-7).
+A pre-check outside the transaction breaks the retry contract (review finding P0, bug B-7):
+
+1. Request A and its retry B (same key) arrive together.
+2. B finds no committed key.
+3. A takes the last seat and commits.
+4. B's "team full" pre-check returns 409, although B must replay A's 200.
+
+After the claim, B waits on A's uncommitted key row and then replays. The same applies to create team, accept and every other mutation.
 
 Cost: requests that will be rejected still open a short write transaction. In a 50-way stampede the 49 losers wait a few milliseconds on the team row, match 0 rows and roll back; the write pool and in-flight cap bound this.
 
@@ -576,9 +583,20 @@ UPDATE users SET display_name = ..., skills = ..., timezone = ... WHERE id = $me
 
 The version bump makes the board and every client treat the new team snapshot as newer. The users row is locked only here (other paths take only the FK `KEY SHARE` on it), so taking it after the team rows cannot form a cycle.
 
-Why the participant rows come first (B-36): a join, accept or create team inserts a membership, which takes the FK `KEY SHARE` on the user's participant row, and `FOR UPDATE` conflicts with it. Without that lock the two transactions share no lock: the profile's team query cannot see the uncommitted membership, and the join's audit snapshot cannot see the uncommitted skills, so the team's last event kept the old skills at the current version. With it, either the join commits first and the profile sees and bumps the team, or the join waits and its snapshot reads the new skills. No cycle: the profile then locks only teams the user already belongs to; a transaction holding such a team that inserts this user's membership fails on the unique index (23505) before the FK check waits; create request rejects a member before it locks the participant row, and no membership can be added to a team it holds `FOR SHARE`; set looking holds only the participant row.
+Why the participant rows come first (B-36):
 
-Why the bump is a separate statement (B-37): when a leave holding the team row commits, PostgreSQL re-checks a waiting `FOR NO KEY UPDATE` only against the new version of the locked teams row, not the joined membership row, so a one-statement lock-and-bump still bumped and audited the team the user had just left. The `UPDATE` runs with a new snapshot after the locks are held, so it sees the committed leave.
+- A join, accept or create team inserts a membership, which takes the FK `KEY SHARE` on the user's participant row. `FOR UPDATE` conflicts with it.
+- Without that lock the two transactions share no lock. The profile's team query cannot see the uncommitted membership, and the join's audit snapshot cannot see the uncommitted skills, so the team's last event kept the old skills at the current version.
+- With it, either the join commits first and the profile sees and bumps the team, or the join waits and its snapshot reads the new skills.
+
+Why there is no cycle:
+
+- The profile then locks only teams the user already belongs to.
+- A transaction holding such a team that inserts this user's membership fails on the unique index (23505) before the FK check waits.
+- Create request rejects a member before it locks the participant row, and no membership can be added to a team it holds `FOR SHARE`.
+- Set looking holds only the participant row.
+
+Why the bump is a separate statement (B-37): when a leave holding the team row commits, PostgreSQL re-checks a waiting `FOR NO KEY UPDATE` only against the new version of the locked teams row, not the joined membership row. A one-statement lock-and-bump therefore still bumped and audited the team the user had just left. The separate `UPDATE` runs with a new snapshot after the locks are held, so it sees the committed leave.
 
 ### 6.12 Lock order summary
 
@@ -632,7 +650,11 @@ Withdraw is the only path that takes a request row without the team row first. I
 - Every connection decodes `uuid` to the standard `uuid.UUID` and `json`/`jsonb` with orjson (bug B-15).
 - Acquire timeout 1 s: `asyncpg` `TimeoutError` → 503 `busy` with `Retry-After: 1`.
 - Both pools set `command_timeout=5` (client side, above the server timeouts). A half-open socket never delivers the statement, so `statement_timeout` cannot fire; the client bound fails the request and the pool replaces the connection (B-34).
-- Transient database errors answer 503 `busy` with `Retry-After: 1`, on writes (`run_write`) and reads (`read_conn`) alike, with the generic error handler as a backstop. A connection that dies during `pool.release()` is dropped with a warning, because the request's work (for a write, its COMMIT) already finished: lock and statement timeouts, killed backends and restarts (SQLSTATE class 57), lost sockets (`PostgresConnectionError`, `OSError`), `InternalClientError` after a restart. `is_busy` walks `__cause__` and `__context__`, because a connection lost inside a transaction block surfaces as `InterfaceError` from `Transaction.__aexit__` (B-35). Nothing committed is lost, so the client retries with the same key.
+- Transient database errors answer 503 `busy` with `Retry-After: 1`, on writes (`run_write`) and reads (`read_conn`) alike. The generic error handler is a backstop (B-35).
+  - Counted as transient: lock and statement timeouts, killed backends and restarts (SQLSTATE class 57), lost sockets (`PostgresConnectionError`, `OSError`), and `InternalClientError` after a restart.
+  - `is_busy` walks `__cause__` and `__context__`, because a connection lost inside a transaction block surfaces as `InterfaceError` from `Transaction.__aexit__`.
+  - A connection that dies during `pool.release()` is dropped with a warning, because the request's work (for a write, its COMMIT) already finished.
+  - Nothing committed is lost, so the client retries with the same key.
 - Write in-flight cap: 30 per worker (an `asyncio.Semaphore` checked without waiting). Excess returns 503 immediately, so a stampede queues in clients, not on connections.
 - Race-test configuration overrides `WRITE_POOL_MAX=60` and `WRITE_INFLIGHT_MAX=100` so that 50 requests truly overlap in PostgreSQL.
 - Because rejections are decided inside the transaction (section 5), stampede losers also use a write connection for a few milliseconds. This is the price of a correct retry contract; L-B measures it.
@@ -718,7 +740,11 @@ Three event kinds, built by `public_projection` (no emails, no invite codes):
 - On every (re)connect the client refetches; there is no `Last-Event-ID` replay (ADR-018). The database is the truth, events are hints.
 - Heartbeat comment every 15 s. Header `X-Accel-Buffering: no`. Max 3 streams per user (4th gets 429).
 - Slow client: if its queue is full, the hub drops the subscriber and closes the stream; the browser reconnects and refetches.
-- Listener failure: a supervisor checks the LISTEN connection every 0.5 s (and runs `SELECT 1` every 30 s as a keepalive; no answer within 5 s terminates the connection, so a half-open link also reconnects and resyncs, B-34); on loss it reconnects with backoff (0.5 s doubling to 10 s), clears the board cache, then publishes `event: resync` to every subscriber so they refetch. Proven by killing the backend with `pg_terminate_backend` (B-3 test).
+- Listener failure:
+  - A supervisor checks the LISTEN connection every 0.5 s.
+  - Every 30 s it runs `SELECT 1` as a keepalive. No answer within 5 s terminates the connection, so a half-open link also reconnects and resyncs (B-34).
+  - On loss it reconnects with backoff (0.5 s doubling to 10 s), clears the board cache, then publishes `event: resync` to every subscriber so they refetch.
+  - Proven by killing the backend with `pg_terminate_backend` (B-3 test).
 - SSE streams never hold a database connection.
 
 ## 10. Security
@@ -789,7 +815,12 @@ Definitions, with `G` = the group, `T` = union of skills in `G`, `C` = candidate
 - `hooks/useEventStream.ts`: one EventSource per hackathon, refetch on open, merge `team` events by version, keep tombstones, refetch People board on `people` events, refresh request lists on `request` events, handle `resync`.
 - `lib/merge.ts`: `mergeTeam`, `mergeBoardPage` and the tombstone map, shared by event and refetch paths.
 - Time zone: signup and profile default to the browser's `Intl.DateTimeFormat().resolvedOptions().timeZone`; shown as the current offset.
-- Visual system (ADR-038, wristband): every team has its own band color, picked from its id so all clients agree, used for its card header, seat tabs, page hero, peek sheet and feed entries. Light theme by default, dark from the system setting. Wide Archivo for headings; labels in sentence case, no eyebrow labels. A faint dot grid on the canvas, banners on the navy shell lit by soft sky and mint glows, team headers with a soft gradient within their band color; gradients never on buttons and never purple. Sidebar navigation on laptops, a bottom tab bar on phones, the page's primary action in a bar above it. Tokens live in `frontend/src/styles/tokens.css` and `tailwind.config.ts`; every text, control, tag and band pair is measured by `frontend/scripts/contrast.mjs` (4.5:1 text, 3:1 borders and focus).
+- Visual system (ADR-038, wristband):
+  - Every team has its own band color, picked from its id so all clients agree, used for its card header, seat tabs, page hero, peek sheet and feed entries.
+  - Light theme by default, dark from the system setting. Wide Archivo for headings; labels in sentence case, no eyebrow labels.
+  - A faint dot grid on the canvas, banners on the navy shell lit by soft sky and mint glows, team headers with a soft gradient within their band color. Gradients never on buttons and never purple.
+  - Sidebar navigation on laptops, a bottom tab bar on phones, the page's primary action in a bar above it.
+  - Tokens live in `frontend/src/styles/tokens.css` and `tailwind.config.ts`. Every text, control, tag and band pair is measured by `frontend/scripts/contrast.mjs` (4.5:1 text, 3:1 borders and focus).
 - Interaction: a live activity feed of team events (created, filled, emptied, finalized, deleted) beside the board on wide screens and as a Live tab on phones; search, skill filters (needs or has) and sorting kept in the URL; a team peek sheet with members; a command palette (Ctrl+K or Cmd+K) for pages, actions and teams; `/` focuses search; invite QR codes.
 - Race lab page (`/lab`, ADR-040): tabs for How a join works (traced statements of a real join, a retry and a full team), Last-seat race, Spam clicks, Request queue and Latency (server percentiles plus a measurement from the browser).
 - Theme: Light or Dark switch (sidebar and login); until a choice is saved the device setting applies (`prefers-color-scheme`); the choice is stored per browser and applied before first paint by `public/theme-init.js`; navy brand shell and orange primary action in both themes.

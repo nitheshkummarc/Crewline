@@ -1,4 +1,19 @@
-"""Last-seat races and idempotency under concurrency: T-RACE-01, 10, 11, 12, 16."""
+"""Last-seat races and idempotency under concurrency: T-RACE-01, 10, 11, 12, 16.
+
+Contents:
+    _team_with_one_seat: Create a team of max 4 with 3 members; return (team id, code, members).
+    _member_count: Return (teams.member_count, membership rows) for a team.
+    test_race_01_last_seat_50_way: T-RACE-01: 50 users race for one seat; exactly one wins, 49 get team_full, every
+        iteration.
+    test_race_16_retry_racing_its_original: T-RACE-16: two copies of one keyed join race 48 others for the last
+        seat; both copies get the same answer.
+    test_race_10_same_key_twenty_times: T-RACE-10: one join sent 20 times at once with one key creates one
+        membership and 20 identical bodies.
+    test_race_11_retry_after_winning_last_seat: T-RACE-11: a retry of a winning last-seat join, sent after it
+        committed, replays 200 (not 409).
+    test_race_12_key_reused_after_rejection: T-RACE-12: a key that got 409 is not stored; the same key succeeds once
+        a seat frees up.
+"""
 
 import os
 import uuid

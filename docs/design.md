@@ -1,35 +1,125 @@
 # Crewline: design
 
-One-page design doc for the Hack4Hack PS1 submission (race-proof team formation). Every number is measured; sources are in load-report.md and verification.md.
+The whole design on one page, for the Hack4Hack Problem Statement 1 submission. Every number here was measured; the details are in [load-report.md](load-report.md) and [verification.md](verification.md).
 
-**Stack.** FastAPI (Python 3.11+, asyncpg, raw SQL) · PostgreSQL 16 · React + TypeScript · SSE · k6. One API service and one database. No Redis or queues: a team has at most 10 seats, so the database alone can serialize contention cheaply, and one store means one commit covers seat, member, audit and idempotency.
+## What was built
 
-**Data model.** `teams` (denormalized `member_count`, `max_size`, `min_size`, `status`, `version`, `invite_code`) · `memberships` (PK team+user, **UNIQUE (hackathon_id, user_id)**, composite FK to `teams (id, hackathon_id)`) · `participants` (per-hackathon `looking`) · `join_requests` (one pending per user per team, partial unique index) · `idempotency_keys` · `audit_events` (append-only, no FKs). Database constraints back every rule: `CHECK (member_count BETWEEN 1 AND max_size)`, `CHECK (status = 'forming' OR member_count >= min_size)`.
+A team formation service for a hackathon of 10,000 people. People sign up, create teams, join by invite code or by request, leave, and watch a live board of teams and people. The main promise: when many people try to take the last seat at once, exactly one gets it, and no retry, crash or overlap ever leaves the data wrong.
 
-**Race prevention.** A seat is taken with one conditional statement in the same transaction as the membership insert:
-`UPDATE teams SET member_count = member_count + 1 WHERE id = $1 AND member_count < max_size AND status = 'forming' ...`.
-Under READ COMMITTED, the 49 losers wait on the row lock, then re-check the predicate against the committed row, match 0 rows and get 409. The unique index stops one person joining two teams. Every write path takes locks in one order (idempotency, team row, requests, memberships, audit; the profile update alone takes the user's participant rows first, ADR-007), which removes the FK-induced deadlock between a join and the last member leaving. Proof: the 50-way race test runs 20 times in CI on PostgreSQL 16 and 18 through a real server with 60 connections, and a naive check-then-insert version **fails the same test**, so the test is known to detect races. An invariant checker (10 SQL queries) returns zero rows after every test, load run and chaos run.
+## Tools
 
-**Attacked and held.** After the build, a separate attack harness ran against a frozen copy of the code ([adversarial-testing.md](adversarial-testing.md)). The last-seat race kept exactly one winner in every run; 19 write-path pairs overlapped 30 times each and 1,215 interleavings explored statement by statement found no invalid state and 0 deadlocks; replays stayed byte-identical on 15 endpoints, also with 15 ms of injected latency per database message; 3 hard kills of the API (9,643 actions) and a PostgreSQL restart under load left every committed 200 replaying identically and the invariants clean.
+Python with FastAPI for the server, PostgreSQL for the data, React with TypeScript for the web app, and k6 for load tests.
 
-**Idempotency.** Every mutation needs an `Idempotency-Key`. It is claimed as the first statement of the transaction; a concurrent duplicate waits on the unique index, then replays. The success response is stored in the same commit; rejections are not stored, because they changed nothing. No state-dependent check runs before the claim: an early "team full" check would let a retry racing its own original return 409 to the user who got the seat. A second layer: joining your own team returns 200 and the unique index blocks double membership regardless of keys.
+There is one server and one database. There is no Redis and no queue. A team has at most 10 seats, so letting the database handle the queue for each team is cheap, and with one database a single save can cover everything an action changes.
 
-**Realtime.** The audit insert trigger calls `pg_notify`, which is delivered only on commit. One listener per worker clears the board cache and fans out over SSE. Team events carry the snapshot and `version` (deletions carry a tombstone version); participant and profile changes are events too, so the People board and team skills stay live; join-request events go only to that team's members and the requester. Clients keep the newer version and refetch on every reconnect. We chose this over `Last-Event-ID` replay because sequence numbers are not commit-ordered.
+## The data
 
-**Latency.** Board: keyset pagination on a partial index, a 1 s single-flight cache of serialized bytes (cleared on every change), ETag. Separate read and write pools so a stampede cannot starve reads; 1 s lock and acquire timeouts return 503 + `Retry-After` instead of hanging. Results (k6 on a 4 vCPU runner, 10k users, 2k teams, 100 concurrent users, PostgreSQL 18): board p95 **80 ms**; mixed load with 12 stampedes of 50, churn and 50 SSE streams p95 **92 ms** with exactly one winner per stampede; 10-minute soak p95 **21 ms**; **0** deadlocks; 21 connections per worker (read 10, write 10, listen 1). Live free tier (Render 0.1 CPU, from India): p95 **101 ms** with people reading once a second; with no think time it is CPU-bound at 124 req/s (p95 1.1 s), details in [load-report.md](load-report.md).
+| What is stored | Rules the database enforces |
+|---|---|
+| Teams, with their size limits, member count, status and invite code | Member count is always between 1 and the team's maximum; a finalized team has at least its minimum |
+| Memberships | One person is in at most one team per hackathon |
+| Participants and whether they are looking for a team | |
+| Join requests | At most one open request per person per team |
+| Click keys and their saved answers | Each key is used once |
+| A history log of every change | Entries are never changed or deleted |
 
-**See it in the app.** The Race lab page (`/lab`) runs these guarantees live against the real database: every SQL statement of a traced join, N people racing for the last seat (one winner, the rest `team_full`, read back from the database), one person spamming join (one membership), and the order requests reach a leader (ADR-040).
+Every rule is enforced by the database itself, not only by server code.
 
-**Guarantees, each proven by a test through a real server.** Atomicity: a failure injected into the last statement of a join or accept leaves no seat, member, request change or stored key. Overload: a burst over a 2-connection pool gets `503 busy` with `Retry-After` in under 2 s, never a hang or 500, and retries still end with exactly one winner; a killed backend, a blocked read or a half-open database link also answers 503 and recovers. Per-user limits: 429 with `Retry-After` for mutations, login and signup. Consistency: 10 invariant queries clean after every test. Mapping in architecture.md section 17.
+## How the last seat goes to one person
 
-**Security.** argon2id; JWT in an httpOnly SameSite cookie; leader checks inside the SQL predicate; 50-bit invite codes (about 53 years to a hit at 20k guesses/min) with per-user and per-IP limits; identical 404 for unknown and expired codes; no codes or emails in events.
+Checking for a free seat and taking it happen in one database instruction. When 50 requests arrive together, the database lets them through one at a time. The first takes the seat; the other 49 check again against the updated team, find it full, and are told so. The new member is added in the same save, so if anything fails the seat is given back too.
 
-**Suggestions.** `0.6 × skill complement + 0.3 × time-zone overlap + 0.1 × completeness − 0.1 × redundancy`, with reasons per result. Complement rewards covering the team's missing roles; similarity matching was rejected because it rewards sameness. Time zones are IANA names, so overlap respects daylight saving; a caller without a team is treated as a one-person team.
+Every action locks things in one fixed order, so two actions can never wait on each other forever. One action, editing a profile, locks the person's registration first; that exception and why it is safe are written up in decision ADR-007.
 
-**Trade-offs.** Denormalized count (fast guard, must stay in sync, checked by I1) · rejections decided inside the transaction (correct replay, slightly more write load in stampedes) · rejections not stored (unlike Stripe) · rate limits per worker in memory · stale join requests resolved lazily to avoid a deadlock · max size fixed at event start and min size enforced at finalization (confirmed) · no organizer UI · logout does not revoke tokens early.
+**Proof.** A 50-person race for one seat runs 20 times on every code push, on PostgreSQL 16 and 18. A deliberately naive version fails the same test, which shows the test can catch a race. Ten consistency checks run after every test, load run and crash test and have never found a problem.
 
-**Bugs found while building** ([bug-diary.md](bug-diary.md), each with its proven cause and a regression test). B-7: a "team full" check before the idempotency claim made a retry racing its own original return 409 to the person who got the seat; every business decision now happens after the claim. B-14: storing replay bodies as `jsonb` reordered keys, so replays were not byte-identical; stored as text. B-20: cold PostgreSQL backends after a stampede cost 60 to 130 ms; pools open fully and are never reaped. B-33: the live site trusted the first `X-Forwarded-For` hop, so per-IP limits could be bypassed; the IP now comes from the host edge's header.
+## Repeated clicks
 
-**Broken by our own attack, then fixed** (B-34 to B-42, each reproduced first, fixed at the cause, with a test that fails on the old code). No finding broke an invariant; they broke availability, the live view and the error contract. A profile change racing the same user's join shared no lock, so the team's live event kept the old skills (now the participant row is locked first, ADR-007). A half-open database link hung requests and drained the pool, and a lost connection answered 500 instead of 503 (client command timeout, transient errors are 503). A retry of a committed join could get 429 instead of its result (limits now run after the replay). The idempotency purge could never finish on a large backlog. Mutation testing showed 5 guards this suite did not check; each now has a test.
+Every action carries a unique key. The key is saved first, and the answer is saved with the change. If the same click comes again, even while the first is still running, it waits and gets the same answer back. Rejections are not saved, because nothing changed.
 
-**With one more week.** Join as a single SQL function (1 round trip instead of 7) · shared rate limits in Postgres for multi-instance · audit replay checker that rebuilds state from events · organizer view (lock all teams, CSV export) · lock strategy benchmark (conditional UPDATE vs FOR UPDATE vs SKIP LOCKED) · capacity curve to 400 users.
+No "team full" check happens before the key is saved. An early version did that, and it told the person who won the seat that they had lost.
+
+## Live updates
+
+Every change writes a history entry in the same save. The database sends a notice only after the save succeeds, and the server passes it to every open browser. So a change that was undone is never shown.
+
+- Each team update carries a version number, and browsers keep only the newest.
+- Profile and "looking for a team" changes are live too.
+- Join request updates go only to that team's members and the person asking.
+- After a lost connection, the browser reloads the data instead of trying to replay missed updates.
+
+## Speed
+
+The board is served from a cache that lasts at most 1 second and is cleared on every change. Reads and writes use separate connections, so a rush of joins cannot slow the board. If the server is too busy, it answers "try again in a second" within 1 second instead of making anyone wait.
+
+| Load test (100 users at once, 10,000 users, 2,000 teams) | 95 % of requests faster than |
+|---|---|
+| Board | 80 ms |
+| Board plus 12 rushes of 50 people on one seat, plus live streams (one winner every time) | 92 ms |
+| 10 minutes of steady use | 21 ms |
+
+No action ever got stuck. On the free live host (a tenth of a CPU), 95 % of board loads took under 101 ms with people reading once a second.
+
+## Guarantees, each shown by a test
+
+- **All or nothing:** a failure at the last step of a join leaves no trace.
+- **Overload:** a flood of requests gets "try again" within 2 seconds, never a hang or a crash, and retrying still gives exactly one winner.
+- **Lost database connection:** the server answers "try again" and recovers by itself.
+- **Limits:** people who send too many actions are told to slow down.
+
+## See it in the app
+
+The Race lab page runs these guarantees live on the real database: N people racing for the last seat, one person clicking Join many times, and a step-by-step trace of a real join with timings.
+
+## Security
+
+Passwords are hashed with argon2. Sessions use a cookie that page scripts cannot read. Only a team's leader can make leader changes, and that check happens inside the same database step. Invite codes are long enough that guessing one would take about 53 years at the allowed rate. Unknown and expired codes give the same answer. Live updates never contain invite codes or emails.
+
+## Teammate suggestions
+
+Suggestions favor people whose skills fill the team's gaps (60 %), whose time zone overlaps (30 %) and whose profile is complete (10 %), and count against skills the team already has. Each suggestion says why it was made.
+
+## Trade-offs
+
+| Choice | Cost |
+|---|---|
+| The team stores its own member count | Fast to check, but it must always match; a consistency check watches it |
+| Every decision made after the key is saved | Correct retries, slightly more database work in a rush |
+| Rejections are not saved | A retried rejection runs again |
+| Rate limits kept per server process | Not shared between servers |
+| No organizer screens; logout does not cancel a session early | Not built |
+
+## Attacked and held
+
+After the build, a separate test harness tried to break a frozen copy of the code ([adversarial-testing.md](adversarial-testing.md)):
+
+- the last seat always had exactly one winner
+- 19 pairs of overlapping actions, 30 times each, and 1,215 step-by-step orderings never left bad data or got stuck
+- repeated clicks always got the same answer on 15 actions, even with a slowed-down database link
+- killing the server 3 times and restarting the database under load lost nothing
+
+## Bugs found and fixed
+
+While building ([bug-diary.md](bug-diary.md)):
+
+- A "team full" check before saving the key told the seat winner they had lost. All decisions now come after the key is saved.
+- Saved answers came back with their fields in a different order. They are now saved exactly as sent.
+- The first requests after a quiet spell were slow because database connections had to warm up. Connections now stay open.
+- The live site trusted a header that users can fake, so per-person limits could be dodged. It now trusts only the host's own header.
+
+By our own attack (each reproduced first, fixed at its cause, and given a test that fails on the old code). None of them broke the data; they broke speed, the live view or error answers:
+
+- A profile edit at the same moment as a join showed old skills on the live board.
+- A dead database connection made requests hang, and a lost one gave a server error instead of "try again".
+- A retry of a successful join could be refused for sending too many requests.
+- The hourly cleanup of old click keys could never finish once too many piled up.
+- Breaking one safety check at a time in a copy of the code showed 5 that the tests did not notice. Each now has a test.
+
+## With one more week
+
+- Do the whole join in one database call instead of 7
+- Share rate limits between servers
+- A tool that rebuilds the data from the history log and compares
+- Organizer screens: lock all teams, export a list
+- Compare other locking approaches with real numbers
+- Test how far the system scales past 400 users at once

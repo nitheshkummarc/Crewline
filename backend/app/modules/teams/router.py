@@ -1,4 +1,19 @@
-"""Team endpoints, including the team audit log."""
+"""Team endpoints, including the team audit log.
+
+Contents:
+    _respond: Render a write outcome.
+    create_team: POST /api/hackathons/{hid}/teams.
+    join_by_code: POST /api/teams/join.
+    get_team: GET /api/teams/{tid}.
+    update_team: PATCH /api/teams/{tid}.
+    leave: POST /api/teams/{tid}/leave.
+    remove_member: DELETE /api/teams/{tid}/members/{uid}.
+    finalize: POST /api/teams/{tid}/finalize.
+    reopen: POST /api/teams/{tid}/reopen.
+    get_invite: GET /api/teams/{tid}/invite.
+    regenerate_invite: POST /api/teams/{tid}/invite/regenerate.
+    team_audit: GET /api/teams/{tid}/audit for members.
+"""
 
 from uuid import UUID
 

@@ -1,4 +1,14 @@
-"""User SQL."""
+"""User SQL.
+
+Contents:
+    insert_user: Insert a user; 23505 on users_email_unique means the email is taken.
+    get_by_email: Return the user and password hash for an email.
+    get_by_id: Return a user.
+    bump_member_teams: Lock the user's participant rows, then their teams by (hackathon, id); bump teams they still
+        belong to.
+    update_profile: Update profile columns and return the user.
+    participations: Return the hackathon ids the user is registered in.
+"""
 
 from typing import Any
 from uuid import UUID

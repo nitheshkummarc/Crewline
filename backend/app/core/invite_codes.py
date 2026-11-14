@@ -1,4 +1,10 @@
-"""Invite code generation and normalization (10 Crockford base32 characters, about 50 bits)."""
+"""Invite code generation and normalization (10 Crockford base32 characters, about 50 bits).
+
+Contents:
+    generate_code: Return 10 random Crockford base32 characters.
+    normalize_code: Uppercase, strip dashes and spaces, map O/I/L; return None if malformed.
+    format_code: Return the code as XXXXX-XXXXX for display.
+"""
 
 import secrets
 

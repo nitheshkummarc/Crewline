@@ -1,4 +1,12 @@
 // Time zone and time display helpers (IANA names in, current offsets out).
+//
+// Contents:
+//   browserTimeZone: Return the browser's IANA time zone, or UTC if the browser does not report one.
+//   allTimeZones: Return every IANA zone the browser knows, with UTC first.
+//   zoneOffset: Return the current UTC offset of a zone as "UTC+05:30", or null for an unknown zone.
+//   formatZone: Return `Asia/Kolkata (UTC+05:30)` using the current offset.
+//   relativeTime: Return a short relative time such as "just now", "5 min ago", "3 h ago" or a date.
+//   timeUntil: Return how long until an instant, such as "47 h" or "12 min".
 
 /** Return the browser's IANA time zone, or UTC if the browser does not report one. */
 export function browserTimeZone(): string {

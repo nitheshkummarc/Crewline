@@ -1,4 +1,9 @@
-"""JSON response rendered with orjson (FastAPI deprecated its ORJSONResponse)."""
+"""JSON response rendered with orjson (FastAPI deprecated its ORJSONResponse).
+
+Contents:
+    JsonResponse: Render content with orjson; UUIDs and datetimes serialize natively, anything else via str.
+    JsonResponse.render: Return the JSON bytes for content.
+"""
 
 from typing import Any
 

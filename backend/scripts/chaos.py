@@ -5,6 +5,18 @@ Usage: python backend/scripts/chaos.py [--server-url postgresql://postgres@127.0
 Creates database `crewline_chaos`, runs uvicorn as a subprocess, and kills it with Popen.kill()
 (SIGKILL on Linux, TerminateProcess on Windows). Clients retry network errors and 503 with the same
 idempotency key. Exit code 1 on any violation.
+
+Contents:
+    Action: One logical client action with its fixed idempotency key and final response.
+    Api: The API subprocess: start, wait for readiness, hard-kill.
+    Api.start: Start uvicorn and wait until /readyz answers.
+    Api.kill: Hard-kill the process: no shutdown hooks run.
+    setup: Create the chaos database: one hackathon, teams with 3 of 4 seats taken, and free users.
+    perform: Send an action until it gets a final status, retrying network errors and 503 with the same key.
+    user_loop: Join a random team; if it worked, leave again shortly after; repeat until the deadline.
+    replay_all: Re-send every 200 action with its key; count responses that differ from the original bytes.
+    run_chaos: Run the workload, kill and restart the API, then verify invariants, statuses and replays.
+    main: CLI entry point.
 """
 
 import argparse

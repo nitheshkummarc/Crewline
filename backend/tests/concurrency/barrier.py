@@ -1,4 +1,12 @@
-"""Helpers to release many requests at the same instant and retry 503s with the same key."""
+"""Helpers to release many requests at the same instant and retry 503s with the same key.
+
+Contents:
+    fire_together: Await all calls behind one asyncio.Event barrier so they start together.
+    retry_busy: Repeat a call until it is not 503 (the caller keeps the same idempotency key).
+    keyed: Return a call that sends one logical request, retrying 503 with one fixed key.
+    warm: Open each user's HTTP connection before a race so connection setup does not serialize it.
+    close: Close the clients of users that are no longer needed.
+"""
 
 import asyncio
 import random

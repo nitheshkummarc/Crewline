@@ -1,4 +1,22 @@
-"""Join request races: T-RACE-05, 06, 07, 13, 17, 18."""
+"""Join request races: T-RACE-05, 06, 07, 13, 17, 18.
+
+Contents:
+    _error: Return the error code of a response, or None for a 2xx.
+    _count: Return (teams.member_count, membership rows) for a team.
+    _request: Create a join request and return its id.
+    test_race_05_code_join_vs_accept_for_last_seat: T-RACE-05: a code join and a leader accept race for the last
+        seat; exactly one new member.
+    test_race_06_two_leaders_accept_same_user: T-RACE-06: two leaders accept the same user at once; one membership,
+        the other request goes stale.
+    test_race_07_same_request_accepted_twice: T-RACE-07: the same request accepted twice at once (two tabs); the
+        count goes up once.
+    test_race_13_accept_vs_withdraw: T-RACE-13: accept and withdraw of one request race; exactly one transition
+        wins.
+    test_race_17_requests_while_team_fills: T-RACE-17: no request is created after the team became full (ordered by
+        audit sequence under the team lock).
+    test_race_18_pending_cap_is_exact: T-RACE-18: one user fires 8 requests to 8 teams at once; exactly 5 are
+        created.
+"""
 
 import os
 import uuid

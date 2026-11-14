@@ -1,4 +1,10 @@
-"""Bot checks for signup and login: a signed form token with a minimum fill time, plus a honeypot field."""
+"""Bot checks for signup and login: a signed form token with a minimum fill time, plus a honeypot field.
+
+Contents:
+    issue_form_token: Return a signed token that records when the form was rendered.
+    check_form: Raise BotCheckFailed for a filled honeypot, a bad or expired token, or a submit under 2 s after
+        render.
+"""
 
 import time
 

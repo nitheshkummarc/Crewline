@@ -1,4 +1,9 @@
 // Shell context: the current hackathon, its live stream status, and the command palette opener, shared by all signed-in pages.
+//
+// Contents:
+//   useShell: Return the shell state.
+//   useCurrentHackathon: Make a hackathon the current one (its event stream opens in the shell) once its id is
+//       known.
 import { createContext, useContext, useEffect } from 'react';
 import type { StreamStatus } from './useEventStream';
 

@@ -1,4 +1,8 @@
 // Bot-checked form submit for login and signup: form token per render, honeypot, minimum fill time.
+//
+// Contents:
+//   useBotCheckedSubmit: Return the bot fields and a `send` that waits out the minimum fill time before calling
+//       the endpoint.
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { BotFields } from '../api/types';

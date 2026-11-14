@@ -44,7 +44,7 @@ Source: Hack4Hack Crew Hiring Challenge 2026, Problem Statement 1, "Race-proof t
 | R12 | Validate all inputs | backend rules; api.md; ADR-025 (400 handler), ADR-033 | T-API-29; T-UNIT-06; T-WEB-06 (same limits in the client) | passing |
 | R13 | Audit log: who changed what and when, every team change | arch 4, 6, 6.11; ADR-019, 034 | T-API-06, 34, 37, 40; I7 | passing |
 | R14 | Suggestions endpoint ranking by complementary skills and time zone, scoring explained | arch 11; ADR-023, 033 | T-API-33, 44; T-UNIT-01 | passing |
-| R15 | At least 20 API tests including the race test, in GitHub Actions | verification.md; ci.yml | CI badge | passing (CI run 43194526122: 89 API and unit and 21 race and guarantee on PostgreSQL 16 and 18, 70 web, 20 end-to-end runs, k6 smoke) |
+| R15 | At least 20 API tests including the race test, in GitHub Actions | verification.md; ci.yml | CI badge | passing (CI run 43552150123: 96 API and unit and 29 race and guarantee on PostgreSQL 16 and 18, 70 web, 20 end-to-end runs, k6 smoke) |
 | R16 | Seed script: 10,000 users, 2,000 teams | database/seed.py | T-OPS-01; I1 to I9 on seed | passing (0.9 s, invariants clean) |
 | R17 | Load test (k6 or autocannon): board p95 under 200 ms at 100 concurrent users | arch 8; ADR-021 | L-A | passing (k6 run 43194526097: L-A1 p95 80.1 ms, L-B p95 92.4 ms with stampedes, L-C p95 21.4 ms over 10 minutes) |
 | R18 | React UI for the full flow, usable on phone and keyboard only | arch 13; ADR-031, 038 | T-WEB-01 to 11; E2E-01 to 10 (360 px and 1280 px); M-01 to M-06 | passing (automated); manual keyboard and screen reader pass in module 9 |

@@ -1,4 +1,10 @@
 // Last-seat race results: the seat strip, one dot per person in finish order, finish timeline, and database proof.
+//
+// Contents:
+//   kind: Outcome of one attempt for coloring.
+//   Stat: A big number with a label.
+//   Proof: Database facts read after the run, each checked against what it should equal; `wide` uses two columns.
+//   RaceView: The race: who won, how everyone else was answered, and what the database holds afterwards.
 import clsx from 'clsx';
 import { m } from 'motion/react';
 import { Check, X } from 'lucide-react';

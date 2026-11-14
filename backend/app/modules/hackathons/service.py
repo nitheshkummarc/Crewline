@@ -1,4 +1,12 @@
-"""Participant registration and status."""
+"""Participant registration and status.
+
+Contents:
+    list_hackathons: Return all hackathons.
+    get_hackathon: Return one hackathon or raise 404.
+    my_status: Return registration, looking flag, team and pending requests.
+    register: Insert the participant row if missing; audit participant_registered when inserted.
+    set_looking: Update the looking flag; audit participant_updated when it changed.
+"""
 
 from uuid import UUID
 

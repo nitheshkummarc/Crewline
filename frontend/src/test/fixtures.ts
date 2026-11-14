@@ -1,4 +1,11 @@
 // Test fixtures: API payloads and a fetch stub that answers by method and path.
+//
+// Contents:
+//   team: Return a team summary with overrides.
+//   member: Return a team member with overrides.
+//   teamDetail: Return a team detail with overrides.
+//   stubFetch: Stub global fetch with routes matched in order; unknown requests get 404 not_found. Returns the
+//       mock.
 import { vi } from 'vitest';
 import type { Hackathon, Member, TeamDetail, TeamSummary, User } from '../api/types';
 

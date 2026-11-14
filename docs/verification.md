@@ -210,7 +210,14 @@ The replay check is stronger than the plan above: every action that finally got 
 
 ### T-CHAOS-03 Half-open database links (B-34)
 
-`backend/tests/concurrency/test_half_open.py`. A TCP proxy in the test process sits between a dedicated server (write and read pools of 2) and PostgreSQL. After a team and an open SSE stream exist, the proxy stops forwarding on every open link without closing it (no FIN, no RST); new links still work. Assertions: the next read answers 503 `busy` with `Retry-After: 1` within 8 s (command timeout 5 s); reads return to 200 within 30 s; the stream receives `resync` within 45 s (keepalive every 30 s, 5 s timeout). Status: passing.
+`backend/tests/concurrency/test_half_open.py`. Status: passing.
+
+- Setup: a TCP proxy in the test process sits between a dedicated server (write and read pools of 2) and PostgreSQL.
+- Fault: after a team and an open SSE stream exist, the proxy stops forwarding on every open link without closing it (no FIN, no RST). New links still work.
+- Assertions:
+  - the next read answers 503 `busy` with `Retry-After: 1` within 8 s (command timeout 5 s)
+  - reads return to 200 within 30 s
+  - the stream receives `resync` within 45 s (keepalive every 30 s, 5 s timeout)
 
 ## 8. Load scenarios (k6)
 
@@ -257,7 +264,12 @@ Real bugs found during the build go to [bug-diary.md](bug-diary.md).
 
 ## 11. CI pipeline (.github/workflows/ci.yml)
 
-Runs on every push (any branch), every pull request and on demand. Every job that needs a database starts `postgres:16` (or `postgres:18` in the API and race matrix jobs) with `max_connections=300` through `.github/scripts/start-postgres.sh` (a service container cannot pass server flags, and the concurrency tests run several servers at once, like `dev_db.py` locally). Jobs that need a running API start it with `.github/scripts/start-api.sh` and upload its log on failure. The pytest, Playwright and k6 jobs post their result line (test counts; board p50, p95, p99, max and req/s) as an annotation on the run page. All steps run in bash with `pipefail`, so piping into `tee` cannot hide a failure.
+Runs on every push (any branch), every pull request and on demand.
+
+- Every job that needs a database starts `postgres:16` (or `postgres:18` in the API and race matrix jobs) with `max_connections=300` through `.github/scripts/start-postgres.sh`. A service container cannot pass server flags, and the concurrency tests run several servers at once, like `dev_db.py` locally.
+- Jobs that need a running API start it with `.github/scripts/start-api.sh` and upload its log on failure.
+- The pytest, Playwright and k6 jobs post their result line (test counts; board p50, p95, p99, max and req/s) as an annotation on the run page.
+- All steps run in bash with `pipefail`, so piping into `tee` cannot hide a failure.
 
 | Job | Steps | Fails when |
 |---|---|---|
@@ -271,12 +283,17 @@ Runs on every push (any branch), every pull request and on demand. Every job tha
 
 README shows the CI badge.
 
-The load scenarios run in a separate workflow, `.github/workflows/load.yml` (on demand, and on pushes that change `loadtest/`, `backend/scripts/sse_listeners.py`, `.github/scripts/k6_notice.py` or the workflow): PostgreSQL 18 as on Neon, the API with production settings (1 worker, default pools and limits) except `RATE_CODE_PER_IP_MIN` raised because every k6 request comes from one IP; L-A1, L-A2, L-B with 50 SSE streams, invariants and the deadlock counter, then L-C. Each result is posted as a run annotation by `.github/scripts/k6_notice.py` and the summaries are uploaded as an artifact.
+The load scenarios run in a separate workflow, `.github/workflows/load.yml`.
+
+- Triggers: on demand, and on pushes that change `loadtest/`, `backend/scripts/sse_listeners.py`, `.github/scripts/k6_notice.py` or the workflow.
+- Setup: PostgreSQL 18 as on Neon; the API with production settings (1 worker, default pools and limits) except `RATE_CODE_PER_IP_MIN`, raised because every k6 request comes from one IP.
+- Runs: L-A1, L-A2, L-B with 50 SSE streams, invariants and the deadlock counter, then L-C.
+- Output: each result is posted as a run annotation by `.github/scripts/k6_notice.py`, and the summaries are uploaded as an artifact.
 
 ## 12. Submission acceptance checklist
 
 - [ ] All must-haves R1 to R19 show `passing` in requirements.md
-- [x] 20+ API tests (catalog IDs: 49 API + 5 lab + 19 race + 5 guarantee + 9 unit + 12 web + 10 end-to-end; collected: 74 API incl. lab + 15 unit + 21 concurrency, 70 Vitest, 20 Playwright runs) green in CI
+- [x] 20+ API tests (catalog IDs: 55 API + 5 lab + 22 race + 8 guarantee + 9 unit + 12 web + 10 end-to-end; collected: 81 API incl. lab + 15 unit + 29 concurrency, 70 Vitest, 20 Playwright runs) green in CI
 - [x] T-RACE-01 and T-RACE-02 both behave as expected in CI logs (run 43063463873)
 - [x] Invariants clean on seed, after tests, after L-B, after chaos (L-B and L-C: load run 43194526097)
 - [x] Load report filled with measured numbers, commands and hardware

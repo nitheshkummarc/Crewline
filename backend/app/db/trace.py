@@ -1,4 +1,12 @@
-"""Statement tracing for the Race lab: records each SQL statement a traced call runs, in order, with its time."""
+"""Statement tracing for the Race lab: records each SQL statement a traced call runs, in order, with its time.
+
+Contents:
+    Step: One executed statement: when it ended (ms after the trace started), pool, SQL, duration, error.
+    Trace: Statements recorded for one traced call.
+    tracing: Record every statement run by connections acquired inside this block (same asyncio task only).
+    attach: Add a query logger to a connection when a trace is active; return it so it can be removed.
+    detach: Remove a query logger added by attach.
+"""
 
 import time
 from collections.abc import Callable, Iterator

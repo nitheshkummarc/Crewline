@@ -1,4 +1,7 @@
 // Create a team in one hackathon; the creator becomes the leader and gets the invite code on the team page.
+//
+// Contents:
+//   CreateTeamPage: The create team page.
 import { ArrowLeft, Crown, QrCode, UserCheck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';

@@ -1,4 +1,8 @@
 // Latency: measured server time per route (recent requests) and a measurement from this browser, plus pool state.
+//
+// Contents:
+//   LatencyView: Server latency table with bars, pool state and transaction counters; optional browser
+//       measurement.
 import type { LatencyReport } from '../../api/types';
 
 export interface BrowserSample {

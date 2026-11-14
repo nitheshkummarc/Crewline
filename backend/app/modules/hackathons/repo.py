@@ -1,4 +1,14 @@
-"""Hackathon and participant SQL."""
+"""Hackathon and participant SQL.
+
+Contents:
+    list_all: Return all real hackathons (the hidden Race lab one excluded), newest first.
+    get: Return one hackathon.
+    insert_participant: Insert participant ON CONFLICT DO NOTHING; return the row if inserted.
+    get_participant: Return the participant row.
+    set_looking: Update the looking flag if it differs; return the row or None.
+    my_team: Return the snapshot of the caller's team in a hackathon, or None.
+    my_requests: Return the caller's join requests in a hackathon, newest first.
+"""
 
 from uuid import UUID
 

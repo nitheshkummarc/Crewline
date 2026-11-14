@@ -1,4 +1,12 @@
-"""Signup, login and profile rules."""
+"""Signup, login and profile rules.
+
+Contents:
+    _user: Return the public user fields of a row.
+    signup: Check the form, rate-limit, hash the password, create the user.
+    login: Check the form, rate-limit, verify the password, return the user.
+    me: Return the signed-in user, or 401 if the account no longer exists.
+    update_profile: Update name, skills and time zone; bump the user's team versions; audit and publish.
+"""
 
 from uuid import UUID
 

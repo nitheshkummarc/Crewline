@@ -1,4 +1,10 @@
-"""Concurrency test fixtures: clean database per test and a deadlock check for the whole suite."""
+"""Concurrency test fixtures: clean database per test and a deadlock check for the whole suite.
+
+Contents:
+    _deadlocks: Return the deadlock counter of the test database.
+    _clean: Apply clean_db to every concurrency test.
+    no_deadlocks: T-RACE-15: the deadlock counter must not increase during the concurrency suite.
+"""
 
 import asyncio
 from collections.abc import Iterator

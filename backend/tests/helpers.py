@@ -1,4 +1,25 @@
-"""Test helpers: users with their own HTTP client, hackathons, keys and raw queries."""
+"""Test helpers: users with their own HTTP client, hackathons, keys and raw queries.
+
+Contents:
+    key: Return a fresh idempotency key.
+    User: A signed-up user with an authenticated client.
+    User.get: GET with the session cookie.
+    User.send: Mutation with the session cookie and an Idempotency-Key (fresh unless given).
+    User.post: POST with an Idempotency-Key.
+    User.patch: PATCH with an Idempotency-Key.
+    User.delete: DELETE with an Idempotency-Key.
+    Users: Factory that signs up users and closes their clients at teardown.
+    Users.client: Return a new tracked client for the server.
+    Users.new: Sign up a user, optionally register them for a hackathon, and return it.
+    Users.bulk: Insert registered users directly and return them with minted session cookies (fast, for races).
+    Users.close: Close every client.
+    form_fields: Return signup/login bot-check fields: a form token rendered age_s ago and an empty honeypot.
+    session_token: Mint a session JWT for a user with the test secret.
+    create_team: Create a team as the user and return (team id, invite code).
+    join: Join a team by invite code.
+    make_hackathon: Insert a hackathon and return its id.
+    query: Run a raw query (json and jsonb decoded like the app) and return its rows.
+"""
 
 import ssl
 import time

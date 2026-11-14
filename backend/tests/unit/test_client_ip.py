@@ -1,4 +1,13 @@
-"""T-UNIT-09: the rate-limit client IP comes from the configured edge header or the socket peer, never XFF."""
+"""T-UNIT-09: the rate-limit client IP comes from the configured edge header or the socket peer, never XFF.
+
+Contents:
+    request: Build a bare request with these headers and socket peer.
+    use_header: Make client_ip read settings with this CLIENT_IP_HEADER.
+    test_unit_09_forwarded_for_is_ignored: T-UNIT-09: without a configured header the peer is used, whatever
+        X-Forwarded-For says (B-33).
+    test_unit_09_configured_header_wins_and_falls_back: T-UNIT-09: the configured header is used when present; when
+        missing or blank the peer is used.
+"""
 
 from types import SimpleNamespace
 

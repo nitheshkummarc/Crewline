@@ -1,4 +1,13 @@
-"""Scheduled overlaps forced with an external row lock: T-RACE-21 (in-flight key claim), T-RACE-22 (request vs seat)."""
+"""Scheduled overlaps forced with an external row lock: T-RACE-21 (in-flight key claim), T-RACE-22 (request vs seat).
+
+Contents:
+    wait_for_waiters: Wait until count write backends wait on a lock (poll up to 2 s); the write lock_timeout is 1
+        s.
+    test_race_21_duplicates_of_an_in_flight_key_replay: T-RACE-21: duplicates that find the key claimed by an
+        uncommitted original replay it; one team is created.
+    test_race_22_request_waits_for_an_uncommitted_last_seat: T-RACE-22: a request created while a join holds the
+        last seat uncommitted is refused as team_full.
+"""
 
 import asyncio
 import uuid

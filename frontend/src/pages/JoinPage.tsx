@@ -1,4 +1,7 @@
 // Join a team with an invite code (typed, pasted, or from a shared ?code= link or QR code).
+//
+// Contents:
+//   JoinPage: The join by code page.
 import { ArrowLeft, KeyRound } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';

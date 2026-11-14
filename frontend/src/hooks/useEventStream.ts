@@ -1,4 +1,14 @@
 // Event stream hook: patches cached board and team data from SSE events, feeds the activity store, refetches on every (re)connect.
+//
+// Contents:
+//   refetchAll: Refetch everything that belongs to one hackathon and every open team page.
+//   applyTeamEvent: Apply one `team` event to the board pages, the team detail and the caller's status. Returns an
+//       announcement or null.
+//   knownTeamName: Return the cached name of a team (board pages or team detail), or null if it is not cached.
+//   applyRequestEvent: Apply one `request` event: refresh that team's request list and the caller's own requests.
+//   parse: Parse an SSE message's JSON data; null if it is not valid JSON.
+//   useEventStream: Open one EventSource for the hackathon; refetch on open, merge team events, handle people,
+//       request and resync.
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { eventsUrl } from '../api/endpoints';
@@ -82,6 +92,7 @@ export function applyRequestEvent(client: QueryClient, hid: string, event: Reque
   void client.invalidateQueries({ queryKey: keys.myStatus(hid) });
 }
 
+/** Parse an SSE message's JSON data; null if it is not valid JSON. */
 const parse = <T,>(message: MessageEvent<string>): T | null => {
   try {
     return JSON.parse(message.data) as T;
